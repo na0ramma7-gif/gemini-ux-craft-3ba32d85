@@ -1,25 +1,102 @@
+import { useApp, AppProvider } from '@/context/AppContext';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
+import Sidebar from '@/components/Sidebar';
+import Dashboard from '@/pages/Dashboard';
+import PortfolioPage from '@/pages/PortfolioPage';
+import ProductPage from '@/pages/ProductPage';
+import ResourcesPage from '@/pages/ResourcesPage';
+import { Portfolio, Product } from '@/types';
 
 const queryClient = new QueryClient();
+
+const MainLayout = () => {
+  const { view, setView, selected, setSelected, sidebarOpen, setSidebarOpen, state } = useApp();
+
+  const handleNavigate = (newView: any) => {
+    setView(newView);
+    if (newView === 'dashboard') {
+      setSelected(prev => ({ ...prev, portfolio: null, product: null }));
+    }
+  };
+
+  const handlePortfolioClick = (portfolio: Portfolio) => {
+    setSelected(prev => ({ ...prev, portfolio, product: null }));
+    setView('portfolio');
+  };
+
+  const handleProductClick = (product: Product) => {
+    setSelected(prev => ({ ...prev, product }));
+    setView('product');
+  };
+
+  const handleBackToPortfolio = () => {
+    setSelected(prev => ({ ...prev, product: null }));
+    setView('portfolio');
+  };
+
+  const handleBackToDashboard = () => {
+    setSelected(prev => ({ ...prev, portfolio: null, product: null }));
+    setView('dashboard');
+  };
+
+  const renderView = () => {
+    switch (view) {
+      case 'dashboard':
+        return <Dashboard onPortfolioClick={handlePortfolioClick} />;
+      case 'portfolio':
+        return selected.portfolio ? (
+          <PortfolioPage
+            portfolio={selected.portfolio}
+            onBack={handleBackToDashboard}
+            onProductClick={handleProductClick}
+          />
+        ) : (
+          <Dashboard onPortfolioClick={handlePortfolioClick} />
+        );
+      case 'product':
+        return selected.product ? (
+          <ProductPage
+            product={selected.product}
+            onBack={handleBackToPortfolio}
+          />
+        ) : (
+          <Dashboard onPortfolioClick={handlePortfolioClick} />
+        );
+      case 'resources':
+        return <ResourcesPage />;
+      default:
+        return <Dashboard onPortfolioClick={handlePortfolioClick} />;
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-background overflow-hidden">
+      <Sidebar
+        open={sidebarOpen}
+        view={view}
+        portfolios={state.portfolios}
+        onNavigate={handleNavigate}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        onPortfolioClick={handlePortfolioClick}
+      />
+      <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        {renderView()}
+      </main>
+    </div>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AppProvider>
+        <Toaster />
+        <Sonner />
+        <MainLayout />
+      </AppProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
