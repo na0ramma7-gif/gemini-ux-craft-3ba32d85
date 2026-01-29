@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect } from 'react';
 import { AppState, ViewType, SelectedState, Portfolio, Product, Feature, Assignment, Resource } from '@/types';
 import { INITIAL_STATE } from '@/data/initialData';
+import { TRANSLATIONS, Language, TranslationKey } from '@/i18n/translations';
 
 interface AppContextType {
   state: AppState;
@@ -11,6 +12,12 @@ interface AppContextType {
   setSelected: React.Dispatch<React.SetStateAction<SelectedState>>;
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+  
+  // Language
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: TranslationKey) => string;
+  isRTL: boolean;
   
   // Computed values
   metrics: {
@@ -42,6 +49,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     tab: 'overview'
   });
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [language, setLanguage] = useState<Language>('en');
+  
+  const isRTL = language === 'ar';
+  
+  // Update document direction when language changes
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.body.dir = isRTL ? 'rtl' : 'ltr';
+    document.body.style.fontFamily = isRTL 
+      ? "'Tajawal', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+      : "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  }, [language, isRTL]);
+  
+  const t = (key: TranslationKey): string => {
+    return TRANSLATIONS[language][key] || key;
+  };
 
   const metrics = useMemo(() => {
     let revenue = 0;
@@ -140,6 +163,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setSelected,
         sidebarOpen,
         setSidebarOpen,
+        language,
+        setLanguage,
+        t,
+        isRTL,
         metrics,
         updateAssignment,
         deleteAssignment,
