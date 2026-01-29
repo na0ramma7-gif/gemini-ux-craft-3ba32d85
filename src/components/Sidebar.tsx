@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Portfolio, ViewType } from '@/types';
 import Logo from './Logo';
 import { cn } from '@/lib/utils';
+import { useApp } from '@/context/AppContext';
 import {
   LayoutDashboard,
-  Package,
   Users,
   Settings,
   ChevronLeft,
@@ -25,6 +25,7 @@ interface SidebarProps {
 
 const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClick }: SidebarProps) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { t, isRTL } = useApp();
 
   const NavItem = ({ 
     icon: Icon, 
@@ -51,38 +52,48 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
 
   const sidebarContent = (
     <>
-      <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
+      <div className="p-3 sm:p-4 border-b border-sidebar-border flex items-center justify-between">
         {open ? (
-          <Logo size={36} showText={true} />
+          <Logo size={32} showText={true} />
         ) : (
-          <Logo size={36} showText={false} />
+          <Logo size={32} showText={false} />
         )}
         <button 
           onClick={onToggle} 
           className="p-2 hover:bg-sidebar-accent rounded-lg transition-colors hidden md:flex"
         >
-          {open ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          {isRTL ? (
+            open ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />
+          ) : (
+            open ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
+          )}
         </button>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-2 sm:p-3 space-y-1 overflow-y-auto">
         <NavItem
           icon={LayoutDashboard}
-          label="Dashboard"
+          label={t('dashboard')}
           active={view === 'dashboard'}
-          onClick={() => onNavigate('dashboard')}
+          onClick={() => {
+            onNavigate('dashboard');
+            setMobileOpen(false);
+          }}
         />
 
         {open && (
-          <div className="px-3 pt-4 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Portfolios
+          <div className="px-3 pt-4 pb-2 text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            {t('portfolios')}
           </div>
         )}
 
         {portfolios.map((portfolio) => (
           <button
             key={portfolio.id}
-            onClick={() => onPortfolioClick(portfolio)}
+            onClick={() => {
+              onPortfolioClick(portfolio);
+              setMobileOpen(false);
+            }}
             className={cn(
               'menu-item w-full',
               view === 'portfolio' && 'active'
@@ -90,32 +101,38 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
           >
             <Folder className="w-5 h-5 flex-shrink-0 text-primary" />
             {open && (
-              <div className="flex-1 text-left min-w-0">
+              <div className="flex-1 text-start min-w-0">
                 <div className="font-medium text-sm truncate">{portfolio.name}</div>
-                <div className="text-xs text-muted-foreground">{portfolio.code}</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground">{portfolio.code}</div>
               </div>
             )}
           </button>
         ))}
 
         {open && (
-          <div className="px-3 pt-4 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Management
+          <div className="px-3 pt-4 pb-2 text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            {t('management')}
           </div>
         )}
 
         <NavItem
           icon={Users}
-          label="Resources"
+          label={t('resources')}
           active={view === 'resources'}
-          onClick={() => onNavigate('resources')}
+          onClick={() => {
+            onNavigate('resources');
+            setMobileOpen(false);
+          }}
         />
 
         <NavItem
           icon={Settings}
-          label="Settings"
+          label={t('settings')}
           active={view === 'settings'}
-          onClick={() => onNavigate('settings')}
+          onClick={() => {
+            onNavigate('settings');
+            setMobileOpen(false);
+          }}
         />
       </nav>
     </>
@@ -126,7 +143,7 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
       {/* Mobile menu button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-card rounded-lg shadow-lg"
+        className="md:hidden fixed top-3 start-3 z-50 p-2 bg-card rounded-lg shadow-lg"
       >
         {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
@@ -142,8 +159,8 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'hidden md:flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 overflow-hidden',
-          open ? 'w-64' : 'w-20'
+          'hidden md:flex flex-col bg-sidebar border-e border-sidebar-border transition-all duration-300 overflow-hidden',
+          open ? 'w-56 lg:w-64' : 'w-16 lg:w-20'
         )}
       >
         {sidebarContent}
@@ -152,8 +169,8 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
       {/* Mobile sidebar */}
       <aside
         className={cn(
-          'md:hidden fixed left-0 top-0 h-full z-40 flex flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-300 w-64',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          'md:hidden fixed start-0 top-0 h-full z-40 flex flex-col bg-sidebar border-e border-sidebar-border transition-transform duration-300 w-56 sm:w-64',
+          mobileOpen ? 'translate-x-0' : isRTL ? 'translate-x-full' : '-translate-x-full'
         )}
       >
         {sidebarContent}

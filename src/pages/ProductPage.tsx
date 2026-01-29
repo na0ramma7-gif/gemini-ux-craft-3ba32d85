@@ -3,10 +3,9 @@ import { useApp } from '@/context/AppContext';
 import { Product, Feature } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import KPICard from '@/components/KPICard';
-import { formatCurrency, formatDate, getPriorityColor, cn } from '@/lib/utils';
+import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -25,16 +24,15 @@ import {
 } from '@/components/ui/select';
 import {
   ArrowLeft,
+  ArrowRight,
   LayoutGrid,
   Map,
-  Users,
   DollarSign,
   FileText,
   Package,
   Plus,
   Edit,
   Trash2,
-  Calendar,
   BarChart3,
   List
 } from 'lucide-react';
@@ -45,7 +43,7 @@ interface ProductPageProps {
 }
 
 const ProductPage = ({ product, onBack }: ProductPageProps) => {
-  const { state, addFeature, updateFeature, deleteFeature } = useApp();
+  const { state, addFeature, updateFeature, deleteFeature, t, language, isRTL } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('list');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -105,6 +103,49 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
     };
   }, [features, state, product.id, releases.length]);
 
+  // Gantt chart calculations
+  const ganttData = useMemo(() => {
+    if (features.length === 0) return { months: [], minDate: new Date(), maxDate: new Date(), totalDays: 0 };
+    
+    const allDates = features.flatMap(f => [new Date(f.startDate), new Date(f.endDate)]);
+    const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+    
+    // Add some padding
+    minDate.setDate(1);
+    maxDate.setMonth(maxDate.getMonth() + 1);
+    maxDate.setDate(0);
+    
+    const months: { label: string; date: Date }[] = [];
+    const current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+    while (current <= maxDate) {
+      months.push({
+        label: current.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { month: 'short' }),
+        date: new Date(current)
+      });
+      current.setMonth(current.getMonth() + 1);
+    }
+    
+    const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return { months, minDate, maxDate, totalDays };
+  }, [features, language]);
+
+  const calculateBarPosition = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const startOffset = Math.ceil((start.getTime() - ganttData.minDate.getTime()) / (1000 * 60 * 60 * 24));
+    const duration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    
+    const leftPercent = ganttData.totalDays > 0 ? (startOffset / ganttData.totalDays) * 100 : 0;
+    const widthPercent = ganttData.totalDays > 0 ? Math.max((duration / ganttData.totalDays) * 100, 3) : 0;
+    
+    return {
+      left: `${leftPercent}%`,
+      width: `${widthPercent}%`
+    };
+  };
+
   const handleAddFeature = () => {
     if (!newFeature.name || !newFeature.startDate || !newFeature.endDate) return;
     
@@ -137,119 +178,121 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
     setDeleteConfirmId(null);
   };
 
+  const BackIcon = isRTL ? ArrowRight : ArrowLeft;
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <button
           onClick={onBack}
           className="p-2 hover:bg-secondary rounded-lg transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <BackIcon className="w-5 h-5" />
         </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground bg-secondary px-2 py-1 rounded">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <span className="text-xs sm:text-sm text-muted-foreground bg-secondary px-2 py-1 rounded">
               {product.code}
             </span>
-            <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">{product.name}</h1>
             <StatusBadge status={product.status} />
           </div>
-          <p className="text-muted-foreground mt-1">Owner: {product.owner}</p>
+          <p className="text-sm text-muted-foreground mt-1">{t('owner')}: {product.owner}</p>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
         <KPICard
-          title="Total Revenue"
-          value={formatCurrency(productMetrics.totalRevenue)}
-          subtitle="Expected from features"
-          icon={<span className="text-2xl">💰</span>}
+          title={t('totalRevenue')}
+          value={formatCurrency(productMetrics.totalRevenue, language)}
+          subtitle={t('expectedFromFeatures')}
+          icon={<span className="text-lg sm:text-2xl">💰</span>}
           variant="green"
         />
         <KPICard
-          title="Total Cost"
-          value={formatCurrency(productMetrics.totalCost)}
-          subtitle="Resources + CAPEX + OPEX"
-          icon={<span className="text-2xl">💸</span>}
+          title={t('totalCost')}
+          value={formatCurrency(productMetrics.totalCost, language)}
+          subtitle={t('resourcesCapexOpex')}
+          icon={<span className="text-lg sm:text-2xl">💸</span>}
           variant="red"
         />
         <KPICard
-          title="Net Profit"
-          value={formatCurrency(productMetrics.profit)}
-          subtitle={`Margin: ${productMetrics.margin.toFixed(1)}%`}
-          icon={<span className="text-2xl">✅</span>}
+          title={t('netProfit')}
+          value={formatCurrency(productMetrics.profit, language)}
+          subtitle={`${t('margin')}: ${productMetrics.margin.toFixed(1)}%`}
+          icon={<span className="text-lg sm:text-2xl">✅</span>}
           variant={productMetrics.profit >= 0 ? 'green' : 'red'}
         />
         <KPICard
-          title="Target vs Achieved"
+          title={t('targetVsAchieved')}
           value="74%"
-          icon={<span className="text-2xl">🎯</span>}
+          icon={<span className="text-lg sm:text-2xl">🎯</span>}
           variant="gradient"
         />
         <KPICard
-          title="Features"
+          title={t('features')}
           value={productMetrics.featureCount.toString()}
-          subtitle={`${productMetrics.releaseCount} releases`}
-          icon={<span className="text-2xl">⭐</span>}
+          subtitle={`${productMetrics.releaseCount} ${t('releases')}`}
+          icon={<span className="text-lg sm:text-2xl">⭐</span>}
           variant="purple"
         />
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="bg-card rounded-xl shadow-card">
-          <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
+        <div className="bg-card rounded-xl shadow-card overflow-hidden">
+          <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto flex-nowrap">
             <TabsTrigger 
               value="overview" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-4"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap"
             >
-              <LayoutGrid className="w-4 h-4 mr-2" />
-              Overview
+              <LayoutGrid className="w-4 h-4 me-1 sm:me-2" />
+              {t('overview')}
             </TabsTrigger>
             <TabsTrigger 
               value="roadmap"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-4"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap"
             >
-              <Map className="w-4 h-4 mr-2" />
-              Roadmap
+              <Map className="w-4 h-4 me-1 sm:me-2" />
+              {t('roadmap')}
             </TabsTrigger>
             <TabsTrigger 
               value="releases"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-4"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap"
             >
-              <Package className="w-4 h-4 mr-2" />
-              Releases
+              <Package className="w-4 h-4 me-1 sm:me-2" />
+              {t('releases')}
             </TabsTrigger>
             <TabsTrigger 
               value="financials"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-4"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap"
             >
-              <DollarSign className="w-4 h-4 mr-2" />
-              Financials
+              <DollarSign className="w-4 h-4 me-1 sm:me-2" />
+              {t('financials')}
             </TabsTrigger>
             <TabsTrigger 
               value="docs"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-4"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap"
             >
-              <FileText className="w-4 h-4 mr-2" />
-              Documentation
+              <FileText className="w-4 h-4 me-1 sm:me-2" />
+              {t('documentation')}
             </TabsTrigger>
           </TabsList>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {/* Overview Tab */}
             <TabsContent value="overview" className="mt-0 space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-foreground mb-3">Releases</h3>
-                <div className="space-y-3">
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3">{t('releases')}</h3>
+                <div className="space-y-2 sm:space-y-3">
                   {releases.map(release => (
-                    <div key={release.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg hover:bg-secondary transition-colors">
-                      <div>
-                        <div className="font-semibold text-foreground">{release.version} - {release.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {formatDate(release.startDate)} → {formatDate(release.endDate)}
+                    <div key={release.id} className="flex items-center justify-between p-3 sm:p-4 bg-secondary/50 rounded-lg hover:bg-secondary transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-foreground text-sm sm:text-base">{release.version} - {release.name}</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground">
+                          {formatDate(release.startDate, language)} → {formatDate(release.endDate, language)}
                         </div>
                       </div>
                       <StatusBadge status={release.status} />
@@ -259,125 +302,218 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
               </div>
             </TabsContent>
 
-            {/* Roadmap Tab */}
-            <TabsContent value="roadmap" className="mt-0 space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-foreground">Features Roadmap</h3>
-                <div className="flex items-center gap-4">
-                  <Button onClick={() => setShowAddModal(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Feature
+            {/* Roadmap Tab with Gantt Chart */}
+            <TabsContent value="roadmap" className="mt-0 space-y-4 sm:space-y-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <h3 className="text-base sm:text-lg font-semibold text-foreground">{t('featuresRoadmap')}</h3>
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <Button size="sm" onClick={() => setShowAddModal(true)}>
+                    <Plus className="w-4 h-4 me-1 sm:me-2" />
+                    <span className="hidden sm:inline">{t('addFeature')}</span>
+                    <span className="sm:hidden">+</span>
                   </Button>
                   <div className="flex bg-secondary rounded-lg p-1">
                     <button
                       onClick={() => setViewMode('gantt')}
                       className={cn(
-                        "px-4 py-2 rounded-md text-sm font-medium transition-colors",
+                        "px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center gap-1",
                         viewMode === 'gantt' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground'
                       )}
                     >
-                      <BarChart3 className="w-4 h-4" />
+                      <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">{t('ganttChart')}</span>
                     </button>
                     <button
                       onClick={() => setViewMode('list')}
                       className={cn(
-                        "px-4 py-2 rounded-md text-sm font-medium transition-colors",
+                        "px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center gap-1",
                         viewMode === 'list' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground'
                       )}
                     >
-                      <List className="w-4 h-4" />
+                      <List className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">{t('listView')}</span>
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Features Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px]">
-                  <thead className="bg-secondary">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Feature</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Release</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Period</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Owner</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
+              {/* Gantt Chart View */}
+              {viewMode === 'gantt' && features.length > 0 && (
+                <div className="bg-secondary/30 rounded-xl p-3 sm:p-4 overflow-x-auto">
+                  {/* Timeline Header */}
+                  <div className="flex border-b border-border pb-2 mb-3 min-w-[600px]">
+                    <div className="w-40 sm:w-48 flex-shrink-0 pe-4 font-medium text-xs sm:text-sm text-muted-foreground">
+                      {t('feature')}
+                    </div>
+                    <div className="flex-1 flex">
+                      {ganttData.months.map((month, idx) => (
+                        <div 
+                          key={idx} 
+                          className="flex-1 text-center text-[10px] sm:text-xs font-medium text-muted-foreground border-s border-border/50 first:border-s-0"
+                        >
+                          {month.label}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Gantt Rows */}
+                  <div className="space-y-2 min-w-[600px]">
                     {features.map(feature => {
-                      const release = releases.find(r => r.id === feature.releaseId);
+                      const position = calculateBarPosition(feature.startDate, feature.endDate);
                       return (
-                        <tr key={feature.id} className="hover:bg-secondary/50">
-                          <td className="px-4 py-3">
-                            <div className="font-medium text-foreground">{feature.name}</div>
-                            <span className={cn("text-xs px-2 py-0.5 rounded-full", getPriorityColor(feature.priority))}>
-                              {feature.priority}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-sm">{release?.version || 'N/A'}</td>
-                          <td className="px-4 py-3 text-sm">
-                            {formatDate(feature.startDate)} → {formatDate(feature.endDate)}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <StatusBadge status={feature.status} />
-                          </td>
-                          <td className="px-4 py-3 text-sm">{feature.owner}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex justify-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setEditingFeature(feature)}
-                              >
-                                <Edit className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                                onClick={() => setDeleteConfirmId(feature.id)}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
+                        <div key={feature.id} className="flex items-center group">
+                          <div className="w-40 sm:w-48 flex-shrink-0 pe-4">
+                            <div className="text-xs sm:text-sm font-medium text-foreground truncate">{feature.name}</div>
+                            <div className="text-[10px] text-muted-foreground">{feature.owner}</div>
+                          </div>
+                          <div className="flex-1 relative h-8 sm:h-10 bg-secondary/50 rounded">
+                            {/* Grid lines for months */}
+                            <div className="absolute inset-0 flex">
+                              {ganttData.months.map((_, idx) => (
+                                <div key={idx} className="flex-1 border-s border-border/30 first:border-s-0" />
+                              ))}
                             </div>
-                          </td>
-                        </tr>
+                            {/* Gantt Bar */}
+                            <div
+                              className={cn(
+                                "absolute top-1 sm:top-1.5 h-6 sm:h-7 rounded flex items-center px-2 text-white text-[10px] sm:text-xs font-medium shadow-sm transition-all",
+                                getGanttBarColor(feature.status)
+                              )}
+                              style={{
+                                left: position.left,
+                                width: position.width,
+                              }}
+                              title={`${feature.name}: ${formatShortDate(feature.startDate, language)} - ${formatShortDate(feature.endDate, language)}`}
+                            >
+                              <span className="truncate">{feature.name}</span>
+                            </div>
+                          </div>
+                        </div>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                  
+                  {/* Legend */}
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-4 pt-3 border-t border-border">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded bg-slate-400" />
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">{t('planned')}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded bg-blue-500" />
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">{t('inProgress')}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded bg-emerald-500" />
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">{t('delivered')}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* List View */}
+              {viewMode === 'list' && (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[700px]">
+                    <thead className="bg-secondary">
+                      <tr>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-start text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('feature')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-start text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('release')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-start text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('period')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('status')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-start text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('owner')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {features.map(feature => {
+                        const release = releases.find(r => r.id === feature.releaseId);
+                        return (
+                          <tr key={feature.id} className="hover:bg-secondary/50">
+                            <td className="px-3 sm:px-4 py-2 sm:py-3">
+                              <div className="font-medium text-foreground text-xs sm:text-sm">{feature.name}</div>
+                              <span className={cn("text-[10px] sm:text-xs px-2 py-0.5 rounded-full", getPriorityColor(feature.priority))}>
+                                {feature.priority}
+                              </span>
+                            </td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm">{release?.version || 'N/A'}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm">
+                              {formatShortDate(feature.startDate, language)} → {formatShortDate(feature.endDate, language)}
+                            </td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
+                              <StatusBadge status={feature.status} />
+                            </td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm">{feature.owner}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3">
+                              <div className="flex justify-center gap-1 sm:gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                                  onClick={() => setEditingFeature(feature)}
+                                >
+                                  <Edit className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                  onClick={() => setDeleteConfirmId(feature.id)}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {features.length === 0 && (
+                <div className="text-center py-12">
+                  <Map className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">No features yet</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Add your first feature to start building the roadmap</p>
+                  <Button onClick={() => setShowAddModal(true)}>
+                    <Plus className="w-4 h-4 me-2" />
+                    {t('addFeature')}
+                  </Button>
+                </div>
+              )}
             </TabsContent>
 
             {/* Releases Tab */}
             <TabsContent value="releases" className="mt-0 space-y-4">
-              <h3 className="text-lg font-semibold text-foreground">Release Management</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <h3 className="text-base sm:text-lg font-semibold text-foreground">{t('releaseManagement')}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {releases.map(release => {
                   const releaseFeatures = features.filter(f => f.releaseId === release.id);
                   return (
-                    <div key={release.id} className="bg-card border border-border rounded-xl p-5">
-                      <div className="flex justify-between items-start mb-4">
+                    <div key={release.id} className="bg-card border border-border rounded-xl p-4 sm:p-5">
+                      <div className="flex justify-between items-start mb-3 sm:mb-4">
                         <div>
-                          <h4 className="text-lg font-semibold text-foreground">{release.version}</h4>
-                          <p className="text-sm text-muted-foreground">{release.name}</p>
+                          <h4 className="text-base sm:text-lg font-semibold text-foreground">{release.version}</h4>
+                          <p className="text-xs sm:text-sm text-muted-foreground">{release.name}</p>
                         </div>
                         <StatusBadge status={release.status} />
                       </div>
-                      <div className="space-y-2 text-sm">
+                      <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Features:</span>
+                          <span className="text-muted-foreground">{t('features')}:</span>
                           <span className="font-semibold">{releaseFeatures.length}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Duration:</span>
+                          <span className="text-muted-foreground">{t('duration')}:</span>
                           <span className="font-semibold">
-                            {Math.ceil((new Date(release.endDate).getTime() - new Date(release.startDate).getTime()) / (1000 * 60 * 60 * 24))} days
+                            {Math.ceil((new Date(release.endDate).getTime() - new Date(release.startDate).getTime()) / (1000 * 60 * 60 * 24))} {t('days')}
                           </span>
                         </div>
-                        <div className="text-xs text-muted-foreground mt-2">
-                          {formatDate(release.startDate)} → {formatDate(release.endDate)}
+                        <div className="text-[10px] sm:text-xs text-muted-foreground mt-2">
+                          {formatDate(release.startDate, language)} → {formatDate(release.endDate, language)}
                         </div>
                       </div>
                     </div>
@@ -388,31 +524,31 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
 
             {/* Financials Tab */}
             <TabsContent value="financials" className="mt-0">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Financial Overview</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-6 border border-emerald-200 dark:border-emerald-800">
-                  <h4 className="text-sm font-medium text-emerald-800 dark:text-emerald-400 mb-2">Total Revenue</h4>
-                  <div className="text-3xl font-bold text-emerald-600">{formatCurrency(productMetrics.totalRevenue)}</div>
+              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4">{t('financialOverview')}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 sm:p-6 border border-emerald-200 dark:border-emerald-800">
+                  <h4 className="text-xs sm:text-sm font-medium text-emerald-800 dark:text-emerald-400 mb-2">{t('totalRevenue')}</h4>
+                  <div className="text-xl sm:text-3xl font-bold text-emerald-600">{formatCurrency(productMetrics.totalRevenue, language)}</div>
                 </div>
-                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-6 border border-red-200 dark:border-red-800">
-                  <h4 className="text-sm font-medium text-red-800 dark:text-red-400 mb-2">Total Cost</h4>
-                  <div className="text-3xl font-bold text-red-600">{formatCurrency(productMetrics.totalCost)}</div>
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 sm:p-6 border border-red-200 dark:border-red-800">
+                  <h4 className="text-xs sm:text-sm font-medium text-red-800 dark:text-red-400 mb-2">{t('totalCost')}</h4>
+                  <div className="text-xl sm:text-3xl font-bold text-red-600">{formatCurrency(productMetrics.totalCost, language)}</div>
                 </div>
                 <div className={cn(
-                  "rounded-xl p-6 border",
+                  "rounded-xl p-4 sm:p-6 border",
                   productMetrics.profit >= 0
                     ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
                     : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
                 )}>
                   <h4 className={cn(
-                    "text-sm font-medium mb-2",
+                    "text-xs sm:text-sm font-medium mb-2",
                     productMetrics.profit >= 0 ? "text-emerald-800 dark:text-emerald-400" : "text-red-800 dark:text-red-400"
-                  )}>Net Profit</h4>
+                  )}>{t('netProfit')}</h4>
                   <div className={cn(
-                    "text-3xl font-bold",
+                    "text-xl sm:text-3xl font-bold",
                     productMetrics.profit >= 0 ? "text-emerald-600" : "text-red-600"
                   )}>
-                    {formatCurrency(productMetrics.profit)}
+                    {formatCurrency(productMetrics.profit, language)}
                   </div>
                 </div>
               </div>
@@ -420,13 +556,13 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
 
             {/* Documentation Tab */}
             <TabsContent value="docs" className="mt-0">
-              <div className="text-center py-12">
-                <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No documents yet</h3>
-                <p className="text-muted-foreground mb-4">Upload documents to keep your project organized</p>
+              <div className="text-center py-8 sm:py-12">
+                <FileText className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">{t('noDocumentsYet')}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{t('uploadDocumentsToOrganize')}</p>
                 <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Upload Document
+                  <Plus className="w-4 h-4 me-2" />
+                  {t('uploadDocument')}
                 </Button>
               </div>
             </TabsContent>
@@ -438,21 +574,21 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add New Feature</DialogTitle>
-            <DialogDescription>Create a new feature for this product</DialogDescription>
+            <DialogTitle>{t('addNewFeature')}</DialogTitle>
+            <DialogDescription>{t('createNewFeature')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium text-foreground">Feature Name</label>
+              <label className="text-sm font-medium text-foreground">{t('featureName')}</label>
               <Input
                 value={newFeature.name}
                 onChange={(e) => setNewFeature({ ...newFeature, name: e.target.value })}
-                placeholder="Enter feature name"
+                placeholder={t('enterFeatureName')}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-foreground">Start Date</label>
+                <label className="text-sm font-medium text-foreground">{t('startDate')}</label>
                 <Input
                   type="date"
                   value={newFeature.startDate}
@@ -460,7 +596,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">End Date</label>
+                <label className="text-sm font-medium text-foreground">{t('endDate')}</label>
                 <Input
                   type="date"
                   value={newFeature.endDate}
@@ -470,7 +606,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-foreground">Status</label>
+                <label className="text-sm font-medium text-foreground">{t('status')}</label>
                 <Select
                   value={newFeature.status}
                   onValueChange={(value) => setNewFeature({ ...newFeature, status: value as any })}
@@ -479,14 +615,14 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Planned">Planned</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Delivered">Delivered</SelectItem>
+                    <SelectItem value="Planned">{t('planned')}</SelectItem>
+                    <SelectItem value="In Progress">{t('inProgress')}</SelectItem>
+                    <SelectItem value="Delivered">{t('delivered')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">Priority</label>
+                <label className="text-sm font-medium text-foreground">{t('priority')}</label>
                 <Select
                   value={newFeature.priority}
                   onValueChange={(value) => setNewFeature({ ...newFeature, priority: value as any })}
@@ -495,32 +631,32 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="High">{t('high')}</SelectItem>
+                    <SelectItem value="Medium">{t('medium')}</SelectItem>
+                    <SelectItem value="Low">{t('low')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">Owner</label>
+              <label className="text-sm font-medium text-foreground">{t('owner')}</label>
               <Input
                 value={newFeature.owner}
                 onChange={(e) => setNewFeature({ ...newFeature, owner: e.target.value })}
-                placeholder="Enter owner name"
+                placeholder={t('enterOwnerName')}
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">Release</label>
+              <label className="text-sm font-medium text-foreground">{t('release')}</label>
               <Select
                 value={newFeature.releaseId?.toString() || 'none'}
                 onValueChange={(value) => setNewFeature({ ...newFeature, releaseId: value === 'none' ? null : parseInt(value) })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select release" />
+                  <SelectValue placeholder={t('selectRelease')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No Release</SelectItem>
+                  <SelectItem value="none">{t('noRelease')}</SelectItem>
                   {releases.map(release => (
                     <SelectItem key={release.id} value={release.id.toString()}>
                       {release.version} - {release.name}
@@ -531,8 +667,8 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
-            <Button onClick={handleAddFeature}>Add Feature</Button>
+            <Button variant="outline" onClick={() => setShowAddModal(false)}>{t('cancel')}</Button>
+            <Button onClick={handleAddFeature}>{t('addFeature')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -541,13 +677,13 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
       <Dialog open={!!editingFeature} onOpenChange={() => setEditingFeature(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Feature</DialogTitle>
-            <DialogDescription>Update feature details</DialogDescription>
+            <DialogTitle>{t('editFeature')}</DialogTitle>
+            <DialogDescription>{t('updateFeatureDetails')}</DialogDescription>
           </DialogHeader>
           {editingFeature && (
             <div className="space-y-4 py-4">
               <div>
-                <label className="text-sm font-medium text-foreground">Feature Name</label>
+                <label className="text-sm font-medium text-foreground">{t('featureName')}</label>
                 <Input
                   value={editingFeature.name}
                   onChange={(e) => setEditingFeature({ ...editingFeature, name: e.target.value })}
@@ -555,7 +691,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-foreground">Start Date</label>
+                  <label className="text-sm font-medium text-foreground">{t('startDate')}</label>
                   <Input
                     type="date"
                     value={editingFeature.startDate}
@@ -563,7 +699,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground">End Date</label>
+                  <label className="text-sm font-medium text-foreground">{t('endDate')}</label>
                   <Input
                     type="date"
                     value={editingFeature.endDate}
@@ -573,7 +709,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-foreground">Status</label>
+                  <label className="text-sm font-medium text-foreground">{t('status')}</label>
                   <Select
                     value={editingFeature.status}
                     onValueChange={(value) => setEditingFeature({ ...editingFeature, status: value as any })}
@@ -582,14 +718,14 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Planned">Planned</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Delivered">Delivered</SelectItem>
+                      <SelectItem value="Planned">{t('planned')}</SelectItem>
+                      <SelectItem value="In Progress">{t('inProgress')}</SelectItem>
+                      <SelectItem value="Delivered">{t('delivered')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground">Priority</label>
+                  <label className="text-sm font-medium text-foreground">{t('priority')}</label>
                   <Select
                     value={editingFeature.priority}
                     onValueChange={(value) => setEditingFeature({ ...editingFeature, priority: value as any })}
@@ -598,15 +734,15 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="High">High</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="Low">Low</SelectItem>
+                      <SelectItem value="High">{t('high')}</SelectItem>
+                      <SelectItem value="Medium">{t('medium')}</SelectItem>
+                      <SelectItem value="Low">{t('low')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">Owner</label>
+                <label className="text-sm font-medium text-foreground">{t('owner')}</label>
                 <Input
                   value={editingFeature.owner}
                   onChange={(e) => setEditingFeature({ ...editingFeature, owner: e.target.value })}
@@ -615,8 +751,8 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingFeature(null)}>Cancel</Button>
-            <Button onClick={handleUpdateFeature}>Save Changes</Button>
+            <Button variant="outline" onClick={() => setEditingFeature(null)}>{t('cancel')}</Button>
+            <Button onClick={handleUpdateFeature}>{t('saveChanges')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -625,18 +761,18 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
       <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Feature</DialogTitle>
+            <DialogTitle>{t('deleteFeature')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this feature? This action cannot be undone.
+              {t('confirmDeleteFeature')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>{t('cancel')}</Button>
             <Button
               variant="destructive"
               onClick={() => deleteConfirmId && handleDeleteFeature(deleteConfirmId)}
             >
-              Delete
+              {t('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
