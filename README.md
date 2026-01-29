@@ -1,73 +1,114 @@
-# Welcome to your Lovable project
+# Lean - Business Efficiency Management System
 
-## Project info
+A comprehensive portfolio, product, feature, and release management system built with React, TypeScript, and Tailwind CSS.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- **Dashboard**: Overview of all portfolios with KPIs, revenue/cost charts, and portfolio distribution
+- **Portfolio Management**: Manage multiple portfolios with products, resources, and financials
+- **Product Management**: Track products with roadmaps, releases, and feature management
+- **Feature Tracking**: Create, edit, and manage features with status, priority, and ownership
+- **Release Management**: Organize features into releases with timeline tracking
+- **Resource Management**: Manage team resources, assignments, and utilization tracking
+- **Financial Overview**: Track revenue, costs, and profit margins at all levels
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **React 18** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Utility-first styling
+- **shadcn/ui** - UI component library
+- **Lucide React** - Icon library
+- **TanStack Query** - Data fetching
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js 18+ or Bun
+- npm, yarn, or bun
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# Navigate to project directory
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
+# or
+bun install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
+# or
+bun dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Build for Production
 
-**Use GitHub Codespaces**
+```bash
+# Build the application
+npm run build
+# or
+bun run build
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Preview production build
+npm run preview
+# or
+bun run preview
+```
 
-## What technologies are used for this project?
+## Project Structure
 
-This project is built with:
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ui/             # shadcn/ui components
+│   ├── KPICard.tsx     # KPI metric cards
+│   ├── Logo.tsx        # Application logo
+│   ├── Sidebar.tsx     # Navigation sidebar
+│   └── StatusBadge.tsx # Status indicator badges
+├── context/            # React context providers
+│   └── AppContext.tsx  # Global application state
+├── data/               # Initial/mock data
+│   └── initialData.ts  # Sample portfolio/product data
+├── lib/                # Utility functions
+│   └── utils.ts        # Helper functions
+├── pages/              # Page components
+│   ├── Dashboard.tsx   # Main dashboard
+│   ├── PortfolioPage.tsx # Portfolio details
+│   ├── ProductPage.tsx # Product details
+│   └── ResourcesPage.tsx # Resource management
+├── types/              # TypeScript type definitions
+│   └── index.ts        # All type interfaces
+├── App.tsx             # Main application component
+├── index.css           # Global styles & design system
+└── main.tsx           # Application entry point
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Design System
 
-## How can I deploy this project?
+The application uses a custom design system with:
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+- **Primary Color**: Professional indigo (#6366F1)
+- **Semantic tokens** for consistent theming
+- **Dark mode support** (CSS variables based)
+- **Responsive design** for mobile, tablet, and desktop
 
-## Can I connect a custom domain to my Lovable project?
+## Screens
 
-Yes, you can!
+1. **Dashboard** - Overview with KPIs, charts, and portfolio cards
+2. **Portfolio View** - Portfolio details with products, resources, and financials
+3. **Product View** - Product details with roadmap, releases, and documentation
+4. **Resources** - Team directory, assignments, and utilization tracking
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## License
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+MIT License - see LICENSE file for details
