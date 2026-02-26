@@ -3,6 +3,7 @@ import { useApp } from '@/context/AppContext';
 import { Product, Feature } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import KPICard from '@/components/KPICard';
+import FeatureFinancialPlanning from '@/components/FeatureFinancialPlanning';
 import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +50,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingFeature, setEditingFeature] = useState<Feature | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [selectedFeatureForFinancials, setSelectedFeatureForFinancials] = useState<Feature | null>(null);
   
   const [newFeature, setNewFeature] = useState({
     name: '',
@@ -179,6 +181,16 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
   };
 
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
+
+  // If a feature is selected for financial planning, show that view
+  if (selectedFeatureForFinancials) {
+    return (
+      <FeatureFinancialPlanning
+        feature={selectedFeatureForFinancials}
+        onClose={() => setSelectedFeatureForFinancials(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
@@ -523,8 +535,8 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
             </TabsContent>
 
             {/* Financials Tab */}
-            <TabsContent value="financials" className="mt-0">
-              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4">{t('financialOverview')}</h3>
+            <TabsContent value="financials" className="mt-0 space-y-6">
+              {/* KPI Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 sm:p-6 border border-emerald-200 dark:border-emerald-800">
                   <h4 className="text-xs sm:text-sm font-medium text-emerald-800 dark:text-emerald-400 mb-2">{t('totalRevenue')}</h4>
@@ -551,6 +563,67 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     {formatCurrency(productMetrics.profit, language)}
                   </div>
                 </div>
+              </div>
+
+              {/* Revenue Table by Feature */}
+              <div>
+                <div className="border-b pb-3 mb-4">
+                  <h3 className="text-base sm:text-lg font-bold text-foreground">💵 {t('revenue')}</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[700px]">
+                    <thead className="bg-secondary">
+                      <tr>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-start text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('feature')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-start text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('product')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-start text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('portfolio')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('status')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('expected')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('actual')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('cost')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('variance')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {features.map(feature => {
+                        const portfolio = state.portfolios.find(p => p.id === product.portfolioId);
+                        let expected = 0, actual = 0;
+                        state.revenuePlan.filter(r => r.featureId === feature.id).forEach(r => expected += r.expected);
+                        state.revenueActual.filter(r => r.featureId === feature.id).forEach(r => actual += r.actual);
+                        const cost = expected * 0.6;
+                        const variance = actual - expected;
+                        return (
+                          <tr key={feature.id} className="hover:bg-secondary/50">
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium text-foreground text-xs sm:text-sm">{feature.name}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-muted-foreground">{product.name}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-muted-foreground">{portfolio?.name || 'N/A'}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-center"><StatusBadge status={feature.status} /></td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-blue-600 text-xs sm:text-sm">{formatCurrency(expected, language)}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-emerald-600 text-xs sm:text-sm">{formatCurrency(actual, language)}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-orange-600 text-xs sm:text-sm">{formatCurrency(cost, language)}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end">
+                              <span className={cn("font-bold text-xs sm:text-sm", variance >= 0 ? 'text-emerald-600' : 'text-destructive')}>
+                                {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
+                              </span>
+                            </td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
+                              <Button size="sm" className="text-xs h-7" onClick={() => setSelectedFeatureForFinancials(feature)}>
+                                {t('planFinancials')}
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {features.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <div className="text-4xl mb-4">💵</div>
+                    <p>{t('noRevenueData')}</p>
+                  </div>
+                )}
               </div>
             </TabsContent>
 
