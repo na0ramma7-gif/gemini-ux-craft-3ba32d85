@@ -63,6 +63,7 @@ export const TRANSLATIONS = {
     saveChanges: 'Save Changes',
     uploadDocument: 'Upload Document',
     planFinancials: 'Plan Financials',
+    view: 'View',
     
     // Common
     owner: 'Owner',
@@ -83,6 +84,7 @@ export const TRANSLATIONS = {
     actual: 'Actual',
     variance: 'Variance',
     portfolio: 'Portfolio',
+    optional: 'Optional',
     
     // Portfolio
     portfolioOverview: 'Portfolio Overview',
@@ -188,6 +190,22 @@ export const TRANSLATIONS = {
     risksPlaceholder: 'What are the main risks, technical challenges, market risks, or implementation challenges?',
     viewDetailedFinancials: 'View detailed financials in Revenue, Costs, and Forecast tabs',
     
+    // New modal-based financial planning
+    addFeatureRevenue: '+ Add Feature Revenue',
+    addFeatureCost: '+ Add Feature Cost',
+    addRevenueDesc: 'Manage feature-level revenue items with monthly planned and actual values',
+    addCostDesc: 'Manage feature-level cost items with monthly planned and actual values',
+    editItem: 'Edit Item',
+    createItemDesc: 'Create a new item and manage its monthly data',
+    revenueNamePlaceholder: 'e.g., Monthly Subscriptions',
+    costNamePlaceholder: 'e.g., Server Infrastructure',
+    itemDescPlaceholder: 'Brief description of this item...',
+    createAndManage: 'Create & Manage Monthly',
+    manageMonthlyData: 'Enter planned and actual values for each month',
+    confirmDelete: 'Confirm Deletion',
+    confirmDeleteItemDesc: 'Are you sure you want to delete this item? All monthly data will be permanently lost.',
+    forecastComingSoon: 'Coming soon — multi-year forecast with projections based on current revenue and cost trends.',
+    
     // Resources
     resourceManagementTitle: 'Resource Management',
     manageTeamMembers: 'Manage team members and assignments',
@@ -290,6 +308,7 @@ export const TRANSLATIONS = {
     saveChanges: 'حفظ التغييرات',
     uploadDocument: 'تحميل مستند',
     planFinancials: 'التخطيط المالي',
+    view: 'عرض',
     
     // Common
     owner: 'المالك',
@@ -310,6 +329,7 @@ export const TRANSLATIONS = {
     actual: 'الفعلي',
     variance: 'الفرق',
     portfolio: 'المحفظة',
+    optional: 'اختياري',
     
     // Portfolio
     portfolioOverview: 'نظرة عامة على المحفظة',
@@ -414,6 +434,22 @@ export const TRANSLATIONS = {
     businessModelPlaceholder: 'كيف ستحقق هذه الإيرادات؟ نموذج التسعير، استراتيجية تحقيق الدخل...',
     risksPlaceholder: 'ما هي المخاطر الرئيسية، التحديات التقنية، مخاطر السوق، أو تحديات التنفيذ؟',
     viewDetailedFinancials: 'عرض التفاصيل المالية في تبويبات الإيرادات والتكاليف والتوقعات',
+    
+    // New modal-based financial planning
+    addFeatureRevenue: '+ إضافة إيراد ميزة',
+    addFeatureCost: '+ إضافة تكلفة ميزة',
+    addRevenueDesc: 'إدارة بنود الإيرادات على مستوى الميزة مع القيم الشهرية المخططة والفعلية',
+    addCostDesc: 'إدارة بنود التكاليف على مستوى الميزة مع القيم الشهرية المخططة والفعلية',
+    editItem: 'تعديل البند',
+    createItemDesc: 'إنشاء بند جديد وإدارة بياناته الشهرية',
+    revenueNamePlaceholder: 'مثال: الاشتراكات الشهرية',
+    costNamePlaceholder: 'مثال: البنية التحتية للخوادم',
+    itemDescPlaceholder: 'وصف مختصر لهذا البند...',
+    createAndManage: 'إنشاء وإدارة شهرية',
+    manageMonthlyData: 'أدخل القيم المخططة والفعلية لكل شهر',
+    confirmDelete: 'تأكيد الحذف',
+    confirmDeleteItemDesc: 'هل أنت متأكد من حذف هذا البند؟ سيتم فقدان جميع البيانات الشهرية نهائياً.',
+    forecastComingSoon: 'قريباً — توقعات متعددة السنوات مع إسقاطات مبنية على اتجاهات الإيرادات والتكاليف الحالية.',
     
     // Resources
     resourceManagementTitle: 'إدارة الموارد',
