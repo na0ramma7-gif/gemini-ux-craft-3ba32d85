@@ -243,6 +243,15 @@ export const TRANSLATIONS = {
     // Time
     jan: 'Jan', feb: 'Feb', mar: 'Mar', apr: 'Apr', may: 'May', jun: 'Jun',
     jul: 'Jul', aug: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dec: 'Dec',
+    
+    // Monthly entry flow
+    totalPlanned: 'Total Planned',
+    totalActual: 'Total Actual',
+    month: 'Month',
+    addMonthlyRevenue: '+ Add Monthly Revenue',
+    addMonthlyCost: '+ Add Monthly Cost',
+    addEntry: 'Add Entry',
+    alreadyAdded: 'already added',
   },
   ar: {
     // Navigation
@@ -488,6 +497,15 @@ export const TRANSLATIONS = {
     // Time
     jan: 'يناير', feb: 'فبراير', mar: 'مارس', apr: 'أبريل', may: 'مايو', jun: 'يونيو',
     jul: 'يوليو', aug: 'أغسطس', sep: 'سبتمبر', oct: 'أكتوبر', nov: 'نوفمبر', dec: 'ديسمبر',
+    
+    // Monthly entry flow
+    totalPlanned: 'إجمالي المخطط',
+    totalActual: 'إجمالي الفعلي',
+    month: 'الشهر',
+    addMonthlyRevenue: '+ إضافة إيراد شهري',
+    addMonthlyCost: '+ إضافة تكلفة شهرية',
+    addEntry: 'إضافة إدخال',
+    alreadyAdded: 'مضاف مسبقاً',
   }
 };
 
