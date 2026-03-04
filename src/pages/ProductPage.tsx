@@ -4,6 +4,7 @@ import { Product, Feature } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import KPICard from '@/components/KPICard';
 import FeatureFinancialPlanning from '@/components/FeatureFinancialPlanning';
+import ProductForecast from '@/components/ProductForecast';
 import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +36,8 @@ import {
   Edit,
   Trash2,
   BarChart3,
-  List
+  List,
+  TrendingUp
 } from 'lucide-react';
 
 interface ProductPageProps {
@@ -283,6 +285,13 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
             >
               <DollarSign className="w-4 h-4 me-1 sm:me-2" />
               {t('financials')}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="forecast"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap"
+            >
+              <TrendingUp className="w-4 h-4 me-1 sm:me-2" />
+              {t('forecast')}
             </TabsTrigger>
             <TabsTrigger 
               value="docs"
@@ -625,6 +634,11 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                   </div>
                 )}
               </div>
+            </TabsContent>
+
+            {/* Forecast Tab */}
+            <TabsContent value="forecast" className="mt-0">
+              <ProductForecast product={product} />
             </TabsContent>
 
             {/* Documentation Tab */}
