@@ -16,6 +16,8 @@ export interface Portfolio {
   priority: 'High' | 'Medium' | 'Low';
 }
 
+export type LifecycleStage = 'Ideation' | 'Development' | 'Growth' | 'Mature' | 'Sunset';
+
 export interface Product {
   id: number;
   portfolioId: number;
@@ -28,6 +30,18 @@ export interface Product {
   targetClient?: string;
   endUser?: string;
   valueProposition?: string;
+  // New product profile fields
+  purpose?: string;
+  businessProblem?: string;
+  strategicObjective?: string;
+  lifecycleStage?: LifecycleStage;
+  startDate?: string;
+  capabilities?: string[];
+  successMetrics?: string[];
+  technicalOwner?: string;
+  deliveryManager?: string;
+  businessStakeholder?: string;
+  supportingTeams?: string[];
 }
 
 export interface Release {
