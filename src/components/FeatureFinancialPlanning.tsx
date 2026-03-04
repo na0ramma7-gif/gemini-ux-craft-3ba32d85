@@ -79,12 +79,12 @@ interface CostRowProps {
 }
 
 const CostRow = ({ item, idx, canRemove, onUpdate, onRemove, calculateCost, resources, language, t, formatCurrency: fmtCurrency }: CostRowProps) => {
-  const [expanded, setExpanded] = useState(false);
   const isResource = item.category === 'Resources';
 
   return (
     <div className={cn("border-t border-border", idx % 2 === 0 ? "bg-card" : "bg-secondary/5")}>
-      <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center">
+      {/* Main row */}
+      <div className="grid grid-cols-[140px_1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center">
         <Select value={item.category} onValueChange={v => onUpdate({ category: v })}>
           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -93,9 +93,8 @@ const CostRow = ({ item, idx, canRemove, onUpdate, onRemove, calculateCost, reso
         </Select>
 
         {isResource ? (
-          <div className="text-xs font-medium text-blue-600 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+          <div className="text-xs font-semibold text-primary">
             {calculateCost(item) > 0 ? fmtCurrency(calculateCost(item), language) : '—'}
-            <span className="text-muted-foreground ms-1 text-[10px]">▼</span>
           </div>
         ) : (
           <Input type="number" className="h-8 text-xs" value={item.planned || ''} placeholder="0"
@@ -114,27 +113,26 @@ const CostRow = ({ item, idx, canRemove, onUpdate, onRemove, calculateCost, reso
         </Button>
       </div>
 
-      {isResource && expanded && (
-        <div className="px-3 pb-3 pt-1 space-y-3 border-t border-dashed border-border mx-3 mt-1">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-foreground mb-1 block">{t('resource')}</label>
-              <Select value={String(item.resourceId)} onValueChange={v => onUpdate({ resourceId: parseInt(v) })}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t('selectResource')} /></SelectTrigger>
-                <SelectContent>
-                  {resources.map(r => (
-                    <SelectItem key={r.id} value={String(r.id)}>{r.name} — {fmtCurrency(r.costRate, language)}/mo</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-foreground mb-1 block">{t('utilization')} (%)</label>
-              <Input type="number" className="h-8 text-xs" min={0} max={100} value={item.utilization || ''} placeholder="100"
-                onChange={e => onUpdate({ utilization: parseInt(e.target.value) || 0 })} />
-            </div>
+      {/* Resource details - always visible when category is Resources */}
+      {isResource && (
+        <div className="px-3 pb-3 pt-1 grid grid-cols-[1fr_120px] gap-3 items-end">
+          <div>
+            <label className="text-xs font-medium text-foreground mb-1 block">{t('resource')}</label>
+            <Select value={String(item.resourceId)} onValueChange={v => onUpdate({ resourceId: parseInt(v) })}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t('selectResource')} /></SelectTrigger>
+              <SelectContent>
+                {resources.map(r => (
+                  <SelectItem key={r.id} value={String(r.id)}>{r.name} — {fmtCurrency(r.costRate, language)}/mo</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="text-xs font-medium text-foreground mb-1 block">{t('utilization')} (%)</label>
+            <Input type="number" className="h-8 text-xs" min={0} max={100} value={item.utilization || ''} placeholder="100"
+              onChange={e => onUpdate({ utilization: parseInt(e.target.value) || 0 })} />
+          </div>
+          <div className="col-span-2 grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-medium text-foreground mb-1 block">{t('hoursPerMonth')}</label>
               <Input type="number" className="h-8 text-xs" value={item.hoursPerMonth || ''} placeholder="0"
@@ -149,17 +147,7 @@ const CostRow = ({ item, idx, canRemove, onUpdate, onRemove, calculateCost, reso
               <Input type="date" className="h-8 text-xs" value={item.endDate} onChange={e => onUpdate({ endDate: e.target.value })} />
             </div>
           </div>
-          <div className="rounded p-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 text-center text-xs">
-            <span className="text-muted-foreground">{t('estimatedCost')}: </span>
-            <span className="font-bold text-blue-600">{fmtCurrency(calculateCost(item), language)}</span>
-          </div>
         </div>
-      )}
-
-      {isResource && !expanded && (
-        <button onClick={() => setExpanded(true)} className="w-full text-[10px] text-muted-foreground hover:text-foreground py-0.5 transition-colors">
-          ▸ {t('resource')}: {resources.find(r => r.id === item.resourceId)?.name || '—'}
-        </button>
       )}
     </div>
   );
