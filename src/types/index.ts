@@ -42,6 +42,7 @@ export interface Product {
   deliveryManager?: string;
   businessStakeholder?: string;
   supportingTeams?: string[];
+  logo?: string; // base64 or URL
 }
 
 export interface Release {
