@@ -63,14 +63,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [language, setLanguage] = useState<Language>('en');
   
-  // Global Date Filter
-  const now = new Date();
+  // Global Date Filter - default to 2024 to match sample data
   const [dateFilter, setDateFilter] = useState<DateFilter>({
-    startDate: new Date(now.getFullYear(), 0, 1),
-    endDate: new Date(now.getFullYear(), 11, 31),
+    startDate: new Date(2024, 0, 1),
+    endDate: new Date(2024, 11, 31),
     compareEnabled: false,
-    compareStartDate: new Date(now.getFullYear() + 1, 0, 1),
-    compareEndDate: new Date(now.getFullYear() + 1, 11, 31),
+    compareStartDate: new Date(2025, 0, 1),
+    compareEndDate: new Date(2025, 11, 31),
   });
   
   const isRTL = language === 'ar';
