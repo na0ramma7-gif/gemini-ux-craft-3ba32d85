@@ -3,6 +3,7 @@ import { useApp } from '@/context/AppContext';
 import { Portfolio, Product } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import KPICard from '@/components/KPICard';
+import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import {
   ArrowLeft,
@@ -200,8 +201,9 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
               </div>
             </TabsContent>
 
-            <TabsContent value="financials" className="mt-0">
+            <TabsContent value="financials" className="mt-0 space-y-6">
               <h3 className="text-foreground mb-4">{t('financialOverview')}</h3>
+              {/* Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-card rounded-xl p-5 border border-border shadow-card">
                   <div className="flex items-center gap-2 mb-2">
@@ -225,6 +227,68 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                   <div className={cn("text-2xl font-bold", portfolioMetrics.profit >= 0 ? "text-profit" : "text-cost")}>
                     {formatCurrency(portfolioMetrics.profit, language)}
                   </div>
+                </div>
+              </div>
+
+              {/* Products Financial Table */}
+              <div>
+                <div className="border-b pb-3 mb-4">
+                  <h3 className="text-base sm:text-lg font-bold text-foreground">💵 {t('revenue')}</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[800px]">
+                    <thead className="bg-secondary">
+                      <tr>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-start text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('product')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-start text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('portfolio')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('status')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('expected')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('actual')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('cost')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('variance')}</th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {products.map(prod => {
+                        const prodFeatures = state.features.filter(f => f.productId === prod.id);
+                        let expected = 0, actual = 0, cost = 0;
+                        prodFeatures.forEach(feature => {
+                          state.revenuePlan.filter(r => r.featureId === feature.id).forEach(r => { expected += r.expected; });
+                          state.revenueActual.filter(r => r.featureId === feature.id).forEach(r => { actual += r.actual; });
+                        });
+                        state.costs.filter(c => c.productId === prod.id).forEach(c => {
+                          if (c.type === 'CAPEX' && c.total && c.amortization) {
+                            cost += (c.total / c.amortization) * 6;
+                          } else if (c.monthly) {
+                            cost += c.monthly * 6;
+                          }
+                        });
+                        const variance = actual - expected;
+                        return (
+                          <tr key={prod.id} className="hover:bg-secondary/50">
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium text-foreground text-xs sm:text-sm">{prod.name}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-muted-foreground">{portfolio.name}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-center"><StatusBadge status={prod.status} /></td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-revenue text-xs sm:text-sm">{formatCurrency(expected, language)}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-foreground text-xs sm:text-sm">{formatCurrency(actual, language)}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-cost text-xs sm:text-sm">{formatCurrency(cost, language)}</td>
+                            <td className={cn(
+                              "px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-xs sm:text-sm",
+                              variance >= 0 ? "text-revenue" : "text-cost"
+                            )}>
+                              {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
+                            </td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
+                              <Button size="sm" onClick={() => onProductClick(prod)}>
+                                {t('planFinancials')}
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </TabsContent>
