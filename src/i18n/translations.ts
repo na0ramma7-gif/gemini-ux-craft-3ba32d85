@@ -232,6 +232,9 @@ export const TRANSLATIONS = {
     hoursPerMonth: 'Hours per Month',
     noResourceCosts: 'No resource costs added yet. Add a cost entry with "Resources" category.',
     addResourceCost: '+ Add Resource Cost',
+    addFinancialEntry: 'Add Financial Entry',
+    editFinancialEntry: 'Edit Financial Entry',
+    financialData: 'Financial Data',
     
     // Resources page
     resourceManagementTitle: 'Resource Management',
@@ -511,6 +514,9 @@ export const TRANSLATIONS = {
     hoursPerMonth: 'ساعات في الشهر',
     noResourceCosts: 'لم يتم إضافة تكاليف موارد بعد. أضف إدخال تكلفة بفئة "الموارد".',
     addResourceCost: '+ إضافة تكلفة مورد',
+    addFinancialEntry: 'إضافة إدخال مالي',
+    editFinancialEntry: 'تعديل الإدخال المالي',
+    financialData: 'البيانات المالية',
     
     // Resources page
     resourceManagementTitle: 'إدارة الموارد',
