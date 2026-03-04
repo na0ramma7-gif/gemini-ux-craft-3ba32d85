@@ -52,6 +52,119 @@ import {
   Legend,
 } from 'recharts';
 
+// ── Cost Row Sub-Component ──────────────────────────────────
+
+interface CostRowProps {
+  item: {
+    id: number;
+    category: string;
+    planned: number;
+    actual: number;
+    notes: string;
+    resourceId: number;
+    utilization: number;
+    startDate: string;
+    endDate: string;
+    hoursPerMonth: number;
+  };
+  idx: number;
+  canRemove: boolean;
+  onUpdate: (updates: Partial<CostRowProps['item']>) => void;
+  onRemove: () => void;
+  calculateCost: (item: CostRowProps['item']) => number;
+  resources: any[];
+  language: string;
+  t: (key: any) => string;
+  formatCurrency: (v: number, lang: string) => string;
+}
+
+const CostRow = ({ item, idx, canRemove, onUpdate, onRemove, calculateCost, resources, language, t, formatCurrency: fmtCurrency }: CostRowProps) => {
+  const [expanded, setExpanded] = useState(false);
+  const isResource = item.category === 'Resources';
+
+  return (
+    <div className={cn("border-t border-border", idx % 2 === 0 ? "bg-card" : "bg-secondary/5")}>
+      <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center">
+        <Select value={item.category} onValueChange={v => onUpdate({ category: v })}>
+          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {COST_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        {isResource ? (
+          <div className="text-xs font-medium text-blue-600 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+            {calculateCost(item) > 0 ? fmtCurrency(calculateCost(item), language) : '—'}
+            <span className="text-muted-foreground ms-1 text-[10px]">▼</span>
+          </div>
+        ) : (
+          <Input type="number" className="h-8 text-xs" value={item.planned || ''} placeholder="0"
+            onChange={e => onUpdate({ planned: parseFloat(e.target.value) || 0 })} />
+        )}
+
+        <Input type="number" className="h-8 text-xs" value={item.actual || ''} placeholder="0"
+          onChange={e => onUpdate({ actual: parseFloat(e.target.value) || 0 })} />
+
+        <Input className="h-8 text-xs" value={item.notes} placeholder={t('optional')}
+          onChange={e => onUpdate({ notes: e.target.value })} />
+
+        <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive/60 hover:text-destructive"
+          disabled={!canRemove} onClick={onRemove}>
+          <Trash2 className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+
+      {isResource && expanded && (
+        <div className="px-3 pb-3 pt-1 space-y-3 border-t border-dashed border-border mx-3 mt-1">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-foreground mb-1 block">{t('resource')}</label>
+              <Select value={String(item.resourceId)} onValueChange={v => onUpdate({ resourceId: parseInt(v) })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t('selectResource')} /></SelectTrigger>
+                <SelectContent>
+                  {resources.map(r => (
+                    <SelectItem key={r.id} value={String(r.id)}>{r.name} — {fmtCurrency(r.costRate, language)}/mo</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-foreground mb-1 block">{t('utilization')} (%)</label>
+              <Input type="number" className="h-8 text-xs" min={0} max={100} value={item.utilization || ''} placeholder="100"
+                onChange={e => onUpdate({ utilization: parseInt(e.target.value) || 0 })} />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-medium text-foreground mb-1 block">{t('hoursPerMonth')}</label>
+              <Input type="number" className="h-8 text-xs" value={item.hoursPerMonth || ''} placeholder="0"
+                onChange={e => onUpdate({ hoursPerMonth: parseInt(e.target.value) || 0 })} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-foreground mb-1 block">{t('startDate')}</label>
+              <Input type="date" className="h-8 text-xs" value={item.startDate} onChange={e => onUpdate({ startDate: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-foreground mb-1 block">{t('endDate')}</label>
+              <Input type="date" className="h-8 text-xs" value={item.endDate} onChange={e => onUpdate({ endDate: e.target.value })} />
+            </div>
+          </div>
+          <div className="rounded p-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 text-center text-xs">
+            <span className="text-muted-foreground">{t('estimatedCost')}: </span>
+            <span className="font-bold text-blue-600">{fmtCurrency(calculateCost(item), language)}</span>
+          </div>
+        </div>
+      )}
+
+      {isResource && !expanded && (
+        <button onClick={() => setExpanded(true)} className="w-full text-[10px] text-muted-foreground hover:text-foreground py-0.5 transition-colors">
+          ▸ {t('resource')}: {resources.find(r => r.id === item.resourceId)?.name || '—'}
+        </button>
+      )}
+    </div>
+  );
+};
+
 // ── Data Types ──────────────────────────────────────────────
 
 interface RevenueEntry {
@@ -855,126 +968,33 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                 </Button>
               </div>
 
-              <div className="space-y-4">
-                {costItems.map((item, idx) => {
-                  const updateItem = (updates: Partial<CostFormItem>) => {
-                    setCostItems(prev => prev.map((ci, i) => i === idx ? { ...ci, ...updates } : ci));
-                  };
-                  const removeItem = () => {
-                    if (costItems.length > 1) {
-                      setCostItems(prev => prev.filter((_, i) => i !== idx));
-                    }
-                  };
+              {/* Cost items table */}
+              <div className="rounded-lg border border-border overflow-hidden">
+                {/* Table header */}
+                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 px-3 py-2 bg-secondary/50 text-xs font-semibold text-muted-foreground uppercase">
+                  <span>{t('costCategory')}</span>
+                  <span>{t('planned')} (SAR)</span>
+                  <span>{t('actual')} (SAR)</span>
+                  <span>{t('notesComments')}</span>
+                  <span className="w-7"></span>
+                </div>
 
-                  return (
-                    <div key={item.id} className="rounded-lg border border-border p-4 space-y-4 bg-secondary/5">
-                      {/* Header with remove button */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase">{t('cost')} #{idx + 1}</span>
-                        {costItems.length > 1 && (
-                          <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={removeItem}>
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* Cost Category */}
-                      <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 block">{t('costCategory')}</label>
-                        <Select value={item.category} onValueChange={v => updateItem({ category: v })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {COST_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {item.category === 'Resources' ? (
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 block">{t('resource')}</label>
-                            <Select value={String(item.resourceId)} onValueChange={v => updateItem({ resourceId: parseInt(v) })}>
-                              <SelectTrigger><SelectValue placeholder={t('selectResource')} /></SelectTrigger>
-                              <SelectContent>
-                                {state.resources.map(r => (
-                                  <SelectItem key={r.id} value={String(r.id)}>{r.name} — {r.role} ({formatCurrency(r.costRate, language)}/mo)</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium text-foreground mb-1.5 block">{t('utilization')} (%)</label>
-                              <Input type="number" min={0} max={100} value={item.utilization || ''} placeholder="100"
-                                onChange={e => updateItem({ utilization: parseInt(e.target.value) || 0 })} />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-foreground mb-1.5 block">{t('hoursPerMonth')}</label>
-                              <Input type="number" value={item.hoursPerMonth || ''} placeholder="0"
-                                onChange={e => updateItem({ hoursPerMonth: parseInt(e.target.value) || 0 })} />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium text-foreground mb-1.5 block">{t('startDate')}</label>
-                              <Input type="date" value={item.startDate} onChange={e => updateItem({ startDate: e.target.value })} />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-foreground mb-1.5 block">{t('endDate')}</label>
-                              <Input type="date" value={item.endDate} onChange={e => updateItem({ endDate: e.target.value })} />
-                            </div>
-                          </div>
-
-                          <div className="rounded-lg p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 text-center">
-                            <span className="text-xs text-muted-foreground">{t('estimatedCost')}: </span>
-                            <span className="font-bold text-blue-600">{formatCurrency(calculateResourceCostForItem(item), language)}</span>
-                          </div>
-
-                          <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 block">{t('actualCost')} (SAR) — {t('optional')}</label>
-                            <Input type="number" value={item.actual || ''} placeholder="0"
-                              onChange={e => updateItem({ actual: parseFloat(e.target.value) || 0 })} />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium text-red-500 mb-1.5 block">{t('plannedCost')} (SAR)</label>
-                              <Input type="number" value={item.planned || ''} placeholder="0"
-                                onChange={e => updateItem({ planned: parseFloat(e.target.value) || 0 })} />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-orange-500 mb-1.5 block">{t('actualCost')} (SAR)</label>
-                              <Input type="number" value={item.actual || ''} placeholder="0"
-                                onChange={e => updateItem({ actual: parseFloat(e.target.value) || 0 })} />
-                            </div>
-                          </div>
-
-                          {(() => {
-                            const variance = item.actual - item.planned;
-                            return (item.planned > 0 || item.actual > 0) ? (
-                              <div className={cn("rounded-lg p-3 text-center border", variance <= 0 ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800")}>
-                                <span className="text-xs text-muted-foreground">{t('variance')}: </span>
-                                <span className={cn("font-bold", variance <= 0 ? 'text-emerald-600' : 'text-red-500')}>
-                                  {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
-                                </span>
-                              </div>
-                            ) : null;
-                          })()}
-                        </div>
-                      )}
-
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground mb-1.5 block">{t('notesComments')} ({t('optional')})</label>
-                        <Textarea value={item.notes} onChange={e => updateItem({ notes: e.target.value })}
-                          placeholder={t('notesPlaceholder')} rows={2} />
-                      </div>
-                    </div>
-                  );
-                })}
+                {/* Cost item rows */}
+                {costItems.map((item, idx) => (
+                  <CostRow
+                    key={item.id}
+                    item={item}
+                    idx={idx}
+                    canRemove={costItems.length > 1}
+                    onUpdate={(updates) => setCostItems(prev => prev.map((ci, i) => i === idx ? { ...ci, ...updates } : ci))}
+                    onRemove={() => { if (costItems.length > 1) setCostItems(prev => prev.filter((_, i) => i !== idx)); }}
+                    calculateCost={calculateResourceCostForItem}
+                    resources={state.resources}
+                    language={language}
+                    t={t}
+                    formatCurrency={formatCurrency}
+                  />
+                ))}
               </div>
             </div>
           </div>
