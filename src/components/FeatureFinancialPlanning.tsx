@@ -776,158 +776,151 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               </Select>
             </div>
 
-            {/* Section 3: Financial Data with Tabs */}
+            {/* Section 3: Financials - Revenue */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/20 flex items-center justify-center text-xs font-bold text-violet-700 dark:text-violet-400">3</span>
-                <h4 className="text-sm font-semibold text-foreground">{t('financialData')}</h4>
+                <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center text-xs font-bold text-emerald-700 dark:text-emerald-400">3</span>
+                <h4 className="text-sm font-semibold text-foreground">{t('revenue')}</h4>
               </div>
-
-              <Tabs value={modalTab} onValueChange={v => setModalTab(v as 'revenue' | 'cost')}>
-                <TabsList className="w-full grid grid-cols-2 mb-4">
-                  <TabsTrigger value="revenue" className="flex items-center gap-1.5">
-                    <CircleDollarSign className="w-4 h-4" />
-                    {t('revenue')}
-                  </TabsTrigger>
-                  <TabsTrigger value="cost" className="flex items-center gap-1.5">
-                    <Wallet className="w-4 h-4" />
-                    {t('cost')}
-                  </TabsTrigger>
-                </TabsList>
-
-                {/* Revenue Tab Content */}
-                <TabsContent value="revenue" className="mt-0 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-blue-600 mb-1.5 block">{t('plannedRevenue')} (SAR)</label>
-                      <Input type="number" value={revenueForm.planned || ''} placeholder="0"
-                        onChange={e => setRevenueForm({ ...revenueForm, planned: parseFloat(e.target.value) || 0 })} />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-emerald-600 mb-1.5 block">{t('actualRevenue')} (SAR)</label>
-                      <Input type="number" value={revenueForm.actual || ''} placeholder="0"
-                        onChange={e => setRevenueForm({ ...revenueForm, actual: parseFloat(e.target.value) || 0 })} />
-                    </div>
-                  </div>
-
-                  {/* Variance display */}
-                  {(() => {
-                    const variance = revenueForm.actual - revenueForm.planned;
-                    return (
-                      <div className={cn("rounded-lg p-3 text-center border", variance >= 0 ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800")}>
-                        <span className="text-xs text-muted-foreground">{t('variance')}: </span>
-                        <span className={cn("font-bold", variance >= 0 ? 'text-emerald-600' : 'text-red-500')}>
-                          {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
-                        </span>
-                      </div>
-                    );
-                  })()}
-
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground mb-1.5 block">{t('notesComments')} ({t('optional')})</label>
-                    <Textarea value={revenueForm.notes} onChange={e => setRevenueForm({ ...revenueForm, notes: e.target.value })}
-                      placeholder={t('notesPlaceholder')} rows={2} />
+                    <label className="text-sm font-medium text-blue-600 mb-1.5 block">{t('plannedRevenue')} (SAR)</label>
+                    <Input type="number" value={revenueForm.planned || ''} placeholder="0"
+                      onChange={e => setRevenueForm({ ...revenueForm, planned: parseFloat(e.target.value) || 0 })} />
                   </div>
-                </TabsContent>
-
-                {/* Cost Tab Content */}
-                <TabsContent value="cost" className="mt-0 space-y-4">
-                  {/* Cost Category */}
                   <div>
-                    <label className="text-sm font-medium text-foreground mb-1.5 block">{t('costCategory')}</label>
-                    <Select value={costForm.category} onValueChange={v => setCostForm({ ...costForm, category: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {COST_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <label className="text-sm font-medium text-emerald-600 mb-1.5 block">{t('actualRevenue')} (SAR)</label>
+                    <Input type="number" value={revenueForm.actual || ''} placeholder="0"
+                      onChange={e => setRevenueForm({ ...revenueForm, actual: parseFloat(e.target.value) || 0 })} />
                   </div>
+                </div>
 
-                  {costForm.category === 'Resources' ? (
-                    <div className="space-y-4">
+                {(() => {
+                  const variance = revenueForm.actual - revenueForm.planned;
+                  return (revenueForm.planned > 0 || revenueForm.actual > 0) ? (
+                    <div className={cn("rounded-lg p-3 text-center border", variance >= 0 ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800")}>
+                      <span className="text-xs text-muted-foreground">{t('variance')}: </span>
+                      <span className={cn("font-bold", variance >= 0 ? 'text-emerald-600' : 'text-red-500')}>
+                        {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
+
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1.5 block">{t('notesComments')} ({t('optional')})</label>
+                  <Textarea value={revenueForm.notes} onChange={e => setRevenueForm({ ...revenueForm, notes: e.target.value })}
+                    placeholder={t('notesPlaceholder')} rows={2} />
+                </div>
+              </div>
+            </div>
+
+            {/* Separator */}
+            <div className="border-t border-border" />
+
+            {/* Section 4: Financials - Cost */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center text-xs font-bold text-red-700 dark:text-red-400">4</span>
+                <h4 className="text-sm font-semibold text-foreground">{t('cost')}</h4>
+              </div>
+              <div className="space-y-4">
+                {/* Cost Category */}
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">{t('costCategory')}</label>
+                  <Select value={costForm.category} onValueChange={v => setCostForm({ ...costForm, category: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {COST_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {costForm.category === 'Resources' ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-1.5 block">{t('resource')}</label>
+                      <Select value={String(costForm.resourceId)} onValueChange={v => setCostForm({ ...costForm, resourceId: parseInt(v) })}>
+                        <SelectTrigger><SelectValue placeholder={t('selectResource')} /></SelectTrigger>
+                        <SelectContent>
+                          {state.resources.map(r => (
+                            <SelectItem key={r.id} value={String(r.id)}>{r.name} — {r.role} ({formatCurrency(r.costRate, language)}/mo)</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 block">{t('resource')}</label>
-                        <Select value={String(costForm.resourceId)} onValueChange={v => setCostForm({ ...costForm, resourceId: parseInt(v) })}>
-                          <SelectTrigger><SelectValue placeholder={t('selectResource')} /></SelectTrigger>
-                          <SelectContent>
-                            {state.resources.map(r => (
-                              <SelectItem key={r.id} value={String(r.id)}>{r.name} — {r.role} ({formatCurrency(r.costRate, language)}/mo)</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <label className="text-sm font-medium text-foreground mb-1.5 block">{t('utilization')} (%)</label>
+                        <Input type="number" min={0} max={100} value={costForm.utilization || ''} placeholder="100"
+                          onChange={e => setCostForm({ ...costForm, utilization: parseInt(e.target.value) || 0 })} />
                       </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium text-foreground mb-1.5 block">{t('utilization')} (%)</label>
-                          <Input type="number" min={0} max={100} value={costForm.utilization || ''} placeholder="100"
-                            onChange={e => setCostForm({ ...costForm, utilization: parseInt(e.target.value) || 0 })} />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-foreground mb-1.5 block">{t('hoursPerMonth')}</label>
-                          <Input type="number" value={costForm.hoursPerMonth || ''} placeholder="0"
-                            onChange={e => setCostForm({ ...costForm, hoursPerMonth: parseInt(e.target.value) || 0 })} />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium text-foreground mb-1.5 block">{t('startDate')}</label>
-                          <Input type="date" value={costForm.startDate} onChange={e => setCostForm({ ...costForm, startDate: e.target.value })} />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-foreground mb-1.5 block">{t('endDate')}</label>
-                          <Input type="date" value={costForm.endDate} onChange={e => setCostForm({ ...costForm, endDate: e.target.value })} />
-                        </div>
-                      </div>
-
-                      <div className="rounded-lg p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 text-center">
-                        <span className="text-xs text-muted-foreground">{t('estimatedCost')}: </span>
-                        <span className="font-bold text-blue-600">{formatCurrency(calculateResourceCost(), language)}</span>
-                      </div>
-
                       <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 block">{t('actualCost')} (SAR) — {t('optional')}</label>
+                        <label className="text-sm font-medium text-foreground mb-1.5 block">{t('hoursPerMonth')}</label>
+                        <Input type="number" value={costForm.hoursPerMonth || ''} placeholder="0"
+                          onChange={e => setCostForm({ ...costForm, hoursPerMonth: parseInt(e.target.value) || 0 })} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-1.5 block">{t('startDate')}</label>
+                        <Input type="date" value={costForm.startDate} onChange={e => setCostForm({ ...costForm, startDate: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-1.5 block">{t('endDate')}</label>
+                        <Input type="date" value={costForm.endDate} onChange={e => setCostForm({ ...costForm, endDate: e.target.value })} />
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 text-center">
+                      <span className="text-xs text-muted-foreground">{t('estimatedCost')}: </span>
+                      <span className="font-bold text-blue-600">{formatCurrency(calculateResourceCost(), language)}</span>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-1.5 block">{t('actualCost')} (SAR) — {t('optional')}</label>
+                      <Input type="number" value={costForm.actual || ''} placeholder="0"
+                        onChange={e => setCostForm({ ...costForm, actual: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-red-500 mb-1.5 block">{t('plannedCost')} (SAR)</label>
+                        <Input type="number" value={costForm.planned || ''} placeholder="0"
+                          onChange={e => setCostForm({ ...costForm, planned: parseFloat(e.target.value) || 0 })} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-orange-500 mb-1.5 block">{t('actualCost')} (SAR)</label>
                         <Input type="number" value={costForm.actual || ''} placeholder="0"
                           onChange={e => setCostForm({ ...costForm, actual: parseFloat(e.target.value) || 0 })} />
                       </div>
                     </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium text-red-500 mb-1.5 block">{t('plannedCost')} (SAR)</label>
-                          <Input type="number" value={costForm.planned || ''} placeholder="0"
-                            onChange={e => setCostForm({ ...costForm, planned: parseFloat(e.target.value) || 0 })} />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-orange-500 mb-1.5 block">{t('actualCost')} (SAR)</label>
-                          <Input type="number" value={costForm.actual || ''} placeholder="0"
-                            onChange={e => setCostForm({ ...costForm, actual: parseFloat(e.target.value) || 0 })} />
-                        </div>
-                      </div>
 
-                      {(() => {
-                        const variance = costForm.actual - costForm.planned;
-                        return (
-                          <div className={cn("rounded-lg p-3 text-center border", variance <= 0 ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800")}>
-                            <span className="text-xs text-muted-foreground">{t('variance')}: </span>
-                            <span className={cn("font-bold", variance <= 0 ? 'text-emerald-600' : 'text-red-500')}>
-                              {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
-                            </span>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground mb-1.5 block">{t('notesComments')} ({t('optional')})</label>
-                    <Textarea value={costForm.notes} onChange={e => setCostForm({ ...costForm, notes: e.target.value })}
-                      placeholder={t('notesPlaceholder')} rows={2} />
+                    {(() => {
+                      const variance = costForm.actual - costForm.planned;
+                      return (costForm.planned > 0 || costForm.actual > 0) ? (
+                        <div className={cn("rounded-lg p-3 text-center border", variance <= 0 ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800")}>
+                          <span className="text-xs text-muted-foreground">{t('variance')}: </span>
+                          <span className={cn("font-bold", variance <= 0 ? 'text-emerald-600' : 'text-red-500')}>
+                            {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
+                          </span>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
-                </TabsContent>
-              </Tabs>
+                )}
+
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1.5 block">{t('notesComments')} ({t('optional')})</label>
+                  <Textarea value={costForm.notes} onChange={e => setCostForm({ ...costForm, notes: e.target.value })}
+                    placeholder={t('notesPlaceholder')} rows={2} />
+                </div>
+              </div>
             </div>
           </div>
 
