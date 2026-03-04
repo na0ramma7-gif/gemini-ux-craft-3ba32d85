@@ -169,46 +169,55 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
         </div>
       </div>
 
-      {/* Portfolio Cards */}
-      <div>
-        <h3 className="text-foreground mb-3">{t('activePortfolios')}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {portfolioMetrics.map((portfolio) => (
-            <div
-              key={portfolio.id}
-              onClick={() => onPortfolioClick(portfolio)}
-              className="bg-card rounded-xl shadow-card p-4 cursor-pointer hover:shadow-card-hover transition-all duration-200 hover:-translate-y-0.5 border border-transparent hover:border-primary/20"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs text-muted-foreground mb-0.5">{portfolio.code}</div>
-                  <h4 className="text-base font-semibold text-foreground truncate">{portfolio.name}</h4>
-                </div>
-                <Package className="w-6 h-6 text-primary/50 flex-shrink-0 ms-2" />
-              </div>
-              
-              <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                {portfolio.description}
-              </p>
-              
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('products')}:</span>
-                  <span className="font-semibold">{portfolio.productCount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('revenue')}:</span>
-                    <span className="font-semibold text-revenue">
-                      {formatCurrency(portfolio.actual, language)}
-                    </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">{t('priority')}:</span>
-                  <StatusBadge status={portfolio.priority} />
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* Products Ranking */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <h3 className="text-foreground mb-4 flex items-center gap-2">
+            <Package className="w-4 h-4 text-primary" />
+            {t('products')} {t('portfolioDistribution')}
+          </h3>
+          <div className="space-y-4">
+            {(() => {
+              const productMetrics = state.products.map(product => {
+                const features = state.features.filter(f => f.productId === product.id);
+                let actual = 0;
+                let planned = 0;
+                features.forEach(f => {
+                  state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { actual += r.actual; });
+                  state.revenuePlan.filter(r => r.featureId === f.id).forEach(r => { planned += r.expected; });
+                });
+                const target = planned * 1.35;
+                return { ...product, actual, target, remaining: Math.max(0, target - actual) };
+              }).sort((a, b) => b.actual - a.actual);
+
+              const colors = ['bg-primary', 'bg-accent', 'bg-warning', 'bg-success', 'bg-destructive', 'bg-muted-foreground'];
+
+              return productMetrics.map((product, idx) => {
+                const achievedPercent = product.target > 0 ? Math.min((product.actual / product.target) * 100, 100) : 0;
+                return (
+                  <div key={product.id} className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-foreground">{product.name}</span>
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="text-success font-semibold">{formatCurrency(product.actual, language)}</span>
+                        <span className="text-muted-foreground">/ {formatCurrency(product.target, language)}</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-secondary rounded-full h-2.5">
+                      <div
+                        className={`h-2.5 rounded-full ${colors[idx % colors.length]} transition-all`}
+                        style={{ width: `${achievedPercent}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>{t('actual')}: {achievedPercent.toFixed(0)}%</span>
+                      <span>{t('variance')}: {formatCurrency(product.remaining, language)}</span>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
         </div>
       </div>
     </div>
