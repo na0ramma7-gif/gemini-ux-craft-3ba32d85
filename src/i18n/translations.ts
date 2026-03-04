@@ -280,6 +280,14 @@ export const TRANSLATIONS = {
     month: 'Month',
     addEntry: 'Add Entry',
     alreadyAdded: 'already added',
+    
+    // Global date filter
+    primaryPeriod: 'Period',
+    comparePeriod: 'Compare',
+    compareValue: 'Compare Value',
+    varianceSAR: 'Variance (SAR)',
+    variancePercent: 'Variance (%)',
+    primaryValue: 'Primary Value',
   },
   ar: {
     // Navigation
@@ -562,6 +570,14 @@ export const TRANSLATIONS = {
     month: 'الشهر',
     addEntry: 'إضافة إدخال',
     alreadyAdded: 'مضاف مسبقاً',
+    
+    // Global date filter
+    primaryPeriod: 'الفترة',
+    comparePeriod: 'مقارنة',
+    compareValue: 'قيمة المقارنة',
+    varianceSAR: 'الفرق (ر.س)',
+    variancePercent: 'الفرق (%)',
+    primaryValue: 'القيمة الأساسية',
   }
 };
 

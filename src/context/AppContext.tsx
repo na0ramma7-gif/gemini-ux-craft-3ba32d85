@@ -3,6 +3,14 @@ import { AppState, ViewType, SelectedState, Portfolio, Product, Feature, Assignm
 import { INITIAL_STATE } from '@/data/initialData';
 import { TRANSLATIONS, Language, TranslationKey } from '@/i18n/translations';
 
+export interface DateFilter {
+  startDate: Date;
+  endDate: Date;
+  compareEnabled: boolean;
+  compareStartDate: Date;
+  compareEndDate: Date;
+}
+
 interface AppContextType {
   state: AppState;
   setState: React.Dispatch<React.SetStateAction<AppState>>;
@@ -18,6 +26,10 @@ interface AppContextType {
   setLanguage: (lang: Language) => void;
   t: (key: TranslationKey) => string;
   isRTL: boolean;
+  
+  // Global Date Filter
+  dateFilter: DateFilter;
+  setDateFilter: React.Dispatch<React.SetStateAction<DateFilter>>;
   
   // Computed values
   metrics: {
@@ -50,6 +62,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   });
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [language, setLanguage] = useState<Language>('en');
+  
+  // Global Date Filter
+  const now = new Date();
+  const [dateFilter, setDateFilter] = useState<DateFilter>({
+    startDate: new Date(now.getFullYear(), 0, 1),
+    endDate: new Date(now.getFullYear(), 11, 31),
+    compareEnabled: false,
+    compareStartDate: new Date(now.getFullYear() + 1, 0, 1),
+    compareEndDate: new Date(now.getFullYear() + 1, 11, 31),
+  });
   
   const isRTL = language === 'ar';
   
@@ -167,6 +189,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setLanguage,
         t,
         isRTL,
+        dateFilter,
+        setDateFilter,
         metrics,
         updateAssignment,
         deleteAssignment,

@@ -49,35 +49,36 @@ export const getStatusColor = (status: string): string => {
 export const getStatusBgColor = (status: string): string => {
   const colors: Record<string, string> = {
     'Planned': 'bg-secondary text-secondary-foreground',
-    'In Progress': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    'Delivered': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-    'Released': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-    'Active': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-    'Development': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-    'High': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    'Medium': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-    'Low': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+    'In Progress': 'bg-primary/10 text-primary',
+    'Delivered': 'bg-success/10 text-success',
+    'Released': 'bg-success/10 text-success',
+    'Active': 'bg-success/10 text-success',
+    'Development': 'bg-warning/20 text-foreground',
+    'High': 'bg-destructive/10 text-destructive',
+    'Medium': 'bg-warning/20 text-foreground',
+    'Low': 'bg-success/10 text-success',
+    'Inactive': 'bg-muted text-muted-foreground'
   };
   return colors[status] || 'bg-secondary text-secondary-foreground';
 };
 
 export const getPriorityColor = (priority: string): string => {
   const colors: Record<string, string> = {
-    'High': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    'Medium': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-    'Low': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+    'High': 'bg-destructive/10 text-destructive',
+    'Medium': 'bg-warning/20 text-foreground',
+    'Low': 'bg-success/10 text-success'
   };
   return colors[priority] || 'bg-secondary text-secondary-foreground';
 };
 
 export const getGanttBarColor = (status: string): string => {
   const colors: Record<string, string> = {
-    'Planned': 'bg-slate-400',
-    'In Progress': 'bg-blue-500',
-    'Delivered': 'bg-emerald-500',
-    'Released': 'bg-emerald-500',
+    'Planned': 'bg-muted-foreground/50',
+    'In Progress': 'bg-primary',
+    'Delivered': 'bg-success',
+    'Released': 'bg-success',
   };
-  return colors[status] || 'bg-slate-400';
+  return colors[status] || 'bg-muted-foreground/50';
 };
 
 export const calculateDaysBetween = (startDate: string, endDate: string): number => {

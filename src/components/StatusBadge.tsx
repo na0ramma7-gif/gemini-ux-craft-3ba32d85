@@ -9,7 +9,7 @@ const StatusBadge = ({ status, className }: StatusBadgeProps) => {
   return (
     <span 
       className={cn(
-        'inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold',
+        'inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium',
         getStatusBgColor(status),
         className
       )}
