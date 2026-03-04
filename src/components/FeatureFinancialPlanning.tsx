@@ -84,7 +84,7 @@ const CostRow = ({ item, idx, canRemove, onUpdate, onRemove, calculateCost, reso
   return (
     <div className={cn("border-t border-border", idx % 2 === 0 ? "bg-card" : "bg-secondary/5")}>
       {/* Main row */}
-      <div className="grid grid-cols-[140px_1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center">
+      <div className="grid grid-cols-[140px_1fr_1fr_auto] gap-2 px-3 py-2 items-center">
         <Select value={item.category} onValueChange={v => onUpdate({ category: v })}>
           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -104,8 +104,6 @@ const CostRow = ({ item, idx, canRemove, onUpdate, onRemove, calculateCost, reso
         <Input type="number" className="h-8 text-xs" value={item.actual || ''} placeholder="0"
           onChange={e => onUpdate({ actual: parseFloat(e.target.value) || 0 })} />
 
-        <Input className="h-8 text-xs" value={item.notes} placeholder={t('optional')}
-          onChange={e => onUpdate({ notes: e.target.value })} />
 
         <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive/60 hover:text-destructive"
           disabled={!canRemove} onClick={onRemove}>
@@ -959,11 +957,10 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               {/* Cost items table */}
               <div className="rounded-lg border border-border overflow-hidden">
                 {/* Table header */}
-                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 px-3 py-2 bg-secondary/50 text-xs font-semibold text-muted-foreground uppercase">
+                <div className="grid grid-cols-[140px_1fr_1fr_auto] gap-2 px-3 py-2 bg-secondary/50 text-xs font-semibold text-muted-foreground uppercase">
                   <span>{t('costCategory')}</span>
                   <span>{t('planned')} (SAR)</span>
                   <span>{t('actual')} (SAR)</span>
-                  <span>{t('notesComments')}</span>
                   <span className="w-7"></span>
                 </div>
 
