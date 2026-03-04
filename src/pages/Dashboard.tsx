@@ -5,8 +5,8 @@ import GlobalDateFilter from '@/components/GlobalDateFilter';
 import StatusBadge from '@/components/StatusBadge';
 import { formatCurrency } from '@/lib/utils';
 import { Portfolio } from '@/types';
+import RevenueAreaChart from '@/components/RevenueAreaChart';
 import {
-  TrendingUp,
   PieChart,
   Package,
 } from 'lucide-react';
@@ -34,12 +34,6 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
     });
   }, [state]);
 
-  const chartData = useMemo(() => {
-    const months = [t('jan'), t('feb'), t('mar'), t('apr'), t('may'), t('jun')];
-    const revenue = [45000, 55000, 65000, 75000, 85000, 95000];
-    const cost = [35000, 38000, 42000, 45000, 48000, 52000];
-    return { labels: months, revenue, cost };
-  }, [t]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -130,6 +124,9 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Revenue Area Chart */}
+        <RevenueAreaChart />
+
         {/* Portfolio Distribution */}
         <div className="bg-card rounded-xl shadow-card p-5">
           <h3 className="text-foreground mb-4 flex items-center gap-2">
