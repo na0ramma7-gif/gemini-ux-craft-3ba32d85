@@ -130,43 +130,6 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Revenue vs Cost Chart */}
-        <div className="bg-card rounded-xl shadow-card p-5">
-          <h3 className="text-foreground mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            {t('revenueCostTrend')}
-          </h3>
-          <div className="h-52 flex items-end justify-between gap-1.5">
-            {chartData.labels.map((month, idx) => (
-              <div key={month} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full flex gap-0.5 h-44 items-end justify-center">
-                  <div 
-                    className="w-4 bg-success rounded-t transition-all hover:opacity-80"
-                    style={{ height: `${(chartData.revenue[idx] / 100000) * 100}%` }}
-                    title={`${t('revenue')}: ${formatCurrency(chartData.revenue[idx], language)}`}
-                  />
-                  <div 
-                    className="w-4 bg-destructive/70 rounded-t transition-all hover:opacity-80"
-                    style={{ height: `${(chartData.cost[idx] / 100000) * 100}%` }}
-                    title={`${t('cost')}: ${formatCurrency(chartData.cost[idx], language)}`}
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground">{month}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center justify-center gap-6 mt-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-success rounded" />
-              <span className="text-xs text-muted-foreground">{t('revenue')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-destructive/70 rounded" />
-              <span className="text-xs text-muted-foreground">{t('cost')}</span>
-            </div>
-          </div>
-        </div>
-
         {/* Portfolio Distribution */}
         <div className="bg-card rounded-xl shadow-card p-5">
           <h3 className="text-foreground mb-4 flex items-center gap-2">
