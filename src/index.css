@@ -23,8 +23,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    /* Primary: Lean Blue #1E4DB7 → hsl(222 72% 42%) */
-    --primary: 222 72% 42%;
+    /* Primary: Lean Navy #232B78 → hsl(234 55% 30%) */
+    --primary: 234 55% 30%;
     --primary-foreground: 0 0% 100%;
     
     /* Secondary: Soft neutral */
@@ -35,8 +35,8 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
     
-    /* Accent: Lean accent #6C63FF → hsl(244 100% 69%) */
-    --accent: 244 100% 69%;
+    /* Accent: Lean accent blue #2F6BFF → hsl(222 100% 59%) */
+    --accent: 222 100% 59%;
     --accent-foreground: 0 0% 100%;
     
     /* Destructive: Professional red */
@@ -59,26 +59,26 @@
     /* Borders and inputs */
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 222 72% 42%;
+    --ring: 234 55% 30%;
     
     --radius: 0.75rem;
     
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 222 72% 42%;
+    --sidebar-primary: 234 55% 30%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 72% 96%;
-    --sidebar-accent-foreground: 222 72% 42%;
+    --sidebar-accent: 234 55% 96%;
+    --sidebar-accent-foreground: 234 55% 30%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 222 72% 42%;
+    --sidebar-ring: 234 55% 30%;
     
     /* Chart colors */
-    --chart-1: 222 72% 42%;
+    --chart-1: 234 55% 30%;
     --chart-2: 142 71% 45%;
     --chart-3: 45 93% 47%;
     --chart-4: 0 84% 60%;
-    --chart-5: 244 100% 69%;
+    --chart-5: 222 100% 59%;
     
     /* Shadows — Soft elevation */
     --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.04);
@@ -98,7 +98,7 @@
     --popover: 222 47% 9%;
     --popover-foreground: 220 20% 98%;
     
-    --primary: 222 72% 55%;
+    --primary: 234 55% 45%;
     --primary-foreground: 0 0% 100%;
     
     --secondary: 222 30% 15%;
@@ -107,7 +107,7 @@
     --muted: 222 30% 15%;
     --muted-foreground: 220 9% 60%;
     
-    --accent: 244 100% 72%;
+    --accent: 222 100% 65%;
     --accent-foreground: 0 0% 100%;
     
     --destructive: 0 62% 50%;
@@ -125,16 +125,16 @@
     
     --border: 222 30% 18%;
     --input: 222 30% 18%;
-    --ring: 222 72% 55%;
+    --ring: 234 55% 45%;
     
     --sidebar-background: 222 47% 9%;
     --sidebar-foreground: 220 20% 98%;
-    --sidebar-primary: 222 72% 55%;
+    --sidebar-primary: 234 55% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 222 30% 15%;
-    --sidebar-accent-foreground: 222 72% 55%;
+    --sidebar-accent-foreground: 234 55% 45%;
     --sidebar-border: 222 30% 18%;
-    --sidebar-ring: 222 72% 55%;
+    --sidebar-ring: 234 55% 45%;
   }
 }
 
@@ -221,7 +221,7 @@
   }
   
   .menu-item.active {
-    @apply bg-sidebar-accent text-sidebar-primary font-medium;
+    @apply bg-sidebar-accent text-sidebar-primary font-medium rounded-full;
     border-inline-end: 3px solid hsl(var(--sidebar-primary));
   }
   
