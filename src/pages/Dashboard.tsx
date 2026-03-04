@@ -141,7 +141,7 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
           </h3>
           <div className="space-y-4">
             {portfolioMetrics.map((portfolio, idx) => {
-              const colors = ['bg-primary', 'bg-accent', 'bg-warning', 'bg-success'];
+              
               const achievedPercent = portfolio.target > 0 ? Math.min((portfolio.actual / portfolio.target) * 100, 100) : 0;
               
               return (
@@ -155,7 +155,7 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2.5">
                     <div 
-                      className={`h-2.5 rounded-full ${colors[idx % colors.length]} transition-all`}
+                      className="h-2.5 rounded-full bg-primary transition-all"
                       style={{ width: `${achievedPercent}%` }}
                     />
                   </div>
@@ -192,7 +192,7 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
                 return { ...product, actual, target, remaining: Math.max(0, target - actual) };
               }).sort((a, b) => b.actual - a.actual);
 
-              const colors = ['bg-primary', 'bg-accent', 'bg-warning', 'bg-success', 'bg-destructive', 'bg-muted-foreground'];
+              
 
               return productMetrics.map((product, idx) => {
                 const achievedPercent = product.target > 0 ? Math.min((product.actual / product.target) * 100, 100) : 0;
@@ -207,7 +207,7 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
                     </div>
                     <div className="w-full bg-secondary rounded-full h-2.5">
                       <div
-                        className={`h-2.5 rounded-full ${colors[idx % colors.length]} transition-all`}
+                        className="h-2.5 rounded-full bg-primary transition-all"
                         style={{ width: `${achievedPercent}%` }}
                       />
                     </div>
