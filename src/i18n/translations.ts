@@ -190,7 +190,7 @@ export const TRANSLATIONS = {
     risksPlaceholder: 'What are the main risks, technical challenges, market risks, or implementation challenges?',
     viewDetailedFinancials: 'View detailed financials in Revenue, Costs, and Forecast tabs',
     
-    // New modal-based financial planning
+    // Modal-based financial planning
     addFeatureRevenue: '+ Add Feature Revenue',
     addFeatureCost: '+ Add Feature Cost',
     addRevenueDesc: 'Manage feature-level revenue items with monthly planned and actual values',
@@ -203,10 +203,37 @@ export const TRANSLATIONS = {
     createAndManage: 'Create & Manage Monthly',
     manageMonthlyData: 'Enter planned and actual values for each month',
     confirmDelete: 'Confirm Deletion',
-    confirmDeleteItemDesc: 'Are you sure you want to delete this item? All monthly data will be permanently lost.',
+    confirmDeleteItemDesc: 'Are you sure you want to delete this entry? This action cannot be undone.',
     forecastComingSoon: 'Coming soon — multi-year forecast with projections based on current revenue and cost trends.',
     
-    // Resources
+    // New financial planning keys
+    revenueTabDesc: 'Track planned vs actual revenue per feature, per month',
+    costTabDesc: 'Track costs by category per feature, per month',
+    addMonthlyRevenue: '+ Add Monthly Revenue',
+    addMonthlyCost: '+ Add Monthly Cost',
+    addCostEntry: '+ Add Cost',
+    editRevenueEntry: 'Edit Revenue Entry',
+    editCostEntry: 'Edit Cost Entry',
+    featureInformation: 'Feature Information',
+    financialPeriod: 'Financial Period',
+    financialValues: 'Financial Values',
+    selectFeature: 'Select Feature',
+    selectResource: 'Select Resource',
+    notesComments: 'Notes / Comments',
+    notesPlaceholder: 'Optional notes about this entry...',
+    saveEntry: 'Save Entry',
+    emptyRevenueTitle: 'Start Planning Revenue',
+    emptyRevenueDesc: 'Start planning this feature financially by adding your first monthly revenue entry.',
+    emptyCostTitle: 'Start Tracking Costs',
+    emptyCostDesc: 'Add your first cost entry to start tracking expenses by category and month.',
+    plannedVsActualRevenue: 'Planned vs Actual Revenue',
+    monthlyCostBreakdown: 'Monthly Cost Breakdown',
+    estimatedCost: 'Estimated Cost',
+    hoursPerMonth: 'Hours per Month',
+    noResourceCosts: 'No resource costs added yet. Add a cost entry with "Resources" category.',
+    addResourceCost: '+ Add Resource Cost',
+    
+    // Resources page
     resourceManagementTitle: 'Resource Management',
     manageTeamMembers: 'Manage team members and assignments',
     directory: 'Directory',
@@ -248,8 +275,6 @@ export const TRANSLATIONS = {
     totalPlanned: 'Total Planned',
     totalActual: 'Total Actual',
     month: 'Month',
-    addMonthlyRevenue: '+ Add Monthly Revenue',
-    addMonthlyCost: '+ Add Monthly Cost',
     addEntry: 'Add Entry',
     alreadyAdded: 'already added',
   },
@@ -444,7 +469,7 @@ export const TRANSLATIONS = {
     risksPlaceholder: 'ما هي المخاطر الرئيسية، التحديات التقنية، مخاطر السوق، أو تحديات التنفيذ؟',
     viewDetailedFinancials: 'عرض التفاصيل المالية في تبويبات الإيرادات والتكاليف والتوقعات',
     
-    // New modal-based financial planning
+    // Modal-based financial planning
     addFeatureRevenue: '+ إضافة إيراد ميزة',
     addFeatureCost: '+ إضافة تكلفة ميزة',
     addRevenueDesc: 'إدارة بنود الإيرادات على مستوى الميزة مع القيم الشهرية المخططة والفعلية',
@@ -457,10 +482,37 @@ export const TRANSLATIONS = {
     createAndManage: 'إنشاء وإدارة شهرية',
     manageMonthlyData: 'أدخل القيم المخططة والفعلية لكل شهر',
     confirmDelete: 'تأكيد الحذف',
-    confirmDeleteItemDesc: 'هل أنت متأكد من حذف هذا البند؟ سيتم فقدان جميع البيانات الشهرية نهائياً.',
+    confirmDeleteItemDesc: 'هل أنت متأكد من حذف هذا الإدخال؟ لا يمكن التراجع عن هذا الإجراء.',
     forecastComingSoon: 'قريباً — توقعات متعددة السنوات مع إسقاطات مبنية على اتجاهات الإيرادات والتكاليف الحالية.',
     
-    // Resources
+    // New financial planning keys
+    revenueTabDesc: 'تتبع الإيرادات المخططة مقابل الفعلية لكل ميزة وشهر',
+    costTabDesc: 'تتبع التكاليف حسب الفئة لكل ميزة وشهر',
+    addMonthlyRevenue: '+ إضافة إيراد شهري',
+    addMonthlyCost: '+ إضافة تكلفة شهرية',
+    addCostEntry: '+ إضافة تكلفة',
+    editRevenueEntry: 'تعديل إدخال الإيرادات',
+    editCostEntry: 'تعديل إدخال التكاليف',
+    featureInformation: 'معلومات الميزة',
+    financialPeriod: 'الفترة المالية',
+    financialValues: 'القيم المالية',
+    selectFeature: 'اختر الميزة',
+    selectResource: 'اختر المورد',
+    notesComments: 'ملاحظات / تعليقات',
+    notesPlaceholder: 'ملاحظات اختيارية حول هذا الإدخال...',
+    saveEntry: 'حفظ الإدخال',
+    emptyRevenueTitle: 'ابدأ تخطيط الإيرادات',
+    emptyRevenueDesc: 'ابدأ التخطيط المالي لهذه الميزة بإضافة أول إدخال إيرادات شهري.',
+    emptyCostTitle: 'ابدأ تتبع التكاليف',
+    emptyCostDesc: 'أضف أول إدخال تكلفة لبدء تتبع المصروفات حسب الفئة والشهر.',
+    plannedVsActualRevenue: 'الإيرادات المخططة مقابل الفعلية',
+    monthlyCostBreakdown: 'تفصيل التكاليف الشهرية',
+    estimatedCost: 'التكلفة المقدرة',
+    hoursPerMonth: 'ساعات في الشهر',
+    noResourceCosts: 'لم يتم إضافة تكاليف موارد بعد. أضف إدخال تكلفة بفئة "الموارد".',
+    addResourceCost: '+ إضافة تكلفة مورد',
+    
+    // Resources page
     resourceManagementTitle: 'إدارة الموارد',
     manageTeamMembers: 'إدارة أعضاء الفريق والتكليفات',
     directory: 'الدليل',
@@ -502,8 +554,6 @@ export const TRANSLATIONS = {
     totalPlanned: 'إجمالي المخطط',
     totalActual: 'إجمالي الفعلي',
     month: 'الشهر',
-    addMonthlyRevenue: '+ إضافة إيراد شهري',
-    addMonthlyCost: '+ إضافة تكلفة شهرية',
     addEntry: 'إضافة إدخال',
     alreadyAdded: 'مضاف مسبقاً',
   }
