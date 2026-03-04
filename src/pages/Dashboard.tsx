@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import KPICard from '@/components/KPICard';
 import GlobalDateFilter from '@/components/GlobalDateFilter';
+import ProductAreaChart from '@/components/ProductAreaChart';
 import StatusBadge from '@/components/StatusBadge';
 import { formatCurrency } from '@/lib/utils';
 import { Portfolio } from '@/types';
@@ -171,6 +172,7 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
 
       {/* Products Ranking */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ProductAreaChart />
         <div className="bg-card rounded-xl shadow-card p-5">
           <h3 className="text-foreground mb-4 flex items-center gap-2">
             <Package className="w-4 h-4 text-primary" />
