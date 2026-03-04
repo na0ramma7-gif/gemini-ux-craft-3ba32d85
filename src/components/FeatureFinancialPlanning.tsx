@@ -394,8 +394,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
           <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto flex-nowrap">
             {[
               { value: 'summary', icon: <FileText className="w-4 h-4 me-1.5" />, label: t('summary') },
-              { value: 'revenue', icon: <DollarSign className="w-4 h-4 me-1.5" />, label: t('revenue') },
-              { value: 'costs', icon: <BarChart3 className="w-4 h-4 me-1.5" />, label: t('costs') },
+              { value: 'financials', icon: <DollarSign className="w-4 h-4 me-1.5" />, label: t('financials') },
               { value: 'resources', icon: <Users className="w-4 h-4 me-1.5" />, label: t('resources') },
               { value: 'forecast', icon: <TrendingUp className="w-4 h-4 me-1.5" />, label: t('forecast') },
             ].map(tabItem => (
@@ -465,205 +464,202 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               </div>
             </TabsContent>
 
-            {/* ── REVENUE TAB ──────────────────────────── */}
-            <TabsContent value="revenue" className="mt-0 space-y-5">
+            {/* ── FINANCIALS TAB ──────────────────────────── */}
+            <TabsContent value="financials" className="mt-0 space-y-8">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div>
-                  <h4 className="font-semibold text-foreground text-lg">{t('revenue')} — {selectedYear}</h4>
+                  <h4 className="font-semibold text-foreground text-lg">{t('financials')} — {selectedYear}</h4>
                   <p className="text-sm text-muted-foreground mt-0.5">{t('revenueTabDesc')}</p>
                 </div>
-                <Button onClick={() => openAddFinancialEntry('revenue')} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button onClick={() => openAddFinancialEntry('revenue')} className="bg-primary hover:bg-primary/90">
                   <Plus className="w-4 h-4 me-2" />{t('addFinancialEntry')}
                 </Button>
               </div>
 
-              {/* Revenue Chart */}
-              {chartData.length > 0 && (chartData.some(d => d.revenuePlanned > 0 || d.revenueActual > 0)) && (
-                <div className="bg-card rounded-xl border border-border p-4">
-                  <h5 className="text-sm font-semibold text-foreground mb-3">{t('plannedVsActualRevenue')}</h5>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData} barGap={2}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="month" fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                        <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }} />
-                        <Legend />
-                        <Bar dataKey="revenuePlanned" name={t('planned')} fill="#3B82F6" radius={[4,4,0,0]} />
-                        <Bar dataKey="revenueActual" name={t('actual')} fill="#22C55E" radius={[4,4,0,0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+              {/* Charts */}
+              {chartData.length > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {chartData.some(d => d.revenuePlanned > 0 || d.revenueActual > 0) && (
+                    <div className="bg-card rounded-xl border border-border p-4">
+                      <h5 className="text-sm font-semibold text-foreground mb-3">{t('plannedVsActualRevenue')}</h5>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={chartData} barGap={2}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="month" fontSize={12} stroke="hsl(var(--muted-foreground))" />
+                            <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" />
+                            <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }} />
+                            <Legend />
+                            <Bar dataKey="revenuePlanned" name={t('planned')} fill="#3B82F6" radius={[4,4,0,0]} />
+                            <Bar dataKey="revenueActual" name={t('actual')} fill="#22C55E" radius={[4,4,0,0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                  {chartData.some(d => d.costPlanned > 0 || d.costActual > 0) && (
+                    <div className="bg-card rounded-xl border border-border p-4">
+                      <h5 className="text-sm font-semibold text-foreground mb-3">{t('monthlyCostBreakdown')}</h5>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={chartData} barGap={2}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="month" fontSize={12} stroke="hsl(var(--muted-foreground))" />
+                            <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" />
+                            <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }} />
+                            <Legend />
+                            <Bar dataKey="costPlanned" name={t('planned')} fill="#EF4444" radius={[4,4,0,0]} />
+                            <Bar dataKey="costActual" name={t('actual')} fill="#F97316" radius={[4,4,0,0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Revenue Section */}
+              <div>
+                <h5 className="text-base font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <CircleDollarSign className="w-4 h-4 text-emerald-600" /> {t('revenue')}
+                </h5>
+                {revenueEntries.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-border">
+                    <table className="w-full min-w-[600px]">
+                      <thead className="bg-secondary/50">
+                        <tr>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase">{t('feature')}</th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase">{t('month')}</th>
+                          <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('plannedRevenue')}</th>
+                          <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('actualRevenue')}</th>
+                          <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('variance')}</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">{t('actions')}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {[...revenueEntries].sort((a, b) => a.month - b.month).map(entry => {
+                          const variance = entry.actual - entry.planned;
+                          return (
+                            <tr key={entry.id} className="hover:bg-secondary/30 transition-colors">
+                              <td className="px-4 py-3 text-sm font-medium text-foreground">{getFeatureName(entry.featureId)}</td>
+                              <td className="px-4 py-3 text-sm text-foreground">{t(MONTHS_SHORT_KEYS[entry.month])} {entry.year}</td>
+                              <td className="px-4 py-3 text-end text-sm font-semibold text-blue-600">{formatCurrency(entry.planned, language)}</td>
+                              <td className="px-4 py-3 text-end text-sm font-semibold text-emerald-600">{formatCurrency(entry.actual, language)}</td>
+                              <td className={cn("px-4 py-3 text-end text-sm font-semibold", variance >= 0 ? 'text-emerald-600' : 'text-red-500')}>
+                                {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEditRevenue(entry)}>
+                                    <Edit className="w-3 h-3" />
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                    onClick={() => setDeleteConfirm({ type: 'revenue', id: entry.id })}>
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-secondary/30">
+                        <tr className="font-bold">
+                          <td className="px-4 py-3 text-sm" colSpan={2}>{t('total')}</td>
+                          <td className="px-4 py-3 text-end text-sm text-blue-600">{formatCurrency(totals.revenue.planned, language)}</td>
+                          <td className="px-4 py-3 text-end text-sm text-emerald-600">{formatCurrency(totals.revenue.actual, language)}</td>
+                          <td className={cn("px-4 py-3 text-end text-sm", totals.revenue.variance >= 0 ? 'text-emerald-600' : 'text-red-500')}>
+                            {totals.revenue.variance >= 0 ? '+' : ''}{formatCurrency(totals.revenue.variance, language)}
+                          </td>
+                          <td className="px-4 py-3"></td>
+                        </tr>
+                      </tfoot>
+                    </table>
                   </div>
-                </div>
-              )}
-
-              {/* Revenue Table */}
-              {revenueEntries.length > 0 ? (
-                <div className="overflow-x-auto rounded-xl border border-border">
-                  <table className="w-full min-w-[600px]">
-                    <thead className="bg-secondary/50">
-                      <tr>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase">{t('feature')}</th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase">{t('month')}</th>
-                        <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('plannedRevenue')}</th>
-                        <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('actualRevenue')}</th>
-                        <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('variance')}</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">{t('actions')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {[...revenueEntries].sort((a, b) => a.month - b.month).map(entry => {
-                        const variance = entry.actual - entry.planned;
-                        return (
-                          <tr key={entry.id} className="hover:bg-secondary/30 transition-colors">
-                            <td className="px-4 py-3 text-sm font-medium text-foreground">{getFeatureName(entry.featureId)}</td>
-                            <td className="px-4 py-3 text-sm text-foreground">{t(MONTHS_SHORT_KEYS[entry.month])} {entry.year}</td>
-                            <td className="px-4 py-3 text-end text-sm font-semibold text-blue-600">{formatCurrency(entry.planned, language)}</td>
-                            <td className="px-4 py-3 text-end text-sm font-semibold text-emerald-600">{formatCurrency(entry.actual, language)}</td>
-                            <td className={cn("px-4 py-3 text-end text-sm font-semibold", variance >= 0 ? 'text-emerald-600' : 'text-red-500')}>
-                              {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEditRevenue(entry)}>
-                                  <Edit className="w-3 h-3" />
-                                </Button>
-                                <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                                  onClick={() => setDeleteConfirm({ type: 'revenue', id: entry.id })}>
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot className="bg-secondary/30">
-                      <tr className="font-bold">
-                        <td className="px-4 py-3 text-sm" colSpan={2}>{t('total')}</td>
-                        <td className="px-4 py-3 text-end text-sm text-blue-600">{formatCurrency(totals.revenue.planned, language)}</td>
-                        <td className="px-4 py-3 text-end text-sm text-emerald-600">{formatCurrency(totals.revenue.actual, language)}</td>
-                        <td className={cn("px-4 py-3 text-end text-sm", totals.revenue.variance >= 0 ? 'text-emerald-600' : 'text-red-500')}>
-                          {totals.revenue.variance >= 0 ? '+' : ''}{formatCurrency(totals.revenue.variance, language)}
-                        </td>
-                        <td className="px-4 py-3"></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-16 bg-secondary/20 rounded-xl border-2 border-dashed border-border">
-                  <CircleDollarSign className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
-                  <h4 className="text-base font-semibold text-foreground mb-2">{t('emptyRevenueTitle')}</h4>
-                  <p className="text-sm text-muted-foreground mb-5 max-w-md mx-auto">{t('emptyRevenueDesc')}</p>
-                  <Button onClick={() => openAddFinancialEntry('revenue')} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                    <Plus className="w-4 h-4 me-2" />{t('addFinancialEntry')}
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-
-            {/* ── COSTS TAB ──────────────────────────── */}
-            <TabsContent value="costs" className="mt-0 space-y-5">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                <div>
-                  <h4 className="font-semibold text-foreground text-lg">{t('costs')} — {selectedYear}</h4>
-                  <p className="text-sm text-muted-foreground mt-0.5">{t('costTabDesc')}</p>
-                </div>
-                <Button onClick={() => openAddFinancialEntry('cost')} className="bg-red-500 hover:bg-red-600 text-white">
-                  <Plus className="w-4 h-4 me-2" />{t('addFinancialEntry')}
-                </Button>
+                ) : (
+                  <div className="text-center py-10 bg-secondary/20 rounded-xl border-2 border-dashed border-border">
+                    <CircleDollarSign className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground mb-4">{t('emptyRevenueDesc')}</p>
+                    <Button onClick={() => openAddFinancialEntry('revenue')} variant="outline" size="sm">
+                      <Plus className="w-4 h-4 me-2" />{t('addFinancialEntry')}
+                    </Button>
+                  </div>
+                )}
               </div>
 
-              {/* Cost Chart */}
-              {chartData.length > 0 && (chartData.some(d => d.costPlanned > 0 || d.costActual > 0)) && (
-                <div className="bg-card rounded-xl border border-border p-4">
-                  <h5 className="text-sm font-semibold text-foreground mb-3">{t('monthlyCostBreakdown')}</h5>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData} barGap={2}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="month" fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                        <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }} />
-                        <Legend />
-                        <Bar dataKey="costPlanned" name={t('planned')} fill="#EF4444" radius={[4,4,0,0]} />
-                        <Bar dataKey="costActual" name={t('actual')} fill="#F97316" radius={[4,4,0,0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+              {/* Cost Section */}
+              <div>
+                <h5 className="text-base font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-red-500" /> {t('costs')}
+                </h5>
+                {costEntries.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-border">
+                    <table className="w-full min-w-[700px]">
+                      <thead className="bg-secondary/50">
+                        <tr>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase">{t('feature')}</th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase">{t('costCategory')}</th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase">{t('month')}</th>
+                          <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('plannedCost')}</th>
+                          <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('actualCost')}</th>
+                          <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('variance')}</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">{t('actions')}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {[...costEntries].sort((a, b) => a.month - b.month).map(entry => {
+                          const planned = entry.calculatedCost || entry.planned;
+                          const variance = entry.actual - planned;
+                          return (
+                            <tr key={entry.id} className="hover:bg-secondary/30 transition-colors">
+                              <td className="px-4 py-3 text-sm font-medium text-foreground">{getFeatureName(entry.featureId)}</td>
+                              <td className="px-4 py-3 text-sm">
+                                <span className="px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground">{entry.category}</span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-foreground">{t(MONTHS_SHORT_KEYS[entry.month])} {entry.year}</td>
+                              <td className="px-4 py-3 text-end text-sm font-semibold text-red-500">{formatCurrency(planned, language)}</td>
+                              <td className="px-4 py-3 text-end text-sm font-semibold text-orange-500">{formatCurrency(entry.actual, language)}</td>
+                              <td className={cn("px-4 py-3 text-end text-sm font-semibold", variance <= 0 ? 'text-emerald-600' : 'text-red-500')}>
+                                {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEditCost(entry)}>
+                                    <Edit className="w-3 h-3" />
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                    onClick={() => setDeleteConfirm({ type: 'cost', id: entry.id })}>
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-secondary/30">
+                        <tr className="font-bold">
+                          <td className="px-4 py-3 text-sm" colSpan={3}>{t('total')}</td>
+                          <td className="px-4 py-3 text-end text-sm text-red-500">{formatCurrency(totals.cost.planned, language)}</td>
+                          <td className="px-4 py-3 text-end text-sm text-orange-500">{formatCurrency(totals.cost.actual, language)}</td>
+                          <td className={cn("px-4 py-3 text-end text-sm", totals.cost.variance <= 0 ? 'text-emerald-600' : 'text-red-500')}>
+                            {totals.cost.variance >= 0 ? '+' : ''}{formatCurrency(totals.cost.variance, language)}
+                          </td>
+                          <td className="px-4 py-3"></td>
+                        </tr>
+                      </tfoot>
+                    </table>
                   </div>
-                </div>
-              )}
-
-              {/* Cost Table */}
-              {costEntries.length > 0 ? (
-                <div className="overflow-x-auto rounded-xl border border-border">
-                  <table className="w-full min-w-[700px]">
-                    <thead className="bg-secondary/50">
-                      <tr>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase">{t('feature')}</th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase">{t('costCategory')}</th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase">{t('month')}</th>
-                        <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('plannedCost')}</th>
-                        <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('actualCost')}</th>
-                        <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('variance')}</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">{t('actions')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {[...costEntries].sort((a, b) => a.month - b.month).map(entry => {
-                        const planned = entry.calculatedCost || entry.planned;
-                        const variance = entry.actual - planned;
-                        return (
-                          <tr key={entry.id} className="hover:bg-secondary/30 transition-colors">
-                            <td className="px-4 py-3 text-sm font-medium text-foreground">{getFeatureName(entry.featureId)}</td>
-                            <td className="px-4 py-3 text-sm">
-                              <span className="px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground">{entry.category}</span>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-foreground">{t(MONTHS_SHORT_KEYS[entry.month])} {entry.year}</td>
-                            <td className="px-4 py-3 text-end text-sm font-semibold text-red-500">{formatCurrency(planned, language)}</td>
-                            <td className="px-4 py-3 text-end text-sm font-semibold text-orange-500">{formatCurrency(entry.actual, language)}</td>
-                            <td className={cn("px-4 py-3 text-end text-sm font-semibold", variance <= 0 ? 'text-emerald-600' : 'text-red-500')}>
-                              {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEditCost(entry)}>
-                                  <Edit className="w-3 h-3" />
-                                </Button>
-                                <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                                  onClick={() => setDeleteConfirm({ type: 'cost', id: entry.id })}>
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot className="bg-secondary/30">
-                      <tr className="font-bold">
-                        <td className="px-4 py-3 text-sm" colSpan={3}>{t('total')}</td>
-                        <td className="px-4 py-3 text-end text-sm text-red-500">{formatCurrency(totals.cost.planned, language)}</td>
-                        <td className="px-4 py-3 text-end text-sm text-orange-500">{formatCurrency(totals.cost.actual, language)}</td>
-                        <td className={cn("px-4 py-3 text-end text-sm", totals.cost.variance <= 0 ? 'text-emerald-600' : 'text-red-500')}>
-                          {totals.cost.variance >= 0 ? '+' : ''}{formatCurrency(totals.cost.variance, language)}
-                        </td>
-                        <td className="px-4 py-3"></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-16 bg-secondary/20 rounded-xl border-2 border-dashed border-border">
-                  <Wallet className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
-                  <h4 className="text-base font-semibold text-foreground mb-2">{t('emptyCostTitle')}</h4>
-                  <p className="text-sm text-muted-foreground mb-5 max-w-md mx-auto">{t('emptyCostDesc')}</p>
-                  <Button onClick={() => openAddFinancialEntry('cost')} className="bg-red-500 hover:bg-red-600 text-white">
-                    <Plus className="w-4 h-4 me-2" />{t('addFinancialEntry')}
-                  </Button>
-                </div>
-              )}
+                ) : (
+                  <div className="text-center py-10 bg-secondary/20 rounded-xl border-2 border-dashed border-border">
+                    <Wallet className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground mb-4">{t('emptyCostDesc')}</p>
+                    <Button onClick={() => openAddFinancialEntry('cost')} variant="outline" size="sm">
+                      <Plus className="w-4 h-4 me-2" />{t('addFinancialEntry')}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
             {/* RESOURCES TAB */}
