@@ -5,6 +5,7 @@ import StatusBadge from '@/components/StatusBadge';
 import KPICard from '@/components/KPICard';
 import FeatureFinancialPlanning from '@/components/FeatureFinancialPlanning';
 import ProductForecast from '@/components/ProductForecast';
+import ProductOverview from '@/components/ProductOverview';
 import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -304,23 +305,8 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
 
           <div className="p-4 sm:p-6">
             {/* Overview Tab */}
-            <TabsContent value="overview" className="mt-0 space-y-6">
-              <div>
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3">{t('releases')}</h3>
-                <div className="space-y-2 sm:space-y-3">
-                  {releases.map(release => (
-                    <div key={release.id} className="flex items-center justify-between p-3 sm:p-4 bg-secondary/50 rounded-lg hover:bg-secondary transition-colors">
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-foreground text-sm sm:text-base">{release.version} - {release.name}</div>
-                        <div className="text-xs sm:text-sm text-muted-foreground">
-                          {formatDate(release.startDate, language)} → {formatDate(release.endDate, language)}
-                        </div>
-                      </div>
-                      <StatusBadge status={release.status} />
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <TabsContent value="overview" className="mt-0">
+              <ProductOverview product={product} />
             </TabsContent>
 
             {/* Roadmap Tab with Gantt Chart */}
