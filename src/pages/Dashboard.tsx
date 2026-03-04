@@ -21,16 +21,21 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
   const portfolioMetrics = useMemo(() => {
     return state.portfolios.map(p => {
       const products = state.products.filter(pr => pr.portfolioId === p.id);
-      let revenue = 0;
+      let planned = 0;
+      let actual = 0;
       products.forEach(pr => {
         const features = state.features.filter(f => f.productId === pr.id);
         features.forEach(f => {
           state.revenuePlan.filter(r => r.featureId === f.id).forEach(r => {
-            revenue += r.expected;
+            planned += r.expected;
+          });
+          state.revenueActual.filter(r => r.featureId === f.id).forEach(r => {
+            actual += r.actual;
           });
         });
       });
-      return { ...p, revenue, productCount: products.length };
+      const target = planned * 1.35;
+      return { ...p, planned, actual, target, remaining: Math.max(0, target - actual), productCount: products.length };
     });
   }, [state]);
 
@@ -133,25 +138,29 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
             <PieChart className="w-4 h-4 text-primary" />
             {t('portfolioDistribution')}
           </h3>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {portfolioMetrics.map((portfolio, idx) => {
               const colors = ['bg-primary', 'bg-accent', 'bg-warning', 'bg-success'];
-              const maxRevenue = Math.max(...portfolioMetrics.map(p => p.revenue));
-              const percentage = (portfolio.revenue / maxRevenue) * 100;
+              const achievedPercent = portfolio.target > 0 ? Math.min((portfolio.actual / portfolio.target) * 100, 100) : 0;
               
               return (
                 <div key={portfolio.id} className="space-y-1.5">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-foreground">{portfolio.name}</span>
-                    <span className="text-sm font-semibold text-foreground">
-                      {formatCurrency(portfolio.revenue, language)}
-                    </span>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="text-success font-semibold">{formatCurrency(portfolio.actual, language)}</span>
+                      <span className="text-muted-foreground">/ {formatCurrency(portfolio.target, language)}</span>
+                    </div>
                   </div>
-                  <div className="w-full bg-secondary rounded-full h-2">
+                  <div className="w-full bg-secondary rounded-full h-2.5">
                     <div 
-                      className={`h-2 rounded-full ${colors[idx % colors.length]} transition-all`}
-                      style={{ width: `${percentage}%` }}
+                      className={`h-2.5 rounded-full ${colors[idx % colors.length]} transition-all`}
+                      style={{ width: `${achievedPercent}%` }}
                     />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>{t('actual')}: {achievedPercent.toFixed(0)}%</span>
+                    <span>{t('variance')}: {formatCurrency(portfolio.remaining, language)}</span>
                   </div>
                 </div>
               );
@@ -189,9 +198,9 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t('revenue')}:</span>
-                  <span className="font-semibold text-revenue">
-                    {formatCurrency(portfolio.revenue, language)}
-                  </span>
+                    <span className="font-semibold text-revenue">
+                      {formatCurrency(portfolio.actual, language)}
+                    </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">{t('priority')}:</span>
