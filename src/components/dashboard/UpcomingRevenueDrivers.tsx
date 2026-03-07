@@ -30,7 +30,7 @@ const UpcomingRevenueDrivers = ({ scenario, horizon, onProductClick }: UpcomingR
 
     const upcoming = state.features
       .filter(f => f.status === 'In Progress' || f.status === 'Planned')
-      .filter(f => f.endDate <= cutoffKey + '-31') // within horizon
+      .filter(f => f.endDate <= cutoffKey + '-31')
       .map(feature => {
         const product = state.products.find(p => p.id === feature.productId);
         const portfolio = product ? state.portfolios.find(pf => pf.id === product.portfolioId) : null;
@@ -47,9 +47,9 @@ const UpcomingRevenueDrivers = ({ scenario, horizon, onProductClick }: UpcomingR
           productObj: product,
           portfolio: portfolio?.name || '-',
           feature: feature.name,
-          launchDate: feature.endDate,
+          startDate: feature.startDate,
+          endDate: feature.endDate,
           projectedRevenue,
-          status: feature.status,
         };
       })
       .filter(d => d.projectedRevenue > 0)
@@ -79,8 +79,7 @@ const UpcomingRevenueDrivers = ({ scenario, horizon, onProductClick }: UpcomingR
               <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('product')}</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('feature')}</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('portfolio')}</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('status')}</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('expectedLaunch')}</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('duration')}</th>
               <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('projectedRevenue')}</th>
             </tr>
           </thead>
@@ -96,14 +95,9 @@ const UpcomingRevenueDrivers = ({ scenario, horizon, onProductClick }: UpcomingR
                 <td className="py-3 px-4">
                   <span className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">{d.portfolio}</span>
                 </td>
-                <td className="py-3 px-4">
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                    d.status === 'In Progress' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {d.status}
-                  </span>
+                <td className="py-3 px-4 text-muted-foreground">
+                  {formatDate(d.startDate, language)} → {formatDate(d.endDate, language)}
                 </td>
-                <td className="py-3 px-4 text-muted-foreground">{formatDate(d.launchDate, language)}</td>
                 <td className="py-3 px-4 text-right font-bold text-success">
                   {formatCurrency(d.projectedRevenue, language)}
                 </td>
@@ -111,7 +105,7 @@ const UpcomingRevenueDrivers = ({ scenario, horizon, onProductClick }: UpcomingR
             ))}
             {drivers.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-muted-foreground text-sm">
+                <td colSpan={5} className="py-8 text-center text-muted-foreground text-sm">
                   No upcoming revenue drivers in this period
                 </td>
               </tr>
