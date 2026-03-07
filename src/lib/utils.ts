@@ -77,8 +77,17 @@ export const getGanttBarColor = (status: string): string => {
     'In Progress': 'bg-primary',
     'Delivered': 'bg-success',
     'Released': 'bg-success',
+    'Delayed': 'bg-destructive',
   };
   return colors[status] || 'bg-muted-foreground/50';
+};
+
+export const getFeatureEffectiveStatus = (feature: { status: string; endDate: string }): string => {
+  if (feature.status === 'Delivered') return 'Delivered';
+  const now = new Date();
+  const end = new Date(feature.endDate);
+  if (end < now && feature.status !== 'Delivered') return 'Delayed';
+  return feature.status;
 };
 
 export const calculateDaysBetween = (startDate: string, endDate: string): number => {
