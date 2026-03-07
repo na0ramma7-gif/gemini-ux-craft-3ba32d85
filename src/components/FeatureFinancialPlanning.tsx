@@ -20,7 +20,7 @@ import {
 import {
   ArrowLeft, ArrowRight, Plus, Trash2, DollarSign, Users, TrendingUp, TrendingDown,
   FileText, Save, ChevronDown, ChevronRight, UserPlus, Lightbulb, AlertTriangle,
-  BarChart3, PieChart,
+  BarChart3, PieChart, Pencil,
 } from 'lucide-react';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
