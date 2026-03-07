@@ -93,27 +93,7 @@ const ResourcesPage = ({ onResourceClick }: ResourcesPageProps) => {
         </div>
       </div>
 
-      {/* Resource Allocation by Product */}
-      {allocationByProduct.length > 0 && (
-        <div className="bg-card rounded-xl p-5 border border-border shadow-card">
-          <h3 className="text-sm font-semibold text-foreground mb-3">{t('resourceAllocationByProduct')}</h3>
-          <div className="space-y-2">
-            {allocationByProduct.map(([name, totalUtil], idx) => {
-              const colors = ['bg-primary', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-chart-5'];
-              const maxUtil = Math.max(...allocationByProduct.map(a => a[1] as number));
-              return (
-                <div key={name} className="flex items-center gap-3">
-                  <div className="w-32 text-sm text-muted-foreground truncate shrink-0">{name}</div>
-                  <div className="flex-1 h-5 bg-secondary rounded-full overflow-hidden">
-                    <div className={cn("h-full rounded-full transition-all", colors[idx % colors.length])} style={{ width: `${(totalUtil / maxUtil) * 100}%` }} />
-                  </div>
-                  <div className="w-12 text-sm font-semibold text-foreground text-end">{totalUtil}%</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+
 
       {/* Resource Directory */}
       <div className="bg-card rounded-xl shadow-card overflow-hidden">
