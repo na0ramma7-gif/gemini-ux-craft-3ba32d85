@@ -261,7 +261,6 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               { value: 'planner', icon: <DollarSign className="w-4 h-4 me-1.5" />, label: t('financialPlanning') },
               { value: 'profile', icon: <FileText className="w-4 h-4 me-1.5" />, label: t('featureProfile') },
               { value: 'charts', icon: <BarChart3 className="w-4 h-4 me-1.5" />, label: 'Charts' },
-              { value: 'insights', icon: <Lightbulb className="w-4 h-4 me-1.5" />, label: 'Insights' },
               { value: 'forecast', icon: <TrendingUp className="w-4 h-4 me-1.5" />, label: t('forecast') },
             ].map(tabItem => (
               <TabsTrigger key={tabItem.value} value={tabItem.value}
@@ -470,24 +469,8 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               </div>
             </TabsContent>
 
-            {/* INSIGHTS TAB */}
-            <TabsContent value="insights" className="mt-0 space-y-5">
-              <div className="bg-card rounded-xl border border-border p-5">
-                <h4 className="text-foreground font-semibold mb-4 flex items-center gap-2"><Lightbulb className="w-4 h-4 text-amber-500" /> Quick Insights</h4>
-                {insights.length > 0 ? (
-                  <div className="space-y-3">
-                    {insights.map((insight, idx) => (
-                      <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30">
-                        <InsightIcon type={insight.icon} />
-                        <span className="text-sm text-foreground leading-snug">{insight.text}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground py-8 text-center">Add financial data to see automated insights.</p>
-                )}
-              </div>
-            </TabsContent>
+
+
 
             {/* FORECAST TAB */}
             <TabsContent value="forecast" className="mt-0">
