@@ -54,6 +54,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     businessModel: feature.businessModel || '', risksAndChallenges: feature.risks || '',
   });
 
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [expandedMonths, setExpandedMonths] = useState<number[]>([]);
   const [editMonthOpen, setEditMonthOpen] = useState(false);
   const [editMonthIdx, setEditMonthIdx] = useState<number>(0);
@@ -388,11 +389,27 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               </div>
             </TabsContent>
 
+
             {/* PROFILE TAB */}
             <TabsContent value="profile" className="mt-0 space-y-6">
+              <div className="flex justify-end">
+                {isEditingProfile ? (
+                  <Button size="sm" onClick={() => setIsEditingProfile(false)} className="gap-1.5">
+                    <Save className="w-4 h-4" /> {t('save')}
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => setIsEditingProfile(true)} className="gap-1.5">
+                    <Edit3 className="w-4 h-4" /> {t('edit')}
+                  </Button>
+                )}
+              </div>
               <div className="bg-card rounded-xl border border-border p-5">
                 <label className="block text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><span className="text-lg">📝</span>{t('description')}</label>
-                <Textarea value={featureProfile.description} onChange={e => setFeatureProfile({ ...featureProfile, description: e.target.value })} placeholder={t('featureDescPlaceholder')} rows={3} />
+                {isEditingProfile ? (
+                  <Textarea value={featureProfile.description} onChange={e => setFeatureProfile({ ...featureProfile, description: e.target.value })} placeholder={t('featureDescPlaceholder')} rows={3} />
+                ) : (
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap min-h-[3rem]">{featureProfile.description || t('featureDescPlaceholder')}</p>
+                )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
@@ -403,13 +420,21 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                 ].map(f => (
                   <div key={f.key} className="rounded-xl border border-border p-5 bg-card">
                     <label className="block text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><span className="text-lg">{f.icon}</span>{t(f.key as any)}</label>
-                    <Textarea value={featureProfile[f.field]} onChange={e => setFeatureProfile({ ...featureProfile, [f.field]: e.target.value })} placeholder={t(f.placeholder as any)} rows={3} />
+                    {isEditingProfile ? (
+                      <Textarea value={featureProfile[f.field]} onChange={e => setFeatureProfile({ ...featureProfile, [f.field]: e.target.value })} placeholder={t(f.placeholder as any)} rows={3} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap min-h-[3rem]">{featureProfile[f.field] || t(f.placeholder as any)}</p>
+                    )}
                   </div>
                 ))}
               </div>
               <div className="rounded-xl border border-border p-5 bg-card">
                 <label className="block text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><span className="text-lg">⚠️</span>{t('risksAndChallenges')}</label>
-                <Textarea value={featureProfile.risksAndChallenges} onChange={e => setFeatureProfile({ ...featureProfile, risksAndChallenges: e.target.value })} placeholder={t('risksPlaceholder')} rows={3} />
+                {isEditingProfile ? (
+                  <Textarea value={featureProfile.risksAndChallenges} onChange={e => setFeatureProfile({ ...featureProfile, risksAndChallenges: e.target.value })} placeholder={t('risksPlaceholder')} rows={3} />
+                ) : (
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap min-h-[3rem]">{featureProfile.risksAndChallenges || t('risksPlaceholder')}</p>
+                )}
               </div>
             </TabsContent>
 
