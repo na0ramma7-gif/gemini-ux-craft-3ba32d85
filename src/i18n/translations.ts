@@ -657,6 +657,12 @@ export const TRANSLATIONS = {
     // Charts
     revenueCostTrend: 'اتجاه الإيرادات مقابل التكاليف',
     portfolioDistribution: 'توزيع المحافظ',
+    revenuePipeline: 'خط أنابيب الإيرادات',
+    projected3Months: 'الإيرادات المتوقعة (3 أشهر)',
+    projected6Months: 'الإيرادات المتوقعة (6 أشهر)',
+    projected12Months: 'الإيرادات المتوقعة (12 شهر)',
+    upcomingRevenueDrivers: 'محركات الإيرادات القادمة',
+    expectedLaunch: 'تاريخ الإطلاق المتوقع',
     
     // Time
     jan: 'يناير', feb: 'فبراير', mar: 'مارس', apr: 'أبريل', may: 'مايو', jun: 'يونيو',
