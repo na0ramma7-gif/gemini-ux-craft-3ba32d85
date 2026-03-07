@@ -29,7 +29,7 @@ const UpcomingRevenueDrivers = ({ scenario, horizon, onProductClick }: UpcomingR
     const multiplier = SCENARIO_MULTIPLIER[scenario];
 
     const upcoming = state.features
-      .filter(f => f.status === 'In Progress' || f.status === 'Planned')
+      .filter(f => f.status === 'In Progress' || f.status === 'To Do')
       .filter(f => f.endDate <= cutoffKey + '-31')
       .map(feature => {
         const product = state.products.find(p => p.id === feature.productId);
