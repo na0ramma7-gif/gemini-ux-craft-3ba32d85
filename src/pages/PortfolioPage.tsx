@@ -39,11 +39,6 @@ const LIFECYCLE_COLORS: Record<string, string> = {
   Sunset: 'hsl(38 92% 50%)',
 };
 
-const PIE_COLORS = [
-  'hsl(var(--primary))', 'hsl(142 71% 45%)', 'hsl(0 84% 60%)',
-  'hsl(38 92% 50%)', 'hsl(262 83% 58%)', 'hsl(200 98% 39%)',
-];
-
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload) return null;
   return (
@@ -106,15 +101,8 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
     };
   }, [products, state]);
 
-  // Lifecycle distribution
-  const lifecycleDistribution = useMemo(() => {
-    const counts: Record<string, number> = {};
-    products.forEach(p => {
-      const stage = p.lifecycleStage || 'Development';
-      counts[stage] = (counts[stage] || 0) + 1;
-    });
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [products]);
+
+
 
   // Revenue by product for bar chart
   const revenueByProduct = portfolioMetrics.productData;
