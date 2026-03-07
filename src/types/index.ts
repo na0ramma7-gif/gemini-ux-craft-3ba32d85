@@ -14,6 +14,13 @@ export interface Portfolio {
   code: string;
   description: string;
   priority: 'High' | 'Medium' | 'Low';
+  purpose?: string;
+  strategicObjective?: string;
+  businessValue?: string;
+  owner?: string;
+  technicalLead?: string;
+  businessStakeholder?: string;
+  logo?: string;
 }
 
 export type LifecycleStage = 'Ideation' | 'Development' | 'Growth' | 'Mature' | 'Sunset';
