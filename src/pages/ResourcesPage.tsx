@@ -260,12 +260,12 @@ const ResourcesPage = () => {
         </div>
       </Tabs>
 
-      {/* Add Resource Modal */}
-      <Dialog open={showAddResourceModal} onOpenChange={setShowAddResourceModal}>
+      {/* Add/Edit Resource Modal */}
+      <Dialog open={showAddResourceModal} onOpenChange={(open) => { setShowAddResourceModal(open); if (!open) setEditingResource(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('addNewResource')}</DialogTitle>
-            <DialogDescription>{t('addTeamMember')}</DialogDescription>
+            <DialogTitle>{editingResource ? t('editResource') : t('addNewResource')}</DialogTitle>
+            <DialogDescription>{editingResource ? t('editResourceDesc') : t('addTeamMember')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
@@ -286,10 +286,20 @@ const ResourcesPage = () => {
                 <Input type="number" value={newResource.capacity} onChange={(e) => setNewResource({ ...newResource, capacity: parseInt(e.target.value) || 40 })} />
               </div>
             </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">{t('status')}</label>
+              <Select value={newResource.status} onValueChange={(value: 'Active' | 'Inactive') => setNewResource({ ...newResource, status: value })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">{t('active')}</SelectItem>
+                  <SelectItem value="Inactive">{t('inactive')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddResourceModal(false)}>{t('cancel')}</Button>
-            <Button onClick={handleAddResource}>{t('addResource')}</Button>
+            <Button variant="outline" onClick={() => { setShowAddResourceModal(false); setEditingResource(null); }}>{t('cancel')}</Button>
+            <Button onClick={handleAddOrUpdateResource}>{editingResource ? t('save') : t('addResource')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
