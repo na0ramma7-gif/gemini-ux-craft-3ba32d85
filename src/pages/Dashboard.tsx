@@ -12,7 +12,8 @@ import UpcomingRevenueDrivers from '@/components/dashboard/UpcomingRevenueDriver
 import { formatCurrency } from '@/lib/utils';
 import { Portfolio, Product } from '@/types';
 import { ScenarioType } from '@/components/ForecastConfigModal';
-import { TrendingUp, TrendingDown, Target, Package, DollarSign, Receipt, BarChart3, Settings2 } from 'lucide-react';
+import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
+import { TrendingUp, TrendingDown, Target, Package, DollarSign, Receipt, BarChart3, Settings2, Layers, Activity } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 
@@ -23,16 +24,16 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
-  const { state, metrics, t, language, setView, setSelected } = useApp();
+  const { state, t, language, setView, setSelected } = useApp();
+  const dept = useHierarchicalMetrics(state);
   const [scenario, setScenario] = useState<ScenarioType>('baseline');
   const [horizon, setHorizon] = useState<PipelineHorizon>(9);
 
   const trend = useMemo(() => {
-    const totalActual = state.revenueActual.reduce((s, r) => s + r.actual, 0);
-    const target = metrics.revenue * 1.35;
-    const achievePct = target > 0 ? Math.round((totalActual / target) * 100) : 0;
-    return { achievePct, totalActual };
-  }, [state, metrics]);
+    const target = dept.planned * 1.35;
+    const achievePct = target > 0 ? Math.round((dept.revenue / target) * 100) : 0;
+    return { achievePct };
+  }, [dept]);
 
   const handleProductClick = (product: Product) => {
     setSelected(prev => ({
