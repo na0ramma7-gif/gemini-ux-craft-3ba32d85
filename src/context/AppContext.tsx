@@ -50,6 +50,7 @@ interface AppContextType {
   updateProduct: (productId: number, updates: Partial<Product>) => void;
   updatePortfolio: (portfolioId: number, updates: Partial<Portfolio>) => void;
   addRelease: (release: Omit<Release, 'id'>) => void;
+  updateRelease: (releaseId: number, updates: Partial<Release>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
