@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Portfolio, Product } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import KPICard from '@/components/KPICard';
