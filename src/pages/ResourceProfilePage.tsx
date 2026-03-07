@@ -158,32 +158,7 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
         </div>
       </div>
 
-      {/* Utilization Bar */}
-      <div className="bg-card rounded-xl p-4 border border-border shadow-card">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-foreground">{t('utilizationBreakdown')}</span>
-          {isOverAllocated && <span className="text-xs font-semibold text-destructive">{t('overAllocated')}!</span>}
-        </div>
-        <div className="relative w-full h-6 bg-secondary rounded-full overflow-hidden flex">
-          {allocationByProduct.map(([name, util], idx) => {
-            const colors = ['bg-primary', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-chart-5'];
-            return (
-              <div key={name} className={cn("h-full transition-all", colors[idx % colors.length])} style={{ width: `${Math.min(util, 100)}%` }} title={`${name}: ${util}%`} />
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap gap-3 mt-2">
-          {allocationByProduct.map(([name, util], idx) => {
-            const colors = ['bg-primary', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-chart-5'];
-            return (
-              <div key={name} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <div className={cn("w-2.5 h-2.5 rounded-full", colors[idx % colors.length])} />
-                <span>{name}: {util}%</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
