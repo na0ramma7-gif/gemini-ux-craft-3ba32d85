@@ -202,33 +202,6 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
             </TabsContent>
 
             <TabsContent value="financials" className="mt-0 space-y-6">
-              <h3 className="text-foreground mb-4">{t('financialOverview')}</h3>
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-card rounded-xl p-5 border border-border shadow-card">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 rounded-full bg-success" />
-                    <h4 className="text-sm font-medium text-muted-foreground">{t('totalRevenue')}</h4>
-                  </div>
-                  <div className="text-2xl font-bold text-revenue">{formatCurrency(portfolioMetrics.totalRevenue, language)}</div>
-                </div>
-                <div className="bg-card rounded-xl p-5 border border-border shadow-card">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 rounded-full bg-destructive" />
-                    <h4 className="text-sm font-medium text-muted-foreground">{t('totalCost')}</h4>
-                  </div>
-                  <div className="text-2xl font-bold text-cost">{formatCurrency(portfolioMetrics.totalCost, language)}</div>
-                </div>
-                <div className="bg-card rounded-xl p-5 border border-border shadow-card">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={cn("w-2 h-2 rounded-full", portfolioMetrics.profit >= 0 ? "bg-success" : "bg-destructive")} />
-                    <h4 className="text-sm font-medium text-muted-foreground">{t('netProfit')}</h4>
-                  </div>
-                  <div className={cn("text-2xl font-bold", portfolioMetrics.profit >= 0 ? "text-profit" : "text-cost")}>
-                    {formatCurrency(portfolioMetrics.profit, language)}
-                  </div>
-                </div>
-              </div>
 
               {/* Products Financial Table */}
               <div>
