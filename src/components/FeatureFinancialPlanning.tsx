@@ -117,17 +117,23 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   // Expanded months in financials tab
   const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
 
-  // Financial entry modal (simplified step-based)
+  // Financial entry modal
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalStep, setModalStep] = useState(1);
   const [modalFeatureId, setModalFeatureId] = useState(feature.id);
-  const [modalMonth, setModalMonth] = useState(new Date().getMonth());
+  const [modalStartDate, setModalStartDate] = useState('');
+  const [modalEndDate, setModalEndDate] = useState('');
   const [modalRevenuePlanned, setModalRevenuePlanned] = useState(0);
   const [modalRevenueActual, setModalRevenueActual] = useState(0);
   const [modalCostCategories, setModalCostCategories] = useState<Record<string, { planned: number; actual: number }>>({});
   const [expandedCostCategories, setExpandedCostCategories] = useState<string[]>([]);
   const [editingEntryId, setEditingEntryId] = useState<number | null>(null);
   const [editingType, setEditingType] = useState<'revenue' | 'cost' | null>(null);
+  // Non-resource cost table entries per category
+  const [modalCostItems, setModalCostItems] = useState<Record<string, { name: string; planned: number; actual: number; notes: string }[]>>({});
+  // Modal resource allocations
+  const [modalResourceAllocations, setModalResourceAllocations] = useState<{ resourceId: number; utilization: number }[]>([]);
+  const [modalResourceSelectorOpen, setModalResourceSelectorOpen] = useState(false);
+  const [modalSelectedResourceIds, setModalSelectedResourceIds] = useState<number[]>([]);
 
   // Resource selector dialog
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
@@ -241,14 +247,48 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
   // ── Modal helpers ─────────────────────────────────────────
 
+  // Compute duration from modal dates
+  const modalDuration = useMemo(() => {
+    if (!modalStartDate || !modalEndDate) return null;
+    const start = new Date(modalStartDate);
+    const end = new Date(modalEndDate);
+    if (end <= start) return null;
+    const diffMs = end.getTime() - start.getTime();
+    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const months = Math.round(days / 30.44);
+    return { days, months: months || 1 };
+  }, [modalStartDate, modalEndDate]);
+
+  // Modal live summary
+  const modalSummary = useMemo(() => {
+    const totalCostFromCategories = Object.values(modalCostCategories).reduce((s, v) => s + v.planned, 0);
+    const totalCostFromItems = Object.values(modalCostItems).reduce((s, items) => s + items.reduce((si, i) => si + i.planned, 0), 0);
+    const totalResourceCost = modalResourceAllocations.reduce((s, a) => {
+      const r = state.resources.find(res => res.id === a.resourceId);
+      return s + (r ? r.costRate * (a.utilization / 100) : 0);
+    }, 0);
+    const totalCost = totalCostFromCategories + totalCostFromItems + totalResourceCost;
+    const profit = modalRevenuePlanned - totalCost;
+    const margin = modalRevenuePlanned > 0 ? (profit / modalRevenuePlanned) * 100 : 0;
+    return { revenue: modalRevenuePlanned, cost: totalCost, profit, margin, resourceCost: totalResourceCost };
+  }, [modalRevenuePlanned, modalCostCategories, modalCostItems, modalResourceAllocations, state.resources]);
+
+  const revenueVariance = modalRevenueActual - modalRevenuePlanned;
+
   const openAddModal = () => {
-    setModalStep(1);
+    const now = new Date();
+    const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const lastDayStr = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
     setModalFeatureId(feature.id);
-    setModalMonth(new Date().getMonth());
+    setModalStartDate(firstDay);
+    setModalEndDate(lastDayStr);
     setModalRevenuePlanned(0);
     setModalRevenueActual(0);
     setModalCostCategories({});
+    setModalCostItems({});
     setExpandedCostCategories([]);
+    setModalResourceAllocations([]);
     setEditingEntryId(null);
     setEditingType(null);
     setModalOpen(true);
