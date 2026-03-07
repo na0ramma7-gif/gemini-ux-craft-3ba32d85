@@ -349,18 +349,20 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
               <SelectItem value="36">36 {t('months')}</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={() => setShowAssumptions(!showAssumptions)} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => setShowAssumptions(true)} className="gap-1.5">
             <Settings2 className="w-3.5 h-3.5" />
             {t('forecastAssumptions')}
           </Button>
         </div>
       </div>
 
-      {/* Forecast Assumptions Panel */}
-      {showAssumptions && (
-        <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-          <h4 className="text-sm font-semibold text-foreground">{t('forecastAssumptions')}</h4>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      {/* Forecast Assumptions Dialog */}
+      <Dialog open={showAssumptions} onOpenChange={setShowAssumptions}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('forecastAssumptions')}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 py-2">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t('revenueGrowthRate')}</Label>
               <div className="relative">
@@ -396,8 +398,13 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
                 onChange={e => setAssumptions({ ...assumptions, manualCostAdj: parseFloat(e.target.value) || 0 })} />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button size="sm" onClick={() => setShowAssumptions(false)}>
+              {t('apply')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Alerts */}
       {summary.alerts.length > 0 && (
