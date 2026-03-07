@@ -592,26 +592,6 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                   placeholder={t('risksPlaceholder')} rows={3} />
               </div>
 
-              {/* Quick Financial Summary */}
-              <div className="rounded-xl border border-border p-5 bg-card">
-                <h4 className="text-base font-semibold text-foreground mb-4">{t('quickFinancialSummary')}</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/10">
-                    <div className="text-xs text-muted-foreground mb-1">{t('totalRevenue')}</div>
-                    <div className="text-lg font-bold text-emerald-600">{formatCurrency(totals.revenue.planned, language)}</div>
-                  </div>
-                  <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-900/10">
-                    <div className="text-xs text-muted-foreground mb-1">{t('totalCost')}</div>
-                    <div className="text-lg font-bold text-red-500">{formatCurrency(totals.cost.planned, language)}</div>
-                  </div>
-                  <div className="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-900/10">
-                    <div className="text-xs text-muted-foreground mb-1">{t('netProfit')}</div>
-                    <div className={cn("text-lg font-bold", totals.profit.planned >= 0 ? 'text-blue-600' : 'text-red-500')}>
-                      {formatCurrency(totals.profit.planned, language)}
-                    </div>
-                  </div>
-                </div>
-              </div>
             </TabsContent>
 
             {/* ── FINANCIALS TAB ──────────────────────────── */}
