@@ -541,13 +541,6 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                           </Button>
                         </div>
                       )}
-                        <div className="bg-secondary/5 border-t border-border/50 px-6 py-5 space-y-5">
-                          {/* Revenue Section */}
-                          <div className="bg-card rounded-xl border border-border p-4">
-                            <h5 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                              <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('revenue')}
-                            </h5>
-                            {editingMonth === ms.month ? (
                               <div className="space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
