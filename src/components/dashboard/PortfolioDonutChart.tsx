@@ -5,11 +5,11 @@ import { PieChart as PieChartIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const COLORS = [
-  'hsl(234, 55%, 30%)',
-  'hsl(142, 71%, 45%)',
-  'hsl(45, 93%, 47%)',
-  'hsl(0, 84%, 60%)',
-  'hsl(222, 100%, 59%)',
+  'hsl(234, 55%, 30%)',   // Dark Navy
+  'hsl(220, 15%, 35%)',   // Dark Grey
+  'hsl(234, 35%, 50%)',   // Medium Blue
+  'hsl(220, 10%, 55%)',   // Medium Grey
+  'hsl(222, 47%, 11%)',   // Black
 ];
 
 const PortfolioDonutChart = () => {
@@ -45,13 +45,6 @@ const PortfolioDonutChart = () => {
     );
   };
 
-  const renderCustomLabel = ({ cx, cy }: any) => (
-    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
-      <tspan x={cx} dy="-8" className="text-lg font-bold" fill="hsl(var(--foreground))">{formatCurrency(total, language)}</tspan>
-      <tspan x={cx} dy="20" className="text-xs" fill="hsl(var(--muted-foreground))">{t('totalRevenue')}</tspan>
-    </text>
-  );
-
   return (
     <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-6">
       <div className="flex items-center gap-2 mb-5">
@@ -64,21 +57,16 @@ const PortfolioDonutChart = () => {
             <Pie
               data={data}
               cx="50%"
-              cy="50%"
+              cy="45%"
               innerRadius={65}
               outerRadius={100}
               paddingAngle={3}
               dataKey="value"
               stroke="none"
-              label={false}
             >
               {data.map((_, idx) => (
                 <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
               ))}
-            </Pie>
-            {/* Center label */}
-            <Pie data={[{ value: 1 }]} cx="50%" cy="50%" innerRadius={0} outerRadius={0} dataKey="value">
-              {renderCustomLabel({ cx: '50%', cy: '50%' })}
             </Pie>
             <Tooltip content={<CustomTooltip />} />
             <Legend
