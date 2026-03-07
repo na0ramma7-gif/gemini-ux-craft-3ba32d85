@@ -470,7 +470,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                         </div>
                         <div className="w-20 flex items-center justify-center">
                           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                            onClick={e => { e.stopPropagation(); startInlineEdit(ms.month); if (!isExpanded) toggleMonth(ms.month); }}>
+                            onClick={e => { e.stopPropagation(); startInlineEdit(ms.month); }}>
                             <Plus className="w-3.5 h-3.5 me-1" />{t('edit')}
                           </Button>
                         </div>
