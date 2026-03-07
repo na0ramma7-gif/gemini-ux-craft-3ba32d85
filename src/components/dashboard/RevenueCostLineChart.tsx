@@ -82,28 +82,28 @@ const RevenueCostLineChart = () => {
             <Line
               type="monotone"
               dataKey="revenue"
-              stroke="hsl(222, 47%, 11%)"
+              stroke="hsl(var(--revenue))"
               strokeWidth={2.5}
-              dot={{ r: 4, fill: 'hsl(222, 47%, 11%)', strokeWidth: 0 }}
+              dot={{ r: 4, fill: 'hsl(var(--revenue))', strokeWidth: 0 }}
               activeDot={{ r: 7, strokeWidth: 2, stroke: 'white' }}
               name={t('revenue')}
             />
             <Line
               type="monotone"
               dataKey="cost"
-              stroke="hsl(220, 10%, 55%)"
+              stroke="hsl(var(--cost))"
               strokeWidth={2.5}
-              dot={{ r: 4, fill: 'hsl(220, 10%, 55%)', strokeWidth: 0 }}
+              dot={{ r: 4, fill: 'hsl(var(--cost))', strokeWidth: 0 }}
               activeDot={{ r: 7, strokeWidth: 2, stroke: 'white' }}
               name={t('cost')}
             />
             <Line
               type="monotone"
               dataKey="profit"
-              stroke="hsl(234, 55%, 30%)"
+              stroke="hsl(var(--profit))"
               strokeWidth={2}
               strokeDasharray="6 4"
-              dot={{ r: 3, fill: 'hsl(234, 55%, 30%)', strokeWidth: 0 }}
+              dot={{ r: 3, fill: 'hsl(var(--profit))', strokeWidth: 0 }}
               name={t('netProfit')}
             />
             <Legend

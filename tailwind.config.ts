@@ -62,6 +62,12 @@ export default {
         revenue: "hsl(var(--revenue))",
         cost: "hsl(var(--cost))",
         profit: "hsl(var(--profit))",
+        target: "hsl(var(--target))",
+        forecast: "hsl(var(--forecast))",
+        "portfolio-1": "hsl(var(--portfolio-1))",
+        "portfolio-2": "hsl(var(--portfolio-2))",
+        "portfolio-3": "hsl(var(--portfolio-3))",
+        "portfolio-4": "hsl(var(--portfolio-4))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

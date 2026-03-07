@@ -15,14 +15,14 @@ import {
 import { format, eachMonthOfInterval } from 'date-fns';
 
 const PRODUCT_COLORS = [
-  { stroke: 'hsl(234, 55%, 30%)', fill: 'hsl(234, 55%, 30%)' },
-  { stroke: 'hsl(221, 100%, 59%)', fill: 'hsl(221, 100%, 59%)' },
-  { stroke: 'hsl(142, 71%, 45%)', fill: 'hsl(142, 71%, 45%)' },
-  { stroke: 'hsl(38, 92%, 50%)', fill: 'hsl(38, 92%, 50%)' },
-  { stroke: 'hsl(0, 84%, 60%)', fill: 'hsl(0, 84%, 60%)' },
-  { stroke: 'hsl(270, 60%, 55%)', fill: 'hsl(270, 60%, 55%)' },
-  { stroke: 'hsl(190, 80%, 45%)', fill: 'hsl(190, 80%, 45%)' },
-  { stroke: 'hsl(330, 70%, 55%)', fill: 'hsl(330, 70%, 55%)' },
+  { stroke: 'hsl(var(--primary))', fill: 'hsl(var(--primary))' },
+  { stroke: 'hsl(var(--accent))', fill: 'hsl(var(--accent))' },
+  { stroke: 'hsl(var(--revenue))', fill: 'hsl(var(--revenue))' },
+  { stroke: 'hsl(var(--warning))', fill: 'hsl(var(--warning))' },
+  { stroke: 'hsl(var(--cost))', fill: 'hsl(var(--cost))' },
+  { stroke: 'hsl(var(--forecast))', fill: 'hsl(var(--forecast))' },
+  { stroke: 'hsl(var(--target))', fill: 'hsl(var(--target))' },
+  { stroke: 'hsl(var(--profit))', fill: 'hsl(var(--profit))' },
 ];
 
 const ProductAreaChart = () => {
