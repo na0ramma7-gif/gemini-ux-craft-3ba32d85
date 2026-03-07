@@ -12,7 +12,9 @@ import UpcomingRevenueDrivers from '@/components/dashboard/UpcomingRevenueDriver
 import { formatCurrency } from '@/lib/utils';
 import { Portfolio, Product } from '@/types';
 import { ScenarioType } from '@/components/ForecastConfigModal';
-import { TrendingUp, TrendingDown, Target, Package, DollarSign, Receipt, BarChart3, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Package, DollarSign, Receipt, BarChart3, Settings2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 
 export type PipelineHorizon = 6 | 9 | 12;
 
@@ -41,11 +43,7 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
     setView('product');
   };
 
-  const scenarios: { key: ScenarioType; icon: typeof TrendingUp; label: string }[] = [
-    { key: 'conservative', icon: TrendingDown, label: t('conservative') },
-    { key: 'baseline', icon: Minus, label: t('baseline') },
-    { key: 'optimistic', icon: TrendingUp, label: t('optimistic') },
-  ];
+  const scenarioKeys: ScenarioType[] = ['baseline', 'optimistic', 'conservative'];
 
   const horizons: { value: PipelineHorizon; label: string }[] = [
     { value: 6, label: `6 ${t('months')}` },
@@ -137,43 +135,49 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
             <BarChart3 className="w-5 h-5 text-primary" />
             <h2 className="text-foreground text-lg font-semibold">{t('revenuePipeline')}</h2>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Horizon filter */}
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-              {horizons.map(h => (
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Scenario toggle — pill style */}
+            <div className="flex items-center bg-muted rounded-lg p-1">
+              {scenarioKeys.map(key => (
                 <button
-                  key={h.value}
-                  onClick={() => setHorizon(h.value)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    horizon === h.value
+                  key={key}
+                  onClick={() => setScenario(key)}
+                  className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    scenario === key
                       ? 'bg-card text-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {h.label}
+                  {t(key)}
                 </button>
               ))}
             </div>
-            {/* Scenario filter */}
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-              {scenarios.map(s => {
-                const Icon = s.icon;
-                return (
+
+            {/* Configure Forecast — horizon picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                  <Settings2 className="w-3.5 h-3.5" />
+                  {t('configureForecast')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-2" align="end">
+                <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">{t('forecastHorizon')}</p>
+                {horizons.map(h => (
                   <button
-                    key={s.key}
-                    onClick={() => setScenario(s.key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      scenario === s.key
-                        ? 'bg-card text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
+                    key={h.value}
+                    onClick={() => setHorizon(h.value)}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                      horizon === h.value
+                        ? 'bg-primary/10 text-primary font-medium'
+                        : 'text-foreground hover:bg-muted'
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
-                    {s.label}
+                    {h.label}
                   </button>
-                );
-              })}
-            </div>
+                ))}
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
