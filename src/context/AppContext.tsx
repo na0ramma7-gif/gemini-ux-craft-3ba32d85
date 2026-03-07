@@ -44,6 +44,8 @@ interface AppContextType {
   deleteAssignment: (assignmentId: number) => void;
   addAssignment: (assignment: Omit<Assignment, 'id'>) => void;
   addResource: (resource: Omit<Resource, 'id'>) => void;
+  updateResource: (resourceId: number, updates: Partial<Resource>) => void;
+  deleteResource: (resourceId: number) => void;
   addFeature: (feature: Omit<Feature, 'id'>) => void;
   updateFeature: (featureId: number, updates: Partial<Feature>) => void;
   deleteFeature: (featureId: number) => void;
@@ -151,6 +153,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const updateResource = (resourceId: number, updates: Partial<Resource>) => {
+    setState(prev => ({
+      ...prev,
+      resources: prev.resources.map(r =>
+        r.id === resourceId ? { ...r, ...updates } : r
+      )
+    }));
+  };
+
+  const deleteResource = (resourceId: number) => {
+    setState(prev => ({
+      ...prev,
+      resources: prev.resources.filter(r => r.id !== resourceId),
+      assignments: prev.assignments.filter(a => a.resourceId !== resourceId)
+    }));
+  };
+
   const addFeature = (feature: Omit<Feature, 'id'>) => {
     setState(prev => ({
       ...prev,
@@ -236,6 +255,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         deleteAssignment,
         addAssignment,
         addResource,
+        updateResource,
+        deleteResource,
         addFeature,
         updateFeature,
         deleteFeature,
