@@ -169,12 +169,13 @@ export interface AppState {
 }
 
 // Navigation and View types
-export type ViewType = 'dashboard' | 'portfolio' | 'product' | 'resources' | 'settings';
+export type ViewType = 'dashboard' | 'portfolio' | 'product' | 'resources' | 'resourceProfile' | 'settings';
 
 export interface SelectedState {
   portfolio: Portfolio | null;
   product: Product | null;
   feature: Feature | null;
+  resource: Resource | null;
   tab: string;
 }
 
