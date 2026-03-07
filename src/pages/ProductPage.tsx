@@ -543,7 +543,18 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                           <h4 className="text-base sm:text-lg font-semibold text-foreground">{release.version}</h4>
                           <p className="text-xs sm:text-sm text-muted-foreground">{release.name}</p>
                         </div>
-                        <StatusBadge status={release.status} />
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={release.status} />
+                          <button
+                            onClick={() => {
+                              setEditingRelease(release);
+                              setNewRelease({ version: release.version, name: release.name, startDate: release.startDate, endDate: release.endDate, status: release.status });
+                            }}
+                            className="p-1 rounded hover:bg-muted transition-colors"
+                          >
+                            <Edit className="w-3.5 h-3.5 text-muted-foreground" />
+                          </button>
+                        </div>
                       </div>
                       <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
