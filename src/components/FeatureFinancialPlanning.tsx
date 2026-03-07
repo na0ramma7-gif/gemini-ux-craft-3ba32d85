@@ -506,37 +506,6 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard
-          title={t('totalRevenue')}
-          value={formatCurrency(totals.revenue.planned, language)}
-          icon={<CircleDollarSign className="w-5 h-5 text-emerald-600" />}
-          colorClass="bg-emerald-50 dark:bg-emerald-900/20"
-          subtitle={`${t('actual')}: ${formatCurrency(totals.revenue.actual, language)}`}
-        />
-        <SummaryCard
-          title={t('totalCost')}
-          value={formatCurrency(totals.cost.planned, language)}
-          icon={<Wallet className="w-5 h-5 text-red-500" />}
-          colorClass="bg-red-50 dark:bg-red-900/20"
-          subtitle={`${t('actual')}: ${formatCurrency(totals.cost.actual, language)}`}
-        />
-        <SummaryCard
-          title={t('netProfit')}
-          value={formatCurrency(totals.profit.planned, language)}
-          icon={<TrendingUp className="w-5 h-5 text-blue-500" />}
-          colorClass="bg-blue-50 dark:bg-blue-900/20"
-          subtitle={`${t('actual')}: ${formatCurrency(totals.profit.actual, language)}`}
-        />
-        <SummaryCard
-          title={t('targetVsAchieved')}
-          value={`${totals.revenue.achievement.toFixed(1)}%`}
-          icon={<Target className="w-5 h-5 text-violet-500" />}
-          colorClass="bg-violet-50 dark:bg-violet-900/20"
-          subtitle={t('achievementRate')}
-        />
-      </div>
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab} className="w-full">

@@ -531,34 +531,6 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
 
             {/* Financials Tab */}
             <TabsContent value="financials" className="mt-0 space-y-6">
-              {/* KPI Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 sm:p-6 border border-emerald-200 dark:border-emerald-800">
-                  <h4 className="text-xs sm:text-sm font-medium text-emerald-800 dark:text-emerald-400 mb-2">{t('totalRevenue')}</h4>
-                  <div className="text-xl sm:text-3xl font-bold text-emerald-600">{formatCurrency(productMetrics.totalRevenue, language)}</div>
-                </div>
-                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 sm:p-6 border border-red-200 dark:border-red-800">
-                  <h4 className="text-xs sm:text-sm font-medium text-red-800 dark:text-red-400 mb-2">{t('totalCost')}</h4>
-                  <div className="text-xl sm:text-3xl font-bold text-red-600">{formatCurrency(productMetrics.totalCost, language)}</div>
-                </div>
-                <div className={cn(
-                  "rounded-xl p-4 sm:p-6 border",
-                  productMetrics.profit >= 0
-                    ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
-                    : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-                )}>
-                  <h4 className={cn(
-                    "text-xs sm:text-sm font-medium mb-2",
-                    productMetrics.profit >= 0 ? "text-emerald-800 dark:text-emerald-400" : "text-red-800 dark:text-red-400"
-                  )}>{t('netProfit')}</h4>
-                  <div className={cn(
-                    "text-xl sm:text-3xl font-bold",
-                    productMetrics.profit >= 0 ? "text-emerald-600" : "text-red-600"
-                  )}>
-                    {formatCurrency(productMetrics.profit, language)}
-                  </div>
-                </div>
-              </div>
 
               {/* Revenue Table by Feature */}
               <div>
