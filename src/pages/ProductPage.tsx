@@ -6,6 +6,7 @@ import KPICard from '@/components/KPICard';
 import FeatureFinancialPlanning from '@/components/FeatureFinancialPlanning';
 import ProductForecast from '@/components/ProductForecast';
 import ProductOverview from '@/components/ProductOverview';
+import ProductDocumentation from '@/components/ProductDocumentation';
 import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -601,15 +602,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
 
             {/* Documentation Tab */}
             <TabsContent value="docs" className="mt-0">
-              <div className="text-center py-8 sm:py-12">
-                <FileText className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">{t('noDocumentsYet')}</h3>
-                <p className="text-sm text-muted-foreground mb-4">{t('uploadDocumentsToOrganize')}</p>
-                <Button>
-                  <Plus className="w-4 h-4 me-2" />
-                  {t('uploadDocument')}
-                </Button>
-              </div>
+              <ProductDocumentation product={product} />
             </TabsContent>
           </div>
         </div>
