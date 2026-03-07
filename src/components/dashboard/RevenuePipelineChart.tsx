@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatCurrency } from '@/lib/utils';
+import { ScenarioType } from '@/components/ForecastConfigModal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { addMonths, format } from 'date-fns';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 const PORTFOLIO_COLORS = [
   'hsl(234, 55%, 30%)',
@@ -13,13 +15,21 @@ const PORTFOLIO_COLORS = [
   'hsl(0, 84%, 60%)',
 ];
 
+const SCENARIO_GROWTH: Record<ScenarioType, number> = {
+  baseline: 0.06,
+  optimistic: 0.12,
+  conservative: 0.02,
+};
+
 const RevenuePipelineChart = () => {
   const { state, t, language } = useApp();
+  const [scenario, setScenario] = useState<ScenarioType>('baseline');
 
   const { chartData, portfolioNames } = useMemo(() => {
     const now = new Date(2024, 3, 1);
     const futureMonths = Array.from({ length: 9 }, (_, i) => addMonths(now, i));
     const portfolioNames = state.portfolios.map(p => p.name);
+    const growth = SCENARIO_GROWTH[scenario];
 
     const productPortfolio: Record<number, string> = {};
     state.products.forEach(p => {
@@ -47,7 +57,6 @@ const RevenuePipelineChart = () => {
         }
       });
 
-      // Extrapolate for months without plan data
       const hasData = portfolioNames.some(pn => row[pn] > 0);
       if (!hasData) {
         const baseRevenues: Record<string, number> = {
@@ -59,15 +68,32 @@ const RevenuePipelineChart = () => {
         const monthIdx = futureMonths.indexOf(month);
         portfolioNames.forEach(pn => {
           const base = baseRevenues[pn] || 15000;
-          row[pn] = Math.round(base * (1 + monthIdx * 0.06));
+          row[pn] = Math.round(base * (1 + monthIdx * growth));
         });
+      } else {
+        // Apply scenario growth multiplier to planned data
+        const monthIdx = futureMonths.indexOf(month);
+        const multiplier = 1 + monthIdx * (growth - 0.06); // offset from baseline
+        if (scenario !== 'baseline') {
+          portfolioNames.forEach(pn => {
+            if (row[pn] > 0) {
+              row[pn] = Math.round(row[pn] * (1 + (growth - 0.06) * monthIdx));
+            }
+          });
+        }
       }
 
       return row;
     });
 
     return { chartData, portfolioNames };
-  }, [state]);
+  }, [state, scenario]);
+
+  const scenarios: { key: ScenarioType; icon: typeof TrendingUp; label: string }[] = [
+    { key: 'conservative', icon: TrendingDown, label: t('conservative') },
+    { key: 'baseline', icon: Minus, label: t('baseline') },
+    { key: 'optimistic', icon: TrendingUp, label: t('optimistic') },
+  ];
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
@@ -91,6 +117,31 @@ const RevenuePipelineChart = () => {
 
   return (
     <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-6">
+      {/* Scenario Filter */}
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-xs text-muted-foreground">{t('scenario')}</p>
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+          {scenarios.map(s => {
+            const Icon = s.icon;
+            const isActive = scenario === s.key;
+            return (
+              <button
+                key={s.key}
+                onClick={() => setScenario(s.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  isActive
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
