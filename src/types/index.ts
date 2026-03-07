@@ -126,15 +126,26 @@ export interface RevenueActual {
   actual: number;
 }
 
+export type DocumentLevel = 'product' | 'release';
+export type DocumentType = 'BRD' | 'PRD' | 'Technical Design' | 'Architecture' | 'Test Cases' | 'UAT Evidence' | 'Release Notes' | 'API Documentation' | 'User Manual' | 'Operational Runbook' | 'Risk / Compliance' | 'Other';
+export type DocumentTag = 'Business' | 'Technical' | 'Testing' | 'Compliance' | 'Operations';
+
 export interface Document {
   id: number;
+  title: string;
   name: string;
-  type: string;
+  type: DocumentType;
+  level: DocumentLevel;
   size: number;
   uploadedBy: string;
   uploadedAt: string;
   entityType: 'portfolio' | 'product' | 'feature' | 'release';
   entityId: number;
+  releaseId?: number;
+  description?: string;
+  version?: string;
+  effectiveDate?: string;
+  tags?: DocumentTag[];
 }
 
 // Application State
