@@ -30,72 +30,70 @@ const KPICard = ({ title, value, subtitle, icon, variant = 'blue', progress, com
 
   if (variant === 'gradient') {
     return (
-      <div className="bg-primary rounded-xl p-4 sm:p-5 shadow-card text-primary-foreground">
-        <div className="flex justify-between items-start mb-2">
-          <div className="text-xs font-medium opacity-90">{title}</div>
-          <div className="text-lg">{icon}</div>
-        </div>
-        <div className="text-2xl font-bold mb-1">{value}</div>
-        {subtitle && <div className="text-xs opacity-80 mb-2">{subtitle}</div>}
-        {compareValue && (
-          <div className="mt-2 bg-primary-foreground/10 rounded-md px-2 py-1 text-xs">
-            <span className="opacity-80">{compareLabel}: </span>
-            <span className="font-semibold">{compareValue}</span>
+      <div className="bg-primary rounded-xl p-5 shadow-[var(--shadow-card)] text-primary-foreground relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-foreground/5 to-transparent pointer-events-none" />
+        <div className="relative">
+          <div className="flex justify-between items-start mb-3">
+            <div className="text-xs font-medium opacity-80 uppercase tracking-wide">{title}</div>
+            <div className="w-8 h-8 rounded-lg bg-primary-foreground/10 flex items-center justify-center">{icon}</div>
           </div>
-        )}
-        {progress && (
-          <div className="space-y-1.5 mt-2">
-            <div className="bg-primary-foreground/15 rounded-lg p-2">
-              <div className="text-xs mb-0.5">{progress.label}</div>
-              <div className="text-xl font-bold">{progress.percent}%</div>
+          <div className="text-3xl font-bold mb-1 tracking-tight">{value}</div>
+          {subtitle && <div className="text-xs opacity-70">{subtitle}</div>}
+          {compareValue && (
+            <div className="mt-3 bg-primary-foreground/10 rounded-lg px-2.5 py-1.5 text-xs">
+              <span className="opacity-80">{compareLabel}: </span>
+              <span className="font-semibold">{compareValue}</span>
             </div>
-            {progress.remaining && (
-              <div className="bg-primary-foreground/15 rounded-lg px-2 py-1 text-center text-xs">
-                {progress.remaining}
+          )}
+          {progress && (
+            <div className="space-y-2 mt-3">
+              <div className="bg-primary-foreground/10 rounded-lg p-2.5">
+                <div className="text-xs opacity-80 mb-0.5">{progress.label}</div>
+                <div className="text-xl font-bold">{progress.percent}%</div>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
     <div className={cn(
-      'bg-card rounded-xl p-4 sm:p-5 border-s-4 shadow-card hover:shadow-card-hover transition-all duration-200',
+      'bg-card rounded-xl p-5 border-s-4 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-200',
       borderColors[variant]
     )}>
-      <div className="flex justify-between items-start mb-2">
-        <div className="text-xs text-muted-foreground font-medium">{title}</div>
-        <div className="text-lg">{icon}</div>
+      <div className="flex justify-between items-start mb-3">
+        <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{title}</div>
+        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">{icon}</div>
       </div>
-      <div className="text-2xl font-bold text-foreground mb-0.5">{value}</div>
-      {subtitle && <div className="text-xs text-muted-foreground mb-2">{subtitle}</div>}
+      <div className="text-3xl font-bold text-foreground mb-0.5 tracking-tight">{value}</div>
+      {subtitle && <div className="text-xs text-muted-foreground">{subtitle}</div>}
       
       {compareValue && (
-        <div className="mt-1 mb-2 bg-secondary rounded-md px-2 py-1 text-xs">
+        <div className="mt-2 mb-2 bg-secondary rounded-lg px-2.5 py-1.5 text-xs">
           <span className="text-muted-foreground">{compareLabel}: </span>
           <span className="font-semibold text-foreground">{compareValue}</span>
         </div>
       )}
       
       {progress && (
-        <div className="pt-2 border-t border-border">
-          <div className="flex justify-between text-xs mb-1">
+        <div className="pt-3 mt-3 border-t border-border">
+          <div className="flex justify-between text-xs mb-1.5">
             <span className="text-muted-foreground">{progress.label}</span>
-            <span className="font-semibold">{progress.target}</span>
+            <span className="font-semibold text-foreground">{progress.target}</span>
           </div>
-          <div className="w-full bg-secondary rounded-full h-1.5 mb-1">
+          <div className="w-full bg-secondary rounded-full h-2">
             <div 
               className={cn(
-                'h-1.5 rounded-full transition-all',
+                'h-2 rounded-full transition-all duration-500',
                 progress.status === 'positive' ? 'bg-success' : 'bg-destructive'
               )}
               style={{ width: `${Math.min(progress.percent, 100)}%` }}
             />
           </div>
-          <div className="flex justify-between text-xs">
-            <span className={progress.status === 'positive' ? 'text-success font-medium' : 'text-destructive font-medium'}>
+          <div className="flex justify-between text-xs mt-1.5">
+            <span className={progress.status === 'positive' ? 'text-success font-semibold' : 'text-destructive font-semibold'}>
               {progress.percent}%
             </span>
             {progress.remaining && <span className="text-muted-foreground">{progress.remaining}</span>}

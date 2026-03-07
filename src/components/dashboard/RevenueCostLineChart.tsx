@@ -25,7 +25,6 @@ const RevenueCostLineChart = () => {
         if (r.month === monthKey) revenue += r.actual;
       });
 
-      // Spread costs evenly across months
       state.costs.forEach(c => {
         if (c.type === 'CAPEX' && c.total && c.amortization) {
           cost += c.total / c.amortization;
@@ -42,12 +41,12 @@ const RevenueCostLineChart = () => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
     return (
-      <div className="bg-card border border-border rounded-lg shadow-lg p-3 text-xs space-y-1">
-        <p className="font-semibold text-foreground">{label}</p>
+      <div className="bg-card border border-border rounded-xl shadow-[var(--shadow-lg)] p-3.5 text-xs space-y-1.5">
+        <p className="font-semibold text-foreground text-sm">{label}</p>
         {payload.map((entry: any) => (
           <div key={entry.dataKey} className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
-            <span className="text-muted-foreground capitalize">{entry.name}:</span>
+            <span className="text-muted-foreground">{entry.name}:</span>
             <span className="font-semibold text-foreground">{formatCurrency(entry.value, language)}</span>
           </div>
         ))}
@@ -56,26 +55,28 @@ const RevenueCostLineChart = () => {
   };
 
   return (
-    <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
-      <h3 className="text-foreground mb-4 flex items-center gap-2">
-        <TrendingUp className="w-4 h-4 text-primary" />
-        {t('revenueCostTrend')}
-      </h3>
-      <div className="h-72">
+    <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <TrendingUp className="w-5 h-5 text-primary" />
+        <h3 className="text-foreground">{t('revenueCostTrend')}</h3>
+      </div>
+      <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
             <XAxis
               dataKey="name"
-              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
               axisLine={false}
               tickLine={false}
+              dy={8}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+              dx={-4}
             />
             <Tooltip content={<CustomTooltip />} />
             <Line
@@ -84,7 +85,7 @@ const RevenueCostLineChart = () => {
               stroke="hsl(var(--success))"
               strokeWidth={2.5}
               dot={{ r: 4, fill: 'hsl(var(--success))', strokeWidth: 0 }}
-              activeDot={{ r: 6, strokeWidth: 2, stroke: 'white' }}
+              activeDot={{ r: 7, strokeWidth: 2, stroke: 'white' }}
               name={t('revenue')}
             />
             <Line
@@ -93,7 +94,7 @@ const RevenueCostLineChart = () => {
               stroke="hsl(var(--destructive))"
               strokeWidth={2.5}
               dot={{ r: 4, fill: 'hsl(var(--destructive))', strokeWidth: 0 }}
-              activeDot={{ r: 6, strokeWidth: 2, stroke: 'white' }}
+              activeDot={{ r: 7, strokeWidth: 2, stroke: 'white' }}
               name={t('cost')}
             />
             <Line
@@ -101,11 +102,15 @@ const RevenueCostLineChart = () => {
               dataKey="profit"
               stroke="hsl(var(--profit))"
               strokeWidth={2}
-              strokeDasharray="5 5"
+              strokeDasharray="6 4"
               dot={{ r: 3, fill: 'hsl(var(--profit))', strokeWidth: 0 }}
               name={t('netProfit')}
             />
-            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+            <Legend
+              iconType="circle"
+              iconSize={10}
+              wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>

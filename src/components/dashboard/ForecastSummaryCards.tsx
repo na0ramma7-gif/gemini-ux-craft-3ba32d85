@@ -1,13 +1,12 @@
 import { useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatCurrency } from '@/lib/utils';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Calendar, Zap } from 'lucide-react';
 
 const ForecastSummaryCards = () => {
   const { state, t, language } = useApp();
 
   const projections = useMemo(() => {
-    // Calculate average monthly revenue from actuals
     const monthlyRevenues: Record<string, number> = {};
     state.revenueActual.forEach(r => {
       monthlyRevenues[r.month] = (monthlyRevenues[r.month] || 0) + r.actual;
@@ -17,7 +16,6 @@ const ForecastSummaryCards = () => {
       ? Object.values(monthlyRevenues).reduce((s, v) => s + v, 0) / months.length
       : 0;
 
-    // Simple growth projection (8% monthly growth)
     const growthRate = 1.08;
     let rev3 = 0, rev6 = 0, rev12 = 0;
     let base = avgMonthly;
@@ -32,24 +30,27 @@ const ForecastSummaryCards = () => {
   }, [state]);
 
   const cards = [
-    { label: t('projected3Months'), value: projections.rev3 },
-    { label: t('projected6Months'), value: projections.rev6 },
-    { label: t('projected12Months'), value: projections.rev12 },
+    { label: t('projected3Months'), value: projections.rev3, icon: TrendingUp, accent: 'bg-success/10 text-success' },
+    { label: t('projected6Months'), value: projections.rev6, icon: Calendar, accent: 'bg-primary/10 text-primary' },
+    { label: t('projected12Months'), value: projections.rev12, icon: Zap, accent: 'bg-accent/10 text-accent' },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      {cards.map((card, idx) => (
-        <div key={idx} className="bg-card rounded-xl shadow-[var(--shadow-card)] p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-5 h-5 text-primary" />
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {cards.map((card, idx) => {
+        const Icon = card.icon;
+        return (
+          <div key={idx} className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5 flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-xl ${card.accent} flex items-center justify-center shrink-0`}>
+              <Icon className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground truncate mb-1">{card.label}</p>
+              <p className="text-xl font-bold text-foreground tracking-tight">{formatCurrency(card.value, language)}</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground truncate">{card.label}</p>
-            <p className="text-lg font-bold text-foreground">{formatCurrency(card.value, language)}</p>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
