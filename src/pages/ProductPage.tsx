@@ -429,6 +429,10 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                       <span className="text-[10px] sm:text-xs text-muted-foreground">{t('planned')}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded bg-muted-foreground/50" />
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">{t('toDo')}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
                       <div className="w-3 h-3 rounded bg-primary" />
                       <span className="text-[10px] sm:text-xs text-muted-foreground">{t('inProgress')}</span>
                     </div>
