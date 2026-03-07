@@ -267,6 +267,15 @@ export const TRANSLATIONS = {
     addFinancialEntry: 'Add Financial Entry',
     editFinancialEntry: 'Edit Financial Entry',
     financialData: 'Financial Data',
+    monthlyFinancialSummary: 'Monthly Financial Summary',
+    resourceAllocations: 'Resource Allocations',
+    resourceAllocationsDesc: 'Manage team resource allocation and costs',
+    selectResources: 'Select Resources',
+    selectResourcesDesc: 'Select resources to allocate to this feature',
+    allocatedCost: 'Allocated Cost',
+    selectMonth: 'Select Month',
+    costCategories: 'Cost Categories',
+    addSelected: 'Add Selected',
     
     // Resources page
     resourceManagementTitle: 'Resource Management',
@@ -634,6 +643,15 @@ export const TRANSLATIONS = {
     addFinancialEntry: 'إضافة إدخال مالي',
     editFinancialEntry: 'تعديل الإدخال المالي',
     financialData: 'البيانات المالية',
+    monthlyFinancialSummary: 'الملخص المالي الشهري',
+    resourceAllocations: 'تخصيص الموارد',
+    resourceAllocationsDesc: 'إدارة تخصيص موارد الفريق والتكاليف',
+    selectResources: 'اختيار الموارد',
+    selectResourcesDesc: 'اختر الموارد لتخصيصها لهذه الميزة',
+    allocatedCost: 'التكلفة المخصصة',
+    selectMonth: 'اختر الشهر',
+    costCategories: 'فئات التكاليف',
+    addSelected: 'إضافة المحدد',
     
     // Resources page
     resourceManagementTitle: 'إدارة الموارد',
