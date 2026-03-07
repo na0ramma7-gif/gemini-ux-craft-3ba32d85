@@ -159,6 +159,7 @@ export const TRANSLATIONS = {
     delivered: 'Delivered',
     released: 'Released',
     addRelease: 'Add Release',
+    editRelease: 'Edit Release',
     version: 'Version',
     high: 'High',
     medium: 'Medium',
