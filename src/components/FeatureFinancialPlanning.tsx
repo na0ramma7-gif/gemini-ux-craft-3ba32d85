@@ -304,7 +304,9 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   };
 
   const saveModal = () => {
-    const year = selectedYear;
+    const startD = new Date(modalStartDate);
+    const modalMonth = startD.getMonth();
+    const year = startD.getFullYear();
 
     // Save revenue
     if (modalRevenuePlanned > 0 || modalRevenueActual > 0) {
@@ -326,7 +328,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
       }
     }
 
-    // Save costs by category
+    // Save costs by category (from category totals)
     Object.entries(modalCostCategories).forEach(([category, values], idx) => {
       if (values.planned > 0 || values.actual > 0) {
         setCostEntries(prev => [...prev, {
@@ -337,6 +339,51 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
           category,
           planned: values.planned,
           actual: values.actual,
+        }]);
+      }
+    });
+
+    // Save cost items per category
+    let itemIdx = 100;
+    Object.entries(modalCostItems).forEach(([category, items]) => {
+      items.forEach(item => {
+        if (item.planned > 0 || item.actual > 0) {
+          setCostEntries(prev => [...prev, {
+            id: Date.now() + itemIdx++,
+            featureId: modalFeatureId,
+            month: modalMonth,
+            year,
+            category,
+            planned: item.planned,
+            actual: item.actual,
+          }]);
+        }
+      });
+    });
+
+    // Save resource allocations as cost entries + to main allocations
+    modalResourceAllocations.forEach((alloc, idx) => {
+      const resource = state.resources.find(r => r.id === alloc.resourceId);
+      if (resource) {
+        const calculatedCost = resource.costRate * (alloc.utilization / 100);
+        if (!resourceAllocations.find(a => a.resourceId === alloc.resourceId)) {
+          setResourceAllocations(prev => [...prev, {
+            id: Date.now() + 200 + idx,
+            resourceId: alloc.resourceId,
+            utilization: alloc.utilization,
+          }]);
+        }
+        setCostEntries(prev => [...prev, {
+          id: Date.now() + 300 + idx,
+          featureId: modalFeatureId,
+          month: modalMonth,
+          year,
+          category: 'Resources',
+          planned: calculatedCost,
+          actual: 0,
+          resourceId: alloc.resourceId,
+          utilization: alloc.utilization,
+          calculatedCost,
         }]);
       }
     });
