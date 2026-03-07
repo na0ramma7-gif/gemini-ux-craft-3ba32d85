@@ -64,6 +64,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     portfolio: null,
     product: null,
     feature: null,
+    resource: null,
     tab: 'overview'
   });
   const [sidebarOpen, setSidebarOpen] = useState(true);

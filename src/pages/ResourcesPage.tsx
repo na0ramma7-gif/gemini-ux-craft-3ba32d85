@@ -1,30 +1,28 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import StatusBadge from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Users, Calendar, Plus, Trash2, BarChart3, Edit, MoreHorizontal } from 'lucide-react';
+import { Resource } from '@/types';
+import { Users, Plus, BarChart3 } from 'lucide-react';
 
-const ResourcesPage = () => {
-  const { state, addResource, updateResource, deleteResource, addAssignment, deleteAssignment, t, language } = useApp();
-  const [activeTab, setActiveTab] = useState('directory');
+interface ResourcesPageProps {
+  onResourceClick: (resource: Resource) => void;
+}
+
+const ResourcesPage = ({ onResourceClick }: ResourcesPageProps) => {
+  const { state, addResource, t, language } = useApp();
   const [showAddResourceModal, setShowAddResourceModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-  const [deleteResourceConfirmId, setDeleteResourceConfirmId] = useState<number | null>(null);
-  const [editingResource, setEditingResource] = useState<number | null>(null);
 
   const defaultResource = { name: '', employeeId: '', role: '', location: 'On-site' as 'On-site' | 'Offshore', category: 'Technical' as 'Technical' | 'Business' | 'Operation', lineManager: '', costRate: 0, capacity: 40, status: 'Active' as 'Active' | 'Inactive' };
   const [newResource, setNewResource] = useState(defaultResource);
-  const [newAssignment, setNewAssignment] = useState({ resourceId: 0, portfolioId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
 
   const getUtilization = (resourceId: number): number => {
     return state.assignments.filter(a => a.resourceId === resourceId).reduce((sum, a) => sum + a.utilization, 0);
@@ -37,35 +35,27 @@ const ResourcesPage = () => {
     })).sort((a, b) => b.utilization - a.utilization);
   }, [state]);
 
-  const handleAddOrUpdateResource = () => {
+  const handleAddResource = () => {
     if (!newResource.name || !newResource.role) return;
-    if (editingResource) {
-      updateResource(editingResource, newResource);
-      setEditingResource(null);
-    } else {
-      addResource(newResource);
-    }
+    addResource(newResource);
     setNewResource(defaultResource);
     setShowAddResourceModal(false);
   };
 
-  const openEditResource = (resource: typeof state.resources[0]) => {
-    setEditingResource(resource.id);
-    setNewResource({ name: resource.name, employeeId: resource.employeeId || '', role: resource.role, location: resource.location || 'On-site', category: resource.category || 'Technical', lineManager: resource.lineManager || '', costRate: resource.costRate, capacity: resource.capacity, status: resource.status });
-    setShowAddResourceModal(true);
-  };
+  const totalResources = state.resources.length;
+  const avgUtilization = utilizationData.length > 0 ? Math.round(utilizationData.reduce((s, u) => s + u.utilization, 0) / utilizationData.length) : 0;
+  const avgAvailableCapacity = Math.max(0, 100 - avgUtilization);
 
-  const handleDeleteResource = (id: number) => { deleteResource(id); setDeleteResourceConfirmId(null); };
-
-  const handleAssignResource = () => {
-    if (!newAssignment.resourceId || !newAssignment.productId) return;
-    addAssignment(newAssignment);
-    setNewAssignment({ resourceId: 0, portfolioId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
-    setShowAssignModal(false);
-  };
-
-  const handleDeleteAssignment = (id: number) => { deleteAssignment(id); setDeleteConfirmId(null); };
-  const openAssignModal = (resourceId: number) => { setNewAssignment({ ...newAssignment, resourceId }); setShowAssignModal(true); };
+  // Allocation by product
+  const allocationByProduct = useMemo(() => {
+    const map: Record<string, number> = {};
+    state.assignments.forEach(a => {
+      const product = state.products.find(p => p.id === a.productId);
+      const name = product?.name || 'N/A';
+      map[name] = (map[name] || 0) + a.utilization;
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  }, [state.assignments, state.products]);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -80,17 +70,16 @@ const ResourcesPage = () => {
         </Button>
       </div>
 
-      {/* Summary Cards */}
+      {/* Capacity Dashboard */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl p-4 text-center border border-border shadow-card">
-          <div className="text-xs text-muted-foreground mb-1">{t('available')}</div>
-          <div className="text-2xl font-bold text-success">{utilizationData.filter(u => u.utilization < 80).length}</div>
-          <div className="text-xs text-muted-foreground mt-1">{t('lessThan80')}</div>
+          <div className="text-xs text-muted-foreground mb-1">{t('totalResources')}</div>
+          <div className="text-2xl font-bold text-foreground">{totalResources}</div>
         </div>
         <div className="bg-card rounded-xl p-4 text-center border border-border shadow-card">
-          <div className="text-xs text-muted-foreground mb-1">{t('nearCapacity')}</div>
-          <div className="text-2xl font-bold text-warning">{utilizationData.filter(u => u.utilization >= 80 && u.utilization <= 100).length}</div>
-          <div className="text-xs text-muted-foreground mt-1">{t('between80And100')}</div>
+          <div className="text-xs text-muted-foreground mb-1">{t('availableCapacity')}</div>
+          <div className="text-2xl font-bold text-success">{avgAvailableCapacity}%</div>
+          <div className="text-xs text-muted-foreground mt-1">{t('acrossAllResources')}</div>
         </div>
         <div className="bg-card rounded-xl p-4 text-center border border-border shadow-card">
           <div className="text-xs text-muted-foreground mb-1">{t('overAllocated')}</div>
@@ -99,178 +88,84 @@ const ResourcesPage = () => {
         </div>
         <div className="bg-card rounded-xl p-4 text-center border border-border shadow-card">
           <div className="text-xs text-muted-foreground mb-1">{t('avgUtilization')}</div>
-          <div className="text-2xl font-bold text-primary">
-            {utilizationData.length > 0 ? Math.round(utilizationData.reduce((s, u) => s + u.utilization, 0) / utilizationData.length) : 0}%
-          </div>
+          <div className="text-2xl font-bold text-primary">{avgUtilization}%</div>
           <div className="text-xs text-muted-foreground mt-1">{t('acrossAllResources')}</div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="bg-card rounded-xl shadow-card overflow-hidden">
-          <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto flex-nowrap">
-            {[
-              { value: 'directory', icon: <Users className="w-4 h-4 me-1.5" />, label: t('directory') },
-              { value: 'assignments', icon: <Calendar className="w-4 h-4 me-1.5" />, label: t('assignments') },
-              { value: 'utilization', icon: <BarChart3 className="w-4 h-4 me-1.5" />, label: t('utilization') },
-            ].map(tab => (
-              <TabsTrigger key={tab.value} value={tab.value}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-5 py-3 text-sm whitespace-nowrap">
-                {tab.icon}{tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <div className="p-5">
-            {/* Directory */}
-            <TabsContent value="directory" className="mt-0">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px]">
-                  <thead className="bg-secondary/50">
-                    <tr>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('employeeId')}</th>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('name')}</th>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('role')}</th>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('location')}</th>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('category')}</th>
-                      <th className="px-4 py-2.5 text-end text-xs font-medium text-muted-foreground uppercase">{t('utilization')}</th>
-                      <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground uppercase">{t('status')}</th>
-                      <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {state.resources.map(resource => {
-                      const utilization = getUtilization(resource.id);
-                      const isOverAllocated = utilization > 100;
-                      return (
-                        <tr key={resource.id} className="hover:bg-secondary/30">
-                          <td className="px-4 py-2.5 text-sm text-muted-foreground font-mono">{resource.employeeId || '—'}</td>
-                          <td className="px-4 py-2.5 font-medium text-foreground text-sm">{resource.name}</td>
-                          <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.role}</td>
-                          <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.location || '—'}</td>
-                          <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.category || '—'}</td>
-                          <td className="px-4 py-2.5 text-end">
-                            <div className={cn("font-bold text-sm", isOverAllocated ? 'text-destructive' : utilization > 80 ? 'text-warning' : 'text-success')}>{utilization}%</div>
-                            {isOverAllocated && <div className="text-xs text-destructive">{t('overAllocated')}!</div>}
-                          </td>
-                          <td className="px-4 py-2.5 text-center"><StatusBadge status={resource.status} /></td>
-                          <td className="px-4 py-2.5 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openAssignModal(resource.id)}>{t('assign')}</Button>
-                              <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEditResource(resource)}>
-                                <Edit className="w-3 h-3" />
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => setDeleteResourceConfirmId(resource.id)}>
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </TabsContent>
-
-            {/* Assignments */}
-            <TabsContent value="assignments" className="mt-0">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px]">
-                  <thead className="bg-secondary/50">
-                    <tr>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('name')}</th>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('product')}</th>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('release')}</th>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('period')}</th>
-                      <th className="px-4 py-2.5 text-end text-xs font-medium text-muted-foreground uppercase">{t('utilization')}</th>
-                      <th className="px-4 py-2.5 text-end text-xs font-medium text-muted-foreground uppercase">{t('monthlyCost')}</th>
-                      <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {state.assignments.map(assignment => {
-                      const resource = state.resources.find(r => r.id === assignment.resourceId);
-                      const release = state.releases.find(r => r.id === assignment.releaseId);
-                      const product = state.products.find(p => p.id === assignment.productId);
-                      const monthlyCost = resource ? resource.costRate * (assignment.utilization / 100) : 0;
-                      return (
-                        <tr key={assignment.id} className="hover:bg-secondary/30">
-                          <td className="px-4 py-2.5">
-                            <div className="font-medium text-foreground text-sm">{resource?.name}</div>
-                            <div className="text-xs text-muted-foreground">{resource?.role}</div>
-                          </td>
-                          <td className="px-4 py-2.5 text-sm">{product?.name || 'N/A'}</td>
-                          <td className="px-4 py-2.5 text-sm">{release?.version || 'N/A'}</td>
-                          <td className="px-4 py-2.5 text-sm">
-                            <div>{formatDate(assignment.startDate, language)}</div>
-                            <div className="text-muted-foreground">→ {formatDate(assignment.endDate, language)}</div>
-                          </td>
-                          <td className="px-4 py-2.5 text-end font-semibold text-primary text-sm">{assignment.utilization}%</td>
-                          <td className="px-4 py-2.5 text-end font-bold text-revenue text-sm">{formatCurrency(monthlyCost, language)}</td>
-                          <td className="px-4 py-2.5 text-center">
-                            <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => setDeleteConfirmId(assignment.id)}>
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </TabsContent>
-
-            {/* Utilization */}
-            <TabsContent value="utilization" className="mt-0 space-y-3">
-              {utilizationData.map(({ resource, utilization, assignments }) => {
-                const isOverAllocated = utilization > 100;
-                const cappedUtilization = Math.min(utilization, 100);
-                return (
-                  <div key={resource.id} className="border border-border rounded-xl p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <div>
-                        <div className="font-semibold text-foreground text-sm">{resource.name}</div>
-                        <div className="text-xs text-muted-foreground">{resource.role}</div>
-                      </div>
-                      <div className="text-end">
-                        <div className={cn("text-xl font-bold", isOverAllocated ? 'text-destructive' : utilization > 80 ? 'text-warning' : 'text-success')}>{utilization}%</div>
-                        <div className="text-xs text-muted-foreground">{assignments.length} {assignments.length === 1 ? t('assignment') : t('assignmentPlural')}</div>
-                      </div>
-                    </div>
-                    <div className="relative w-full h-5 bg-secondary rounded-full overflow-hidden">
-                      <div className={cn("h-full transition-all", isOverAllocated ? 'bg-destructive' : utilization > 80 ? 'bg-warning' : 'bg-success')} style={{ width: `${cappedUtilization}%` }} />
-                      {isOverAllocated && <div className="absolute end-2 top-0.5 text-xs font-semibold text-destructive-foreground">{t('overBy')} {utilization - 100}%</div>}
-                    </div>
-                    {assignments.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {assignments.map(a => {
-                          const release = state.releases.find(r => r.id === a.releaseId);
-                          const product = state.products.find(p => p.id === a.productId);
-                          return (
-                            <div key={a.id} className="flex justify-between text-xs text-muted-foreground">
-                              <span>{product?.name} - {release?.version}</span>
-                              <span className="font-semibold">{a.utilization}%</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+      {/* Resource Allocation by Product */}
+      {allocationByProduct.length > 0 && (
+        <div className="bg-card rounded-xl p-5 border border-border shadow-card">
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t('resourceAllocationByProduct')}</h3>
+          <div className="space-y-2">
+            {allocationByProduct.map(([name, totalUtil], idx) => {
+              const colors = ['bg-primary', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-chart-5'];
+              const maxUtil = Math.max(...allocationByProduct.map(a => a[1] as number));
+              return (
+                <div key={name} className="flex items-center gap-3">
+                  <div className="w-32 text-sm text-muted-foreground truncate shrink-0">{name}</div>
+                  <div className="flex-1 h-5 bg-secondary rounded-full overflow-hidden">
+                    <div className={cn("h-full rounded-full transition-all", colors[idx % colors.length])} style={{ width: `${(totalUtil / maxUtil) * 100}%` }} />
                   </div>
-                );
-              })}
-            </TabsContent>
+                  <div className="w-12 text-sm font-semibold text-foreground text-end">{totalUtil}%</div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </Tabs>
+      )}
 
-      {/* Add/Edit Resource Modal */}
-      <Dialog open={showAddResourceModal} onOpenChange={(open) => { setShowAddResourceModal(open); if (!open) setEditingResource(null); }}>
+      {/* Resource Directory */}
+      <div className="bg-card rounded-xl shadow-card overflow-hidden">
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-border">
+          <Users className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">{t('directory')}</span>
+        </div>
+        <div className="p-5">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px]">
+              <thead className="bg-secondary/50">
+                <tr>
+                  <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('employeeId')}</th>
+                  <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('name')}</th>
+                  <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('role')}</th>
+                  <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('location')}</th>
+                  <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('category')}</th>
+                  <th className="px-4 py-2.5 text-end text-xs font-medium text-muted-foreground uppercase">{t('utilization')}</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground uppercase">{t('status')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {state.resources.map(resource => {
+                  const utilization = getUtilization(resource.id);
+                  const isOverAllocated = utilization > 100;
+                  return (
+                    <tr key={resource.id} className="hover:bg-secondary/30 cursor-pointer" onClick={() => onResourceClick(resource)}>
+                      <td className="px-4 py-2.5 text-sm text-muted-foreground font-mono">{resource.employeeId || '—'}</td>
+                      <td className="px-4 py-2.5 font-medium text-primary text-sm hover:underline">{resource.name}</td>
+                      <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.role}</td>
+                      <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.location || '—'}</td>
+                      <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.category || '—'}</td>
+                      <td className="px-4 py-2.5 text-end">
+                        <div className={cn("font-bold text-sm", isOverAllocated ? 'text-destructive' : utilization > 80 ? 'text-warning' : 'text-success')}>{utilization}%</div>
+                        {isOverAllocated && <div className="text-xs text-destructive">{t('overAllocated')}!</div>}
+                      </td>
+                      <td className="px-4 py-2.5 text-center"><StatusBadge status={resource.status} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Resource Modal */}
+      <Dialog open={showAddResourceModal} onOpenChange={setShowAddResourceModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingResource ? t('editResource') : t('addNewResource')}</DialogTitle>
-            <DialogDescription>{editingResource ? t('editResourceDesc') : t('addTeamMember')}</DialogDescription>
+            <DialogTitle>{t('addNewResource')}</DialogTitle>
+            <DialogDescription>{t('addTeamMember')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
@@ -338,95 +233,8 @@ const ResourcesPage = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowAddResourceModal(false); setEditingResource(null); }}>{t('cancel')}</Button>
-            <Button onClick={handleAddOrUpdateResource}>{editingResource ? t('save') : t('addResource')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Assign Resource Modal */}
-      <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('assignResource')}</DialogTitle>
-            <DialogDescription>{t('assignToProduct')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('portfolio')}</label>
-              <Select value={newAssignment.portfolioId?.toString() || ''} onValueChange={(value) => setNewAssignment({ ...newAssignment, portfolioId: parseInt(value), productId: 0, releaseId: 0 })}>
-                <SelectTrigger><SelectValue placeholder={t('selectPortfolio')} /></SelectTrigger>
-                <SelectContent>
-                  {state.portfolios.map(portfolio => <SelectItem key={portfolio.id} value={portfolio.id.toString()}>{portfolio.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('product')}</label>
-              <Select value={newAssignment.productId?.toString() || ''} onValueChange={(value) => setNewAssignment({ ...newAssignment, productId: parseInt(value), releaseId: 0 })}>
-                <SelectTrigger><SelectValue placeholder={t('selectProduct')} /></SelectTrigger>
-                <SelectContent>
-                  {state.products.filter(p => !newAssignment.portfolioId || p.portfolioId === newAssignment.portfolioId).map(product => <SelectItem key={product.id} value={product.id.toString()}>{product.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('release')}</label>
-              <Select value={newAssignment.releaseId?.toString() || ''} onValueChange={(value) => setNewAssignment({ ...newAssignment, releaseId: parseInt(value) })}>
-                <SelectTrigger><SelectValue placeholder={t('selectReleasePlaceholder')} /></SelectTrigger>
-                <SelectContent>
-                  {state.releases.filter(r => r.productId === newAssignment.productId).map(release => (
-                    <SelectItem key={release.id} value={release.id.toString()}>{release.version} - {release.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('startDate')}</label>
-                <Input type="date" value={newAssignment.startDate} onChange={(e) => setNewAssignment({ ...newAssignment, startDate: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('endDate')}</label>
-                <Input type="date" value={newAssignment.endDate} onChange={(e) => setNewAssignment({ ...newAssignment, endDate: e.target.value })} />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('utilizationPercent')}</label>
-              <Input type="number" min="0" max="100" value={newAssignment.utilization} onChange={(e) => setNewAssignment({ ...newAssignment, utilization: parseInt(e.target.value) || 0 })} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAssignModal(false)}>{t('cancel')}</Button>
-            <Button onClick={handleAssignResource}>{t('assign')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation */}
-      <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('deleteAssignment')}</DialogTitle>
-            <DialogDescription>{t('confirmDeleteAssignment')}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>{t('cancel')}</Button>
-            <Button variant="destructive" onClick={() => deleteConfirmId && handleDeleteAssignment(deleteConfirmId)}>{t('delete')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Resource Confirmation */}
-      <Dialog open={!!deleteResourceConfirmId} onOpenChange={() => setDeleteResourceConfirmId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('deleteResource')}</DialogTitle>
-            <DialogDescription>{t('confirmDeleteResource')}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteResourceConfirmId(null)}>{t('cancel')}</Button>
-            <Button variant="destructive" onClick={() => deleteResourceConfirmId && handleDeleteResource(deleteResourceConfirmId)}>{t('delete')}</Button>
+            <Button variant="outline" onClick={() => setShowAddResourceModal(false)}>{t('cancel')}</Button>
+            <Button onClick={handleAddResource}>{t('addResource')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
