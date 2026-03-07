@@ -8,7 +8,8 @@ import Dashboard from '@/pages/Dashboard';
 import PortfolioPage from '@/pages/PortfolioPage';
 import ProductPage from '@/pages/ProductPage';
 import ResourcesPage from '@/pages/ResourcesPage';
-import { Portfolio, Product } from '@/types';
+import ResourceProfilePage from '@/pages/ResourceProfilePage';
+import { Portfolio, Product, Resource } from '@/types';
 
 const queryClient = new QueryClient();
 
@@ -18,7 +19,7 @@ const MainLayout = () => {
   const handleNavigate = (newView: any) => {
     setView(newView);
     if (newView === 'dashboard') {
-      setSelected(prev => ({ ...prev, portfolio: null, product: null }));
+      setSelected(prev => ({ ...prev, portfolio: null, product: null, resource: null }));
     }
   };
 
@@ -32,6 +33,11 @@ const MainLayout = () => {
     setView('product');
   };
 
+  const handleResourceClick = (resource: Resource) => {
+    setSelected(prev => ({ ...prev, resource }));
+    setView('resourceProfile');
+  };
+
   const handleBackToPortfolio = () => {
     setSelected(prev => ({ ...prev, product: null }));
     setView('portfolio');
@@ -40,6 +46,11 @@ const MainLayout = () => {
   const handleBackToDashboard = () => {
     setSelected(prev => ({ ...prev, portfolio: null, product: null }));
     setView('dashboard');
+  };
+
+  const handleBackToResources = () => {
+    setSelected(prev => ({ ...prev, resource: null }));
+    setView('resources');
   };
 
   const renderView = () => {
@@ -66,7 +77,16 @@ const MainLayout = () => {
           <Dashboard onPortfolioClick={handlePortfolioClick} />
         );
       case 'resources':
-        return <ResourcesPage />;
+        return <ResourcesPage onResourceClick={handleResourceClick} />;
+      case 'resourceProfile':
+        return selected.resource ? (
+          <ResourceProfilePage
+            resource={selected.resource}
+            onBack={handleBackToResources}
+          />
+        ) : (
+          <ResourcesPage onResourceClick={handleResourceClick} />
+        );
       default:
         return <Dashboard onPortfolioClick={handlePortfolioClick} />;
     }
