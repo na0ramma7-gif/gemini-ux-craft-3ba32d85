@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Product, Feature } from '@/types';
+import { Product, Feature, Release } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import KPICard from '@/components/KPICard';
 import FeatureFinancialPlanning from '@/components/FeatureFinancialPlanning';
@@ -48,12 +48,14 @@ interface ProductPageProps {
 }
 
 const ProductPage = ({ product, onBack }: ProductPageProps) => {
-  const { state, addFeature, updateFeature, deleteFeature, t, language, isRTL } = useApp();
+  const { state, addFeature, updateFeature, deleteFeature, addRelease, t, language, isRTL } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('list');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingFeature, setEditingFeature] = useState<Feature | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [showAddReleaseModal, setShowAddReleaseModal] = useState(false);
+  const [newRelease, setNewRelease] = useState({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' as Release['status'] });
   const [selectedFeatureForFinancials, setSelectedFeatureForFinancials] = useState<Feature | null>(null);
   
   const [newFeature, setNewFeature] = useState({
@@ -524,7 +526,12 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
 
             {/* Releases Tab */}
             <TabsContent value="releases" className="mt-0 space-y-4">
-              <h3 className="text-base sm:text-lg font-semibold text-foreground">{t('releaseManagement')}</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-base sm:text-lg font-semibold text-foreground">{t('releaseManagement')}</h3>
+                <Button size="sm" onClick={() => setShowAddReleaseModal(true)} className="gap-1.5">
+                  <Plus className="w-4 h-4" /> {t('addRelease')}
+                </Button>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {releases.map(release => {
                   const releaseFeatures = features.filter(f => f.releaseId === release.id);
@@ -556,6 +563,61 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                   );
                 })}
               </div>
+
+              {/* Add Release Modal */}
+              <Dialog open={showAddReleaseModal} onOpenChange={setShowAddReleaseModal}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>{t('addRelease')}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-foreground">{t('version')}</label>
+                        <Input placeholder="v3.0" value={newRelease.version} onChange={e => setNewRelease(prev => ({ ...prev, version: e.target.value }))} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-foreground">{t('name')}</label>
+                        <Input placeholder="Release name" value={newRelease.name} onChange={e => setNewRelease(prev => ({ ...prev, name: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-foreground">{t('startDate')}</label>
+                        <Input type="date" value={newRelease.startDate} onChange={e => setNewRelease(prev => ({ ...prev, startDate: e.target.value }))} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-foreground">{t('endDate')}</label>
+                        <Input type="date" value={newRelease.endDate} onChange={e => setNewRelease(prev => ({ ...prev, endDate: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-foreground">{t('status')}</label>
+                      <Select value={newRelease.status} onValueChange={v => setNewRelease(prev => ({ ...prev, status: v as Release['status'] }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Planned">{t('planned')}</SelectItem>
+                          <SelectItem value="In Progress">{t('inProgress')}</SelectItem>
+                          <SelectItem value="Released">{t('released')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowAddReleaseModal(false)}>{t('cancel')}</Button>
+                    <Button
+                      disabled={!newRelease.version || !newRelease.name || !newRelease.startDate || !newRelease.endDate}
+                      onClick={() => {
+                        addRelease({ productId: product.id, ...newRelease });
+                        setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' });
+                        setShowAddReleaseModal(false);
+                      }}
+                    >
+                      {t('save')}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </TabsContent>
 
             {/* Financials Tab */}

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect } from 'react';
-import { AppState, ViewType, SelectedState, Portfolio, Product, Feature, Assignment, Resource } from '@/types';
+import { AppState, ViewType, SelectedState, Portfolio, Product, Feature, Assignment, Resource, Release } from '@/types';
 import { INITIAL_STATE } from '@/data/initialData';
 import { TRANSLATIONS, Language, TranslationKey } from '@/i18n/translations';
 
@@ -49,6 +49,7 @@ interface AppContextType {
   deleteFeature: (featureId: number) => void;
   updateProduct: (productId: number, updates: Partial<Product>) => void;
   updatePortfolio: (portfolioId: number, updates: Partial<Portfolio>) => void;
+  addRelease: (release: Omit<Release, 'id'>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -193,6 +194,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const addRelease = (release: Omit<Release, 'id'>) => {
+    setState(prev => ({
+      ...prev,
+      releases: [
+        ...prev.releases,
+        { ...release, id: Math.max(...prev.releases.map(r => r.id), 0) + 1 }
+      ]
+    }));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -219,7 +230,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         updateFeature,
         deleteFeature,
         updateProduct,
-        updatePortfolio
+        updatePortfolio,
+        addRelease
       }}
     >
       {children}
