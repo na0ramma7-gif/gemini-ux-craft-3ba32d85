@@ -21,7 +21,7 @@ const ResourcesPage = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   const [newResource, setNewResource] = useState({ name: '', role: '', costRate: 0, capacity: 40, status: 'Active' as const });
-  const [newAssignment, setNewAssignment] = useState({ resourceId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
+  const [newAssignment, setNewAssignment] = useState({ resourceId: 0, portfolioId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
 
   const getUtilization = (resourceId: number): number => {
     return state.assignments.filter(a => a.resourceId === resourceId).reduce((sum, a) => sum + a.utilization, 0);
@@ -44,7 +44,7 @@ const ResourcesPage = () => {
   const handleAssignResource = () => {
     if (!newAssignment.resourceId || !newAssignment.productId) return;
     addAssignment(newAssignment);
-    setNewAssignment({ resourceId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
+    setNewAssignment({ resourceId: 0, portfolioId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
     setShowAssignModal(false);
   };
 
@@ -280,11 +280,20 @@ const ResourcesPage = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
+              <label className="text-sm font-medium text-foreground">{t('portfolio')}</label>
+              <Select value={newAssignment.portfolioId?.toString() || ''} onValueChange={(value) => setNewAssignment({ ...newAssignment, portfolioId: parseInt(value), productId: 0, releaseId: 0 })}>
+                <SelectTrigger><SelectValue placeholder={t('selectPortfolio')} /></SelectTrigger>
+                <SelectContent>
+                  {state.portfolios.map(portfolio => <SelectItem key={portfolio.id} value={portfolio.id.toString()}>{portfolio.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <label className="text-sm font-medium text-foreground">{t('product')}</label>
-              <Select value={newAssignment.productId?.toString() || ''} onValueChange={(value) => setNewAssignment({ ...newAssignment, productId: parseInt(value) })}>
+              <Select value={newAssignment.productId?.toString() || ''} onValueChange={(value) => setNewAssignment({ ...newAssignment, productId: parseInt(value), releaseId: 0 })}>
                 <SelectTrigger><SelectValue placeholder={t('selectProduct')} /></SelectTrigger>
                 <SelectContent>
-                  {state.products.map(product => <SelectItem key={product.id} value={product.id.toString()}>{product.name}</SelectItem>)}
+                  {state.products.filter(p => !newAssignment.portfolioId || p.portfolioId === newAssignment.portfolioId).map(product => <SelectItem key={product.id} value={product.id.toString()}>{product.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
