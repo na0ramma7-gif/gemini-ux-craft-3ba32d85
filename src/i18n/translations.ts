@@ -301,6 +301,12 @@ export const TRANSLATIONS = {
     // Charts
     revenueCostTrend: 'Revenue vs Cost Trend',
     portfolioDistribution: 'Portfolio Distribution',
+    revenuePipeline: 'Revenue Pipeline',
+    projected3Months: 'Projected Revenue (3 months)',
+    projected6Months: 'Projected Revenue (6 months)',
+    projected12Months: 'Projected Revenue (12 months)',
+    upcomingRevenueDrivers: 'Upcoming Revenue Drivers',
+    expectedLaunch: 'Expected Launch',
     
     // Time
     jan: 'Jan', feb: 'Feb', mar: 'Mar', apr: 'Apr', may: 'May', jun: 'Jun',
@@ -651,6 +657,12 @@ export const TRANSLATIONS = {
     // Charts
     revenueCostTrend: 'اتجاه الإيرادات مقابل التكاليف',
     portfolioDistribution: 'توزيع المحافظ',
+    revenuePipeline: 'خط أنابيب الإيرادات',
+    projected3Months: 'الإيرادات المتوقعة (3 أشهر)',
+    projected6Months: 'الإيرادات المتوقعة (6 أشهر)',
+    projected12Months: 'الإيرادات المتوقعة (12 شهر)',
+    upcomingRevenueDrivers: 'محركات الإيرادات القادمة',
+    expectedLaunch: 'تاريخ الإطلاق المتوقع',
     
     // Time
     jan: 'يناير', feb: 'فبراير', mar: 'مارس', apr: 'أبريل', may: 'مايو', jun: 'يونيو',
