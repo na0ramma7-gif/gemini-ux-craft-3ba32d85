@@ -12,7 +12,8 @@ import UpcomingRevenueDrivers from '@/components/dashboard/UpcomingRevenueDriver
 import { formatCurrency } from '@/lib/utils';
 import { Portfolio, Product } from '@/types';
 import { ScenarioType } from '@/components/ForecastConfigModal';
-import { TrendingUp, TrendingDown, Target, Package, DollarSign, Receipt, BarChart3, Settings2 } from 'lucide-react';
+import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
+import { TrendingUp, TrendingDown, Target, Package, DollarSign, Receipt, BarChart3, Settings2, Layers, Activity } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 
@@ -23,16 +24,16 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
-  const { state, metrics, t, language, setView, setSelected } = useApp();
+  const { state, t, language, setView, setSelected } = useApp();
+  const dept = useHierarchicalMetrics(state);
   const [scenario, setScenario] = useState<ScenarioType>('baseline');
   const [horizon, setHorizon] = useState<PipelineHorizon>(9);
 
   const trend = useMemo(() => {
-    const totalActual = state.revenueActual.reduce((s, r) => s + r.actual, 0);
-    const target = metrics.revenue * 1.35;
-    const achievePct = target > 0 ? Math.round((totalActual / target) * 100) : 0;
-    return { achievePct, totalActual };
-  }, [state, metrics]);
+    const target = dept.planned * 1.35;
+    const achievePct = target > 0 ? Math.round((dept.revenue / target) * 100) : 0;
+    return { achievePct };
+  }, [dept]);
 
   const handleProductClick = (product: Product) => {
     setSelected(prev => ({
@@ -56,48 +57,50 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-foreground">{t('dashboard')}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t('businessOverview')}</p>
+          <h1 className="text-foreground">{dept.departmentName} — {t('dashboard')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {dept.totalPortfolios} {t('portfolios')} · {dept.totalProducts} {t('products')} · {dept.totalFeatures} {t('features')} · {dept.totalReleases} Releases
+          </p>
         </div>
         <GlobalDateFilter />
       </div>
 
-      {/* 1. Executive Summary KPIs */}
+      {/* 1. Executive Summary KPIs — Department Level */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <KPICard
           title={t('totalRevenue')}
-          value={formatCurrency(metrics.revenue, language)}
+          value={formatCurrency(dept.revenue, language)}
           subtitle="↑ 8% vs last month"
           icon={<DollarSign className="w-5 h-5 text-success" />}
           variant="green"
           progress={{
             label: t('targetYear'),
-            target: formatCurrency(metrics.revenue * 1.35, language),
+            target: formatCurrency(dept.planned * 1.35, language),
             percent: trend.achievePct,
             status: trend.achievePct >= 70 ? 'positive' : 'negative',
-            remaining: formatCurrency(metrics.revenue * 0.35, language)
+            remaining: formatCurrency(dept.planned * 0.35, language)
           }}
         />
         <KPICard
           title={t('totalCost')}
-          value={formatCurrency(metrics.cost, language)}
+          value={formatCurrency(dept.cost, language)}
           subtitle="↓ 3% vs last month"
           icon={<Receipt className="w-5 h-5 text-destructive" />}
           variant="red"
           progress={{
             label: t('budgetYear'),
-            target: formatCurrency(metrics.cost * 1.18, language),
+            target: formatCurrency(dept.cost * 1.18, language),
             percent: 85,
             status: 'positive',
-            remaining: formatCurrency(metrics.cost * 0.18, language)
+            remaining: formatCurrency(dept.cost * 0.18, language)
           }}
         />
         <KPICard
           title={t('netProfit')}
-          value={formatCurrency(metrics.profit, language)}
-          subtitle={`${t('margin')}: ${((metrics.profit / metrics.revenue) * 100).toFixed(1)}%`}
-          icon={metrics.profit >= 0 ? <TrendingUp className="w-5 h-5 text-profit" /> : <TrendingDown className="w-5 h-5 text-destructive" />}
-          variant={metrics.profit >= 0 ? 'green' : 'red'}
+          value={formatCurrency(dept.profit, language)}
+          subtitle={`${t('margin')}: ${dept.margin.toFixed(1)}%`}
+          icon={dept.profit >= 0 ? <TrendingUp className="w-5 h-5 text-profit" /> : <TrendingDown className="w-5 h-5 text-destructive" />}
+          variant={dept.profit >= 0 ? 'green' : 'red'}
         />
         <KPICard
           title={t('targetVsAchieved')}
@@ -108,8 +111,8 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
         />
         <KPICard
           title={t('products')}
-          value={metrics.products.toString()}
-          subtitle={t('acrossPortfolios')}
+          value={dept.totalProducts.toString()}
+          subtitle={`${dept.totalPortfolios} ${t('portfolios')}`}
           icon={<Package className="w-5 h-5 text-accent" />}
           variant="purple"
         />

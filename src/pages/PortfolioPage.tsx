@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Portfolio, Product } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import KPICard from '@/components/KPICard';
@@ -63,48 +64,38 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
 
   const products = useMemo(() => state.products.filter(p => p.portfolioId === portfolio.id), [state.products, portfolio.id]);
 
+  const deptMetrics = useHierarchicalMetrics(state);
+  const portMetrics = deptMetrics.portfolioMetrics.find(p => p.portfolioId === portfolio.id);
+
+  // Backwards-compatible shape for charts
   const portfolioMetrics = useMemo(() => {
-    let totalRevenue = 0, totalCost = 0, totalFeatures = 0, deliveredFeatures = 0, inProgressFeatures = 0, delayedFeatures = 0, activeReleases = 0;
-
-    const productData = products.map(product => {
-      const productFeatures = state.features.filter(f => f.productId === product.id);
-      totalFeatures += productFeatures.length;
-      deliveredFeatures += productFeatures.filter(f => f.status === 'Delivered').length;
-      inProgressFeatures += productFeatures.filter(f => f.status === 'In Progress').length;
-
-      const productReleases = state.releases.filter(r => r.productId === product.id);
-      activeReleases += productReleases.filter(r => r.status === 'In Progress').length;
-
-      let rev = 0, cost = 0, planned = 0;
-      productFeatures.forEach(f => {
-        state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { rev += r.actual; });
-        state.revenuePlan.filter(r => r.featureId === f.id).forEach(r => { planned += r.expected; });
-      });
-      state.costs.filter(c => c.productId === product.id).forEach(c => {
-        if (c.type === 'CAPEX' && c.total && c.amortization) cost += (c.total / c.amortization) * 6;
-        else if (c.monthly) cost += c.monthly * 6;
-      });
-      totalRevenue += rev;
-      totalCost += cost;
-
-      return { name: product.name, revenue: rev, cost, profit: rev - cost, lifecycle: product.lifecycleStage || 'Development' };
-    });
-
-    const profit = totalRevenue - totalCost;
-    const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
-
-    return {
-      totalRevenue, totalCost, profit, margin,
-      productCount: products.length, featureCount: totalFeatures,
-      deliveredFeatures, inProgressFeatures, delayedFeatures, activeReleases,
-      productData,
+    if (!portMetrics) return {
+      totalRevenue: 0, totalCost: 0, profit: 0, margin: 0,
+      productCount: 0, featureCount: 0, deliveredFeatures: 0, inProgressFeatures: 0,
+      delayedFeatures: 0, activeReleases: 0,
+      productData: [] as { name: string; revenue: number; cost: number; profit: number; lifecycle: string }[],
     };
-  }, [products, state]);
+    return {
+      totalRevenue: portMetrics.revenue,
+      totalCost: portMetrics.cost,
+      profit: portMetrics.profit,
+      margin: portMetrics.margin,
+      productCount: portMetrics.productCount,
+      featureCount: portMetrics.totalFeatures,
+      deliveredFeatures: portMetrics.featuresCompleted,
+      inProgressFeatures: portMetrics.featuresInProgress,
+      delayedFeatures: portMetrics.featuresPlanned,
+      activeReleases: portMetrics.activeReleases,
+      productData: portMetrics.productMetrics.map(pm => ({
+        name: pm.productName,
+        revenue: pm.revenue,
+        cost: pm.cost,
+        profit: pm.profit,
+        lifecycle: pm.lifecycle,
+      })),
+    };
+  }, [portMetrics]);
 
-
-
-
-  // Revenue by product for bar chart
   const revenueByProduct = portfolioMetrics.productData;
 
   // Revenue heatmap data (product x month)
