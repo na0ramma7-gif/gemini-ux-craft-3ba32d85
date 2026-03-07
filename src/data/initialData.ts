@@ -181,11 +181,11 @@ export const INITIAL_STATE: AppState = {
     { id: 19, productId: 8, releaseId: 6, name: 'Customer Portal', startDate: '2024-02-15', endDate: '2024-04-30', status: 'In Progress', owner: 'Dev Team H', priority: 'Medium' },
   ],
   resources: [
-    { id: 1, name: 'John Smith', role: 'Product Manager', costRate: 12000, capacity: 40, status: 'Active' },
-    { id: 2, name: 'Sarah Lee', role: 'Sr. Developer', costRate: 10000, capacity: 40, status: 'Active' },
-    { id: 3, name: 'Mike Chen', role: 'Developer', costRate: 8000, capacity: 40, status: 'Active' },
-    { id: 4, name: 'Lisa Wang', role: 'QA Lead', costRate: 9000, capacity: 40, status: 'Active' },
-    { id: 5, name: 'Tom Brown', role: 'Business Analyst', costRate: 7000, capacity: 40, status: 'Active' }
+    { id: 1, employeeId: 'EMP-001', name: 'John Smith', role: 'Product Manager', location: 'On-site', category: 'Business', lineManager: 'Ahmed Ali', costRate: 12000, capacity: 40, status: 'Active' },
+    { id: 2, employeeId: 'EMP-002', name: 'Sarah Lee', role: 'Sr. Developer', location: 'On-site', category: 'Technical', lineManager: 'Ahmed Ali', costRate: 10000, capacity: 40, status: 'Active' },
+    { id: 3, employeeId: 'EMP-003', name: 'Mike Chen', role: 'Developer', location: 'Offshore', category: 'Technical', lineManager: 'Sarah Lee', costRate: 8000, capacity: 40, status: 'Active' },
+    { id: 4, employeeId: 'EMP-004', name: 'Lisa Wang', role: 'QA Lead', location: 'On-site', category: 'Technical', lineManager: 'Sarah Lee', costRate: 9000, capacity: 40, status: 'Active' },
+    { id: 5, employeeId: 'EMP-005', name: 'Tom Brown', role: 'Business Analyst', location: 'On-site', category: 'Operation', lineManager: 'John Smith', costRate: 7000, capacity: 40, status: 'Active' }
   ],
   assignments: [
     { id: 1, resourceId: 1, productId: 1, releaseId: 1, startDate: '2024-01-01', endDate: '2024-03-31', utilization: 50 },
