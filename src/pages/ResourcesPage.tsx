@@ -126,12 +126,14 @@ const ResourcesPage = () => {
             {/* Directory */}
             <TabsContent value="directory" className="mt-0">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px]">
+                <table className="w-full min-w-[900px]">
                   <thead className="bg-secondary/50">
                     <tr>
+                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('employeeId')}</th>
                       <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('name')}</th>
                       <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('role')}</th>
-                      <th className="px-4 py-2.5 text-end text-xs font-medium text-muted-foreground uppercase">{t('costRate')}</th>
+                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('location')}</th>
+                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('category')}</th>
                       <th className="px-4 py-2.5 text-end text-xs font-medium text-muted-foreground uppercase">{t('utilization')}</th>
                       <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground uppercase">{t('status')}</th>
                       <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
@@ -143,9 +145,11 @@ const ResourcesPage = () => {
                       const isOverAllocated = utilization > 100;
                       return (
                         <tr key={resource.id} className="hover:bg-secondary/30">
+                          <td className="px-4 py-2.5 text-sm text-muted-foreground font-mono">{resource.employeeId || '—'}</td>
                           <td className="px-4 py-2.5 font-medium text-foreground text-sm">{resource.name}</td>
                           <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.role}</td>
-                          <td className="px-4 py-2.5 text-end font-semibold text-sm">{formatCurrency(resource.costRate, language)}/mo</td>
+                          <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.location || '—'}</td>
+                          <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.category || '—'}</td>
                           <td className="px-4 py-2.5 text-end">
                             <div className={cn("font-bold text-sm", isOverAllocated ? 'text-destructive' : utilization > 80 ? 'text-warning' : 'text-success')}>{utilization}%</div>
                             {isOverAllocated && <div className="text-xs text-destructive">{t('overAllocated')}!</div>}
