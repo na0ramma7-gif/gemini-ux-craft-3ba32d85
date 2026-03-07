@@ -668,9 +668,6 @@ export const TRANSLATIONS = {
     profitMargin: 'هامش الربح',
     annualImpact: 'التأثير على الإيرادات السنوية',
     toAnnualRevenue: 'على الإيرادات السنوية',
-    duration: 'المدة',
-    days: 'أيام',
-    months: 'أشهر',
     
     // Resources page
     resourceManagementTitle: 'إدارة الموارد',
