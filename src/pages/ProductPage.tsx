@@ -48,13 +48,14 @@ interface ProductPageProps {
 }
 
 const ProductPage = ({ product, onBack }: ProductPageProps) => {
-  const { state, addFeature, updateFeature, deleteFeature, addRelease, t, language, isRTL } = useApp();
+  const { state, addFeature, updateFeature, deleteFeature, addRelease, updateRelease, t, language, isRTL } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('list');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingFeature, setEditingFeature] = useState<Feature | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [showAddReleaseModal, setShowAddReleaseModal] = useState(false);
+  const [editingRelease, setEditingRelease] = useState<Release | null>(null);
   const [newRelease, setNewRelease] = useState({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' as Release['status'] });
   const [selectedFeatureForFinancials, setSelectedFeatureForFinancials] = useState<Feature | null>(null);
   
