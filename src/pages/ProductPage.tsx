@@ -7,7 +7,7 @@ import FeatureFinancialPlanning from '@/components/FeatureFinancialPlanning';
 import ProductForecast from '@/components/ProductForecast';
 import ProductOverview from '@/components/ProductOverview';
 import ProductDocumentation from '@/components/ProductDocumentation';
-import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, cn } from '@/lib/utils';
+import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, getFeatureEffectiveStatus, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -366,36 +366,56 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                   </div>
                   
                   {/* Gantt Rows */}
-                  <div className="space-y-2 min-w-[600px]">
+                  <div className="space-y-1 min-w-[600px]">
                     {features.map(feature => {
-                      const position = calculateBarPosition(feature.startDate, feature.endDate);
+                      const plannedPos = calculateBarPosition(feature.startDate, feature.endDate);
+                      const effectiveStatus = getFeatureEffectiveStatus(feature);
+
+                      // Actual bar: for Delivered, show full bar; for In Progress/Delayed, show progress up to today
+                      const now = new Date();
+                      const featureStart = new Date(feature.startDate);
+                      const featureEnd = new Date(feature.endDate);
+                      const hasActual = feature.status === 'In Progress' || feature.status === 'Delivered' || effectiveStatus === 'Delayed';
+                      let actualEndDate = feature.endDate;
+                      if (feature.status === 'In Progress') {
+                        actualEndDate = now < featureEnd ? now.toISOString().split('T')[0] : feature.endDate;
+                      }
+                      const actualPos = hasActual ? calculateBarPosition(feature.startDate, actualEndDate) : null;
+
                       return (
                         <div key={feature.id} className="flex items-center group">
                           <div className="w-40 sm:w-48 flex-shrink-0 pe-4">
                             <div className="text-xs sm:text-sm font-medium text-foreground truncate">{feature.name}</div>
                             <div className="text-[10px] text-muted-foreground">{feature.owner}</div>
                           </div>
-                          <div className="flex-1 relative h-8 sm:h-10 bg-secondary/50 rounded">
+                          <div className="flex-1 relative h-12 sm:h-14 bg-secondary/50 rounded">
                             {/* Grid lines for months */}
                             <div className="absolute inset-0 flex">
                               {ganttData.months.map((_, idx) => (
                                 <div key={idx} className="flex-1 border-s border-border/30 first:border-s-0" />
                               ))}
                             </div>
-                            {/* Gantt Bar */}
+                            {/* Planned Bar (top) */}
                             <div
-                              className={cn(
-                                "absolute top-1 sm:top-1.5 h-6 sm:h-7 rounded flex items-center px-2 text-white text-[10px] sm:text-xs font-medium shadow-sm transition-all",
-                                getGanttBarColor(feature.status)
-                              )}
-                              style={{
-                                left: position.left,
-                                width: position.width,
-                              }}
-                              title={`${feature.name}: ${formatShortDate(feature.startDate, language)} - ${formatShortDate(feature.endDate, language)}`}
+                              className="absolute top-1 h-4 sm:h-5 rounded bg-muted-foreground/20 border border-muted-foreground/30 flex items-center px-1.5"
+                              style={{ left: plannedPos.left, width: plannedPos.width }}
+                              title={`${t('planned')}: ${formatShortDate(feature.startDate, language)} - ${formatShortDate(feature.endDate, language)}`}
                             >
-                              <span className="truncate">{feature.name}</span>
+                              <span className="truncate text-[9px] sm:text-[10px] text-muted-foreground font-medium">{feature.name}</span>
                             </div>
+                            {/* Actual Bar (bottom) */}
+                            {actualPos && (
+                              <div
+                                className={cn(
+                                  "absolute bottom-1 h-4 sm:h-5 rounded flex items-center px-1.5 text-white text-[9px] sm:text-[10px] font-medium shadow-sm",
+                                  getGanttBarColor(effectiveStatus)
+                                )}
+                                style={{ left: actualPos.left, width: actualPos.width }}
+                                title={`${effectiveStatus}: ${formatShortDate(feature.startDate, language)} - ${formatShortDate(actualEndDate, language)}`}
+                              >
+                                <span className="truncate">{effectiveStatus}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -405,16 +425,20 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                   {/* Legend */}
                   <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-4 pt-3 border-t border-border">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded bg-slate-400" />
+                      <div className="w-3 h-3 rounded bg-muted-foreground/20 border border-muted-foreground/30" />
                       <span className="text-[10px] sm:text-xs text-muted-foreground">{t('planned')}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded bg-blue-500" />
+                      <div className="w-3 h-3 rounded bg-primary" />
                       <span className="text-[10px] sm:text-xs text-muted-foreground">{t('inProgress')}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded bg-emerald-500" />
+                      <div className="w-3 h-3 rounded bg-success" />
                       <span className="text-[10px] sm:text-xs text-muted-foreground">{t('delivered')}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded bg-destructive" />
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">Delayed</span>
                     </div>
                   </div>
                 </div>
