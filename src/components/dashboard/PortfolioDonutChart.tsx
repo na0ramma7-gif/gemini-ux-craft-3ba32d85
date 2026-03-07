@@ -5,11 +5,11 @@ import { PieChart as PieChartIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const PORTFOLIO_COLORS = [
-  '#1E3A8A',  // Licensing — Lean Primary Blue
-  '#22C55E',  // Track and Trace — Green
-  '#F59E0B',  // Practitioner Services — Amber
-  '#EF4444',  // Insurance Services — Red
-  '#3B82F6',  // Fallback — Secondary Blue
+  '#111827',  // Black
+  '#1E3A8A',  // Dark Blue
+  '#6B7280',  // Grey
+  '#D1D5DB',  // Light Grey
+  '#374151',  // Fallback — Dark Grey
 ];
 
 const PortfolioDonutChart = () => {
