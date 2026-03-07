@@ -218,7 +218,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         addFeature,
         updateFeature,
         deleteFeature,
-        updateProduct
+        updateProduct,
+        updatePortfolio
       }}
     >
       {children}
