@@ -165,7 +165,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
       name: '',
       startDate: '',
       endDate: '',
-      status: 'Planned',
+      status: 'To Do',
       owner: '',
       priority: 'Medium',
       releaseId: null
