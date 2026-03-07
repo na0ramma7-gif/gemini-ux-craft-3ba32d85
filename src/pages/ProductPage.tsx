@@ -677,7 +677,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Planned">{t('planned')}</SelectItem>
+                    <SelectItem value="To Do">{t('toDo')}</SelectItem>
                     <SelectItem value="In Progress">{t('inProgress')}</SelectItem>
                     <SelectItem value="Delivered">{t('delivered')}</SelectItem>
                   </SelectContent>
@@ -780,7 +780,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Planned">{t('planned')}</SelectItem>
+                      <SelectItem value="To Do">{t('toDo')}</SelectItem>
                       <SelectItem value="In Progress">{t('inProgress')}</SelectItem>
                       <SelectItem value="Delivered">{t('delivered')}</SelectItem>
                     </SelectContent>
