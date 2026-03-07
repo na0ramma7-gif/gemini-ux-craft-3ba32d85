@@ -9,10 +9,10 @@ import {
 import { addMonths, format } from 'date-fns';
 
 const PORTFOLIO_COLORS = [
-  'hsl(var(--portfolio-1))',  // Primary Blue
-  'hsl(var(--portfolio-2))',  // Green
-  'hsl(var(--portfolio-3))',  // Amber
-  'hsl(var(--portfolio-4))',  // Red
+  '#1E3A8A',  // Licensing — Lean Primary Blue
+  '#22C55E',  // Track and Trace — Revenue Green
+  '#F59E0B',  // Practitioner Services — Amber
+  '#EF4444',  // Insurance Services — Red
 ];
 
 const SCENARIO_GROWTH: Record<ScenarioType, number> = {
