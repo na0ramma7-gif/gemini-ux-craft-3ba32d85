@@ -284,9 +284,6 @@ export const TRANSLATIONS = {
     profitMargin: 'Profit Margin',
     annualImpact: 'Impact on Annual Revenue',
     toAnnualRevenue: 'to annual revenue',
-    duration: 'Duration',
-    days: 'days',
-    months: 'months',
     
     // Resources page
     resourceManagementTitle: 'Resource Management',
