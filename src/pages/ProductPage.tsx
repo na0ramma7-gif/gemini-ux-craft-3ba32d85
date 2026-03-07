@@ -576,11 +576,11 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                 })}
               </div>
 
-              {/* Add Release Modal */}
-              <Dialog open={showAddReleaseModal} onOpenChange={setShowAddReleaseModal}>
+              {/* Add/Edit Release Modal */}
+              <Dialog open={showAddReleaseModal || !!editingRelease} onOpenChange={open => { if (!open) { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); } }}>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>{t('addRelease')}</DialogTitle>
+                    <DialogTitle>{editingRelease ? t('editRelease') : t('addRelease')}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-2">
                     <div className="grid grid-cols-2 gap-3">
@@ -616,13 +616,18 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowAddReleaseModal(false)}>{t('cancel')}</Button>
+                    <Button variant="outline" onClick={() => { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); }}>{t('cancel')}</Button>
                     <Button
                       disabled={!newRelease.version || !newRelease.name || !newRelease.startDate || !newRelease.endDate}
                       onClick={() => {
-                        addRelease({ productId: product.id, ...newRelease });
+                        if (editingRelease) {
+                          updateRelease(editingRelease.id, newRelease);
+                          setEditingRelease(null);
+                        } else {
+                          addRelease({ productId: product.id, ...newRelease });
+                          setShowAddReleaseModal(false);
+                        }
                         setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' });
-                        setShowAddReleaseModal(false);
                       }}
                     >
                       {t('save')}
