@@ -22,7 +22,8 @@ const ResourcesPage = () => {
   const [deleteResourceConfirmId, setDeleteResourceConfirmId] = useState<number | null>(null);
   const [editingResource, setEditingResource] = useState<number | null>(null);
 
-  const [newResource, setNewResource] = useState({ name: '', role: '', costRate: 0, capacity: 40, status: 'Active' as 'Active' | 'Inactive' });
+  const defaultResource = { name: '', employeeId: '', role: '', location: 'On-site' as 'On-site' | 'Offshore', category: 'Technical' as 'Technical' | 'Business' | 'Operation', lineManager: '', costRate: 0, capacity: 40, status: 'Active' as 'Active' | 'Inactive' };
+  const [newResource, setNewResource] = useState(defaultResource);
   const [newAssignment, setNewAssignment] = useState({ resourceId: 0, portfolioId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
 
   const getUtilization = (resourceId: number): number => {
@@ -44,13 +45,13 @@ const ResourcesPage = () => {
     } else {
       addResource(newResource);
     }
-    setNewResource({ name: '', role: '', costRate: 0, capacity: 40, status: 'Active' });
+    setNewResource(defaultResource);
     setShowAddResourceModal(false);
   };
 
   const openEditResource = (resource: typeof state.resources[0]) => {
     setEditingResource(resource.id);
-    setNewResource({ name: resource.name, role: resource.role, costRate: resource.costRate, capacity: resource.capacity, status: resource.status });
+    setNewResource({ name: resource.name, employeeId: resource.employeeId || '', role: resource.role, location: resource.location || 'On-site', category: resource.category || 'Technical', lineManager: resource.lineManager || '', costRate: resource.costRate, capacity: resource.capacity, status: resource.status });
     setShowAddResourceModal(true);
   };
 
@@ -125,12 +126,14 @@ const ResourcesPage = () => {
             {/* Directory */}
             <TabsContent value="directory" className="mt-0">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px]">
+                <table className="w-full min-w-[900px]">
                   <thead className="bg-secondary/50">
                     <tr>
+                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('employeeId')}</th>
                       <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('name')}</th>
                       <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('role')}</th>
-                      <th className="px-4 py-2.5 text-end text-xs font-medium text-muted-foreground uppercase">{t('costRate')}</th>
+                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('location')}</th>
+                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('category')}</th>
                       <th className="px-4 py-2.5 text-end text-xs font-medium text-muted-foreground uppercase">{t('utilization')}</th>
                       <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground uppercase">{t('status')}</th>
                       <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
@@ -142,9 +145,11 @@ const ResourcesPage = () => {
                       const isOverAllocated = utilization > 100;
                       return (
                         <tr key={resource.id} className="hover:bg-secondary/30">
+                          <td className="px-4 py-2.5 text-sm text-muted-foreground font-mono">{resource.employeeId || '—'}</td>
                           <td className="px-4 py-2.5 font-medium text-foreground text-sm">{resource.name}</td>
                           <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.role}</td>
-                          <td className="px-4 py-2.5 text-end font-semibold text-sm">{formatCurrency(resource.costRate, language)}/mo</td>
+                          <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.location || '—'}</td>
+                          <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource.category || '—'}</td>
                           <td className="px-4 py-2.5 text-end">
                             <div className={cn("font-bold text-sm", isOverAllocated ? 'text-destructive' : utilization > 80 ? 'text-warning' : 'text-success')}>{utilization}%</div>
                             {isOverAllocated && <div className="text-xs text-destructive">{t('overAllocated')}!</div>}
@@ -268,13 +273,48 @@ const ResourcesPage = () => {
             <DialogDescription>{editingResource ? t('editResourceDesc') : t('addTeamMember')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('name')}</label>
-              <Input value={newResource.name} onChange={(e) => setNewResource({ ...newResource, name: e.target.value })} placeholder={t('enterName')} />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('employeeId')}</label>
+                <Input value={newResource.employeeId} onChange={(e) => setNewResource({ ...newResource, employeeId: e.target.value })} placeholder={t('enterEmployeeId')} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('name')}</label>
+                <Input value={newResource.name} onChange={(e) => setNewResource({ ...newResource, name: e.target.value })} placeholder={t('enterName')} />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('role')}</label>
-              <Input value={newResource.role} onChange={(e) => setNewResource({ ...newResource, role: e.target.value })} placeholder={t('enterRole')} />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('role')}</label>
+                <Input value={newResource.role} onChange={(e) => setNewResource({ ...newResource, role: e.target.value })} placeholder={t('enterRole')} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('lineManager')}</label>
+                <Input value={newResource.lineManager} onChange={(e) => setNewResource({ ...newResource, lineManager: e.target.value })} placeholder={t('enterLineManager')} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('location')}</label>
+                <Select value={newResource.location} onValueChange={(value: 'On-site' | 'Offshore') => setNewResource({ ...newResource, location: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="On-site">{t('onSite')}</SelectItem>
+                    <SelectItem value="Offshore">{t('offshore')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('category')}</label>
+                <Select value={newResource.category} onValueChange={(value: 'Technical' | 'Business' | 'Operation') => setNewResource({ ...newResource, category: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Technical">{t('technical')}</SelectItem>
+                    <SelectItem value="Business">{t('business')}</SelectItem>
+                    <SelectItem value="Operation">{t('operation')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
