@@ -548,6 +548,7 @@ export const TRANSLATIONS = {
     delivered: 'تم التسليم',
     released: 'تم الإصدار',
     addRelease: 'إضافة إصدار',
+    editRelease: 'تعديل الإصدار',
     version: 'الإصدار',
     high: 'عالي',
     medium: 'متوسط',
