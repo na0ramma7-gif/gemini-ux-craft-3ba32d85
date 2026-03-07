@@ -205,6 +205,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const updateRelease = (releaseId: number, updates: Partial<Release>) => {
+    setState(prev => ({
+      ...prev,
+      releases: prev.releases.map(r =>
+        r.id === releaseId ? { ...r, ...updates } : r
+      )
+    }));
+  };
+
   return (
     <AppContext.Provider
       value={{
