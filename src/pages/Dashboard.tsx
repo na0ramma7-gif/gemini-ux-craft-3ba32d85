@@ -8,6 +8,9 @@ import PortfolioBarChart from '@/components/dashboard/PortfolioBarChart';
 import ProductTable from '@/components/dashboard/ProductTable';
 import InvestmentReturnChart from '@/components/dashboard/InvestmentReturnChart';
 import InsightsPanel from '@/components/dashboard/InsightsPanel';
+import ForecastSummaryCards from '@/components/dashboard/ForecastSummaryCards';
+import RevenuePipelineChart from '@/components/dashboard/RevenuePipelineChart';
+import UpcomingRevenueDrivers from '@/components/dashboard/UpcomingRevenueDrivers';
 import { formatCurrency } from '@/lib/utils';
 import { Portfolio, Product } from '@/types';
 
@@ -18,7 +21,6 @@ interface DashboardProps {
 const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
   const { state, metrics, t, language, setView, setSelected } = useApp();
 
-  // Compute previous month trend (simplified mock: ~8% growth)
   const trend = useMemo(() => {
     const totalActual = state.revenueActual.reduce((s, r) => s + r.actual, 0);
     const target = metrics.revenue * 1.35;
@@ -99,7 +101,7 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
         />
       </div>
 
-      {/* 2. Revenue vs Cost Trend (Line Chart) */}
+      {/* 2. Revenue vs Cost Trend */}
       <RevenueCostLineChart />
 
       {/* 3 & 4. Portfolio Charts + Insights */}
@@ -114,6 +116,16 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
 
       {/* 6. Investment vs Return */}
       <InvestmentReturnChart />
+
+      {/* 7 & 8. Revenue Pipeline Section */}
+      <div className="space-y-4">
+        <h2 className="text-foreground text-lg font-semibold">{t('revenuePipeline')}</h2>
+        <ForecastSummaryCards />
+        <RevenuePipelineChart />
+      </div>
+
+      {/* 9. Upcoming Revenue Drivers */}
+      <UpcomingRevenueDrivers onProductClick={handleProductClick} />
     </div>
   );
 };

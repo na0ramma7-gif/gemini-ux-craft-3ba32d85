@@ -301,6 +301,12 @@ export const TRANSLATIONS = {
     // Charts
     revenueCostTrend: 'Revenue vs Cost Trend',
     portfolioDistribution: 'Portfolio Distribution',
+    revenuePipeline: 'Revenue Pipeline',
+    projected3Months: 'Projected Revenue (3 months)',
+    projected6Months: 'Projected Revenue (6 months)',
+    projected12Months: 'Projected Revenue (12 months)',
+    upcomingRevenueDrivers: 'Upcoming Revenue Drivers',
+    expectedLaunch: 'Expected Launch',
     
     // Time
     jan: 'Jan', feb: 'Feb', mar: 'Mar', apr: 'Apr', may: 'May', jun: 'Jun',
