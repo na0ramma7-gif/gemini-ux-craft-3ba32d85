@@ -22,7 +22,7 @@ const ResourcesPage = () => {
   const [deleteResourceConfirmId, setDeleteResourceConfirmId] = useState<number | null>(null);
   const [editingResource, setEditingResource] = useState<number | null>(null);
 
-  const [newResource, setNewResource] = useState({ name: '', role: '', costRate: 0, capacity: 40, status: 'Active' as const });
+  const [newResource, setNewResource] = useState({ name: '', role: '', costRate: 0, capacity: 40, status: 'Active' as 'Active' | 'Inactive' });
   const [newAssignment, setNewAssignment] = useState({ resourceId: 0, portfolioId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
 
   const getUtilization = (resourceId: number): number => {
