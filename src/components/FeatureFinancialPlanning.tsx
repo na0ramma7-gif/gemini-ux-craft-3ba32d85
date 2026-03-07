@@ -39,7 +39,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanningProps) => {
   const { state, t, language, isRTL } = useApp();
-  const [tab, setTab] = useState('planner');
+  const [tab, setTab] = useState('profile');
   const [selectedYear, setSelectedYear] = useState(2025);
 
   const [yearData, setYearData] = useState<Record<number, MonthData>>(() => {
@@ -258,8 +258,8 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
           <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto flex-nowrap">
             {[
-              { value: 'planner', icon: <DollarSign className="w-4 h-4 me-1.5" />, label: t('financialPlanning') },
               { value: 'profile', icon: <FileText className="w-4 h-4 me-1.5" />, label: t('featureProfile') },
+              { value: 'planner', icon: <DollarSign className="w-4 h-4 me-1.5" />, label: t('financialPlanning') },
               { value: 'charts', icon: <BarChart3 className="w-4 h-4 me-1.5" />, label: 'Charts' },
               { value: 'forecast', icon: <TrendingUp className="w-4 h-4 me-1.5" />, label: t('forecast') },
             ].map(tabItem => (
