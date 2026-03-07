@@ -273,11 +273,9 @@ export const TRANSLATIONS = {
     selectResources: 'Select Resources',
     selectResourcesDesc: 'Select resources to allocate to this feature',
     allocatedCost: 'Allocated Cost',
-    monthlyCost: 'Monthly Cost',
     selectMonth: 'Select Month',
     costCategories: 'Cost Categories',
     addSelected: 'Add Selected',
-    alreadyAdded: 'Already added',
     
     // Resources page
     resourceManagementTitle: 'Resource Management',
@@ -651,11 +649,9 @@ export const TRANSLATIONS = {
     selectResources: 'اختيار الموارد',
     selectResourcesDesc: 'اختر الموارد لتخصيصها لهذه الميزة',
     allocatedCost: 'التكلفة المخصصة',
-    monthlyCost: 'التكلفة الشهرية',
     selectMonth: 'اختر الشهر',
     costCategories: 'فئات التكاليف',
     addSelected: 'إضافة المحدد',
-    alreadyAdded: 'تمت إضافتها بالفعل',
     
     // Resources page
     resourceManagementTitle: 'إدارة الموارد',
