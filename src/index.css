@@ -23,11 +23,12 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    /* Primary: Lean Navy #232B78 → hsl(234 55% 30%) */
-    --primary: 234 55% 30%;
+    /* Primary: Lean Primary Blue #1E3A8A → hsl(224 64% 33%) */
+    --primary: 224 64% 33%;
     --primary-foreground: 0 0% 100%;
     
-    /* Secondary: Soft neutral */
+    /* Secondary: Lean Secondary Blue #3B82F6 */
+    --secondary-blue: 217 91% 60%;
     --secondary: 220 14% 96%;
     --secondary-foreground: 222 47% 11%;
     
@@ -35,20 +36,20 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
     
-    /* Accent: Lean accent blue #2F6BFF → hsl(222 100% 59%) */
-    --accent: 222 100% 59%;
+    /* Accent: Lean Secondary Blue #3B82F6 */
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
     
-    /* Destructive: Professional red */
+    /* Destructive / Cost: #EF4444 */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     
-    /* Success: Revenue green #22C55E */
+    /* Success / Revenue: #22C55E */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     
-    /* Warning */
-    --warning: 45 93% 47%;
+    /* Warning / Needs Attention: #F59E0B */
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
     
     /* Financial tokens */
@@ -56,29 +57,40 @@
     --cost: 0 84% 60%;
     --profit: 217 91% 60%;
     
+    /* Target / Planned: Indigo #6366F1 */
+    --target: 239 84% 67%;
+    /* Forecast / Projection: Purple #8B5CF6 */
+    --forecast: 258 90% 66%;
+    
+    /* Portfolio colors */
+    --portfolio-1: 224 64% 33%;
+    --portfolio-2: 142 71% 45%;
+    --portfolio-3: 38 92% 50%;
+    --portfolio-4: 0 84% 60%;
+    
     /* Borders and inputs */
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 234 55% 30%;
+    --ring: 224 64% 33%;
     
     --radius: 0.75rem;
     
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 234 55% 30%;
+    --sidebar-primary: 224 64% 33%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 234 55% 96%;
-    --sidebar-accent-foreground: 234 55% 30%;
+    --sidebar-accent: 224 64% 96%;
+    --sidebar-accent-foreground: 224 64% 33%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 234 55% 30%;
+    --sidebar-ring: 224 64% 33%;
     
     /* Chart colors */
-    --chart-1: 234 55% 30%;
+    --chart-1: 224 64% 33%;
     --chart-2: 142 71% 45%;
-    --chart-3: 45 93% 47%;
+    --chart-3: 38 92% 50%;
     --chart-4: 0 84% 60%;
-    --chart-5: 222 100% 59%;
+    --chart-5: 217 91% 60%;
     
     /* Shadows — Soft elevation */
     --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.04);
@@ -98,16 +110,17 @@
     --popover: 222 47% 9%;
     --popover-foreground: 220 20% 98%;
     
-    --primary: 234 55% 45%;
+    --primary: 224 64% 45%;
     --primary-foreground: 0 0% 100%;
     
+    --secondary-blue: 217 91% 65%;
     --secondary: 222 30% 15%;
     --secondary-foreground: 220 20% 98%;
     
     --muted: 222 30% 15%;
     --muted-foreground: 220 9% 60%;
     
-    --accent: 222 100% 65%;
+    --accent: 217 91% 65%;
     --accent-foreground: 0 0% 100%;
     
     --destructive: 0 62% 50%;
@@ -116,25 +129,33 @@
     --success: 142 71% 48%;
     --success-foreground: 0 0% 100%;
     
-    --warning: 45 93% 50%;
+    --warning: 38 92% 55%;
     --warning-foreground: 0 0% 0%;
     
     --revenue: 142 71% 48%;
     --cost: 0 62% 50%;
     --profit: 217 91% 65%;
     
+    --target: 239 84% 72%;
+    --forecast: 258 90% 72%;
+    
+    --portfolio-1: 224 64% 45%;
+    --portfolio-2: 142 71% 48%;
+    --portfolio-3: 38 92% 55%;
+    --portfolio-4: 0 62% 50%;
+    
     --border: 222 30% 18%;
     --input: 222 30% 18%;
-    --ring: 234 55% 45%;
+    --ring: 224 64% 45%;
     
     --sidebar-background: 222 47% 9%;
     --sidebar-foreground: 220 20% 98%;
-    --sidebar-primary: 234 55% 45%;
+    --sidebar-primary: 224 64% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 222 30% 15%;
-    --sidebar-accent-foreground: 234 55% 45%;
+    --sidebar-accent-foreground: 224 64% 45%;
     --sidebar-border: 222 30% 18%;
-    --sidebar-ring: 234 55% 45%;
+    --sidebar-ring: 224 64% 45%;
   }
 }
 

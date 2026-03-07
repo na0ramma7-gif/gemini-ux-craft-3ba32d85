@@ -301,20 +301,20 @@ const ProductForecast = ({ product }: ProductForecastProps) => {
               <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="fGradActualRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="hsl(var(--revenue))" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="hsl(var(--revenue))" stopOpacity={0.02} />
                   </linearGradient>
                   <linearGradient id="fGradForecastRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(221, 100%, 59%)" stopOpacity={0.2} />
-                    <stop offset="100%" stopColor="hsl(221, 100%, 59%)" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="hsl(var(--forecast))" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="hsl(var(--forecast))" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="actualRevenue" stroke="hsl(142, 71%, 45%)" strokeWidth={2} fill="url(#fGradActualRev)" dot={false} name={`${t('actual')} ${t('revenue')}`} connectNulls={false} />
-                <Area type="monotone" dataKey="forecastRevenue" stroke="hsl(221, 100%, 59%)" strokeWidth={2} strokeDasharray="6 3" fill="url(#fGradForecastRev)" dot={false} name={`${t('forecast')} ${t('revenue')}`} connectNulls={false} />
+                <Area type="monotone" dataKey="actualRevenue" stroke="hsl(var(--revenue))" strokeWidth={2} fill="url(#fGradActualRev)" dot={false} name={`${t('actual')} ${t('revenue')}`} connectNulls={false} />
+                <Area type="monotone" dataKey="forecastRevenue" stroke="hsl(var(--forecast))" strokeWidth={2} strokeDasharray="6 3" fill="url(#fGradForecastRev)" dot={false} name={`${t('forecast')} ${t('revenue')}`} connectNulls={false} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
               </AreaChart>
             </ResponsiveContainer>
@@ -329,12 +329,12 @@ const ProductForecast = ({ product }: ProductForecastProps) => {
               <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="fGradActualCost" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0.2} />
-                    <stop offset="100%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="hsl(var(--cost))" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="hsl(var(--cost))" stopOpacity={0.02} />
                   </linearGradient>
                   <linearGradient id="fGradForecastProfit" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(234, 55%, 30%)" stopOpacity={0.2} />
-                    <stop offset="100%" stopColor="hsl(234, 55%, 30%)" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="hsl(var(--profit))" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="hsl(var(--profit))" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -342,10 +342,10 @@ const ProductForecast = ({ product }: ProductForecastProps) => {
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
-                <Area type="monotone" dataKey="actualCost" stroke="hsl(0, 84%, 60%)" strokeWidth={1.5} fill="url(#fGradActualCost)" dot={false} name={`${t('actual')} ${t('cost')}`} connectNulls={false} />
-                <Area type="monotone" dataKey="forecastCost" stroke="hsl(0, 84%, 60%)" strokeWidth={1.5} strokeDasharray="6 3" fill="none" dot={false} name={`${t('forecast')} ${t('cost')}`} connectNulls={false} />
-                <Area type="monotone" dataKey="actualProfit" stroke="hsl(234, 55%, 30%)" strokeWidth={2} fill="none" dot={false} name={`${t('actual')} ${t('netProfit')}`} connectNulls={false} />
-                <Area type="monotone" dataKey="forecastProfit" stroke="hsl(234, 55%, 30%)" strokeWidth={2} strokeDasharray="6 3" fill="url(#fGradForecastProfit)" dot={false} name={`${t('forecast')} ${t('netProfit')}`} connectNulls={false} />
+                <Area type="monotone" dataKey="actualCost" stroke="hsl(var(--cost))" strokeWidth={1.5} fill="url(#fGradActualCost)" dot={false} name={`${t('actual')} ${t('cost')}`} connectNulls={false} />
+                <Area type="monotone" dataKey="forecastCost" stroke="hsl(var(--cost))" strokeWidth={1.5} strokeDasharray="6 3" fill="none" dot={false} name={`${t('forecast')} ${t('cost')}`} connectNulls={false} />
+                <Area type="monotone" dataKey="actualProfit" stroke="hsl(var(--profit))" strokeWidth={2} fill="none" dot={false} name={`${t('actual')} ${t('netProfit')}`} connectNulls={false} />
+                <Area type="monotone" dataKey="forecastProfit" stroke="hsl(var(--profit))" strokeWidth={2} strokeDasharray="6 3" fill="url(#fGradForecastProfit)" dot={false} name={`${t('forecast')} ${t('netProfit')}`} connectNulls={false} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
               </AreaChart>
             </ResponsiveContainer>

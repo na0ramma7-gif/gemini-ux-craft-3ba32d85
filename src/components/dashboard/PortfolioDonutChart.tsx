@@ -4,12 +4,12 @@ import { formatCurrency } from '@/lib/utils';
 import { PieChart as PieChartIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
-const COLORS = [
-  'hsl(234, 55%, 30%)',   // Dark Navy
-  'hsl(220, 15%, 35%)',   // Dark Grey
-  'hsl(234, 35%, 50%)',   // Medium Blue
-  'hsl(220, 10%, 55%)',   // Medium Grey
-  'hsl(222, 47%, 11%)',   // Black
+const PORTFOLIO_COLORS = [
+  'hsl(var(--portfolio-1))',  // Licensing — Primary Blue
+  'hsl(var(--portfolio-2))',  // Track and Trace — Green
+  'hsl(var(--portfolio-3))',  // Practitioner Services — Amber
+  'hsl(var(--portfolio-4))',  // Insurance Services — Red
+  'hsl(var(--accent))',       // Fallback
 ];
 
 const PortfolioDonutChart = () => {
@@ -65,7 +65,7 @@ const PortfolioDonutChart = () => {
               stroke="none"
             >
               {data.map((_, idx) => (
-                <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                <Cell key={idx} fill={PORTFOLIO_COLORS[idx % PORTFOLIO_COLORS.length]} />
               ))}
             </Pie>
             <Tooltip content={<CustomTooltip />} />

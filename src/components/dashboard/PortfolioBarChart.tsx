@@ -81,10 +81,10 @@ const PortfolioBarChart = ({ onPortfolioClick }: Props) => {
                   key={idx}
                   fill={
                     entry.pct >= 80
-                      ? 'hsl(222, 47%, 11%)'
+                      ? 'hsl(var(--success))'
                       : entry.pct >= 50
-                        ? 'hsl(234, 55%, 30%)'
-                        : 'hsl(220, 10%, 55%)'
+                        ? 'hsl(var(--warning))'
+                        : 'hsl(var(--destructive))'
                   }
                 />
               ))}
@@ -94,9 +94,9 @@ const PortfolioBarChart = ({ onPortfolioClick }: Props) => {
       </div>
       {/* Legend */}
       <div className="flex items-center justify-center gap-5 mt-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: 'hsl(222, 47%, 11%)' }} /> ≥ 80%</span>
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: 'hsl(234, 55%, 30%)' }} /> 50–79%</span>
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: 'hsl(220, 10%, 55%)' }} /> &lt; 50%</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block bg-success" /> ≥ 80%</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block bg-warning" /> 50–79%</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block bg-destructive" /> &lt; 50%</span>
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { format, eachMonthOfInterval, isWithinInterval } from 'date-fns';
+import { format, eachMonthOfInterval } from 'date-fns';
 
 const RevenueAreaChart = () => {
   const { state, dateFilter, t, language } = useApp();
@@ -36,7 +36,6 @@ const RevenueAreaChart = () => {
         if (r.month === monthKey) actual += r.actual;
       });
 
-      // Target = planned * 1.35 (stretch goal)
       const target = planned * 1.35;
 
       return { name: label, planned, actual, target: Math.round(target) };
@@ -72,16 +71,16 @@ const RevenueAreaChart = () => {
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="gradTarget" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(234, 55%, 30%)" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="hsl(234, 55%, 30%)" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="hsl(var(--target))" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="hsl(var(--target))" stopOpacity={0.02} />
               </linearGradient>
               <linearGradient id="gradPlanned" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(221, 100%, 59%)" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="hsl(221, 100%, 59%)" stopOpacity={0.05} />
+                <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.4} />
+                <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0.05} />
               </linearGradient>
               <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.05} />
+                <stop offset="0%" stopColor="hsl(var(--revenue))" stopOpacity={0.4} />
+                <stop offset="100%" stopColor="hsl(var(--revenue))" stopOpacity={0.05} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -101,7 +100,7 @@ const RevenueAreaChart = () => {
             <Area
               type="monotone"
               dataKey="target"
-              stroke="hsl(234, 55%, 30%)"
+              stroke="hsl(var(--target))"
               strokeWidth={2}
               fill="url(#gradTarget)"
               dot={false}
@@ -110,7 +109,7 @@ const RevenueAreaChart = () => {
             <Area
               type="monotone"
               dataKey="planned"
-              stroke="hsl(221, 100%, 59%)"
+              stroke="hsl(var(--accent))"
               strokeWidth={2}
               fill="url(#gradPlanned)"
               dot={false}
@@ -119,10 +118,10 @@ const RevenueAreaChart = () => {
             <Area
               type="monotone"
               dataKey="actual"
-              stroke="hsl(142, 71%, 45%)"
+              stroke="hsl(var(--revenue))"
               strokeWidth={2.5}
               fill="url(#gradActual)"
-              dot={{ r: 3, fill: 'hsl(142, 71%, 45%)', strokeWidth: 0 }}
+              dot={{ r: 3, fill: 'hsl(var(--revenue))', strokeWidth: 0 }}
               activeDot={{ r: 5, strokeWidth: 2, stroke: 'white' }}
               name={t('actual')}
             />
