@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatCurrency } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -51,6 +51,9 @@ const ProductTable = ({ onProductClick }: Props) => {
     return 'bg-destructive/10';
   };
 
+  const [expanded, setExpanded] = useState(false);
+  const visibleProducts = expanded ? products : products.slice(0, 5);
+
   return (
     <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
       <h3 className="text-foreground mb-4">{t('products')} — {t('targetVsAchieved')}</h3>
@@ -67,7 +70,7 @@ const ProductTable = ({ onProductClick }: Props) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.map(p => (
+            {visibleProducts.map(p => (
               <TableRow
                 key={p.id}
                 className="cursor-pointer hover:bg-muted/50"
@@ -90,6 +93,14 @@ const ProductTable = ({ onProductClick }: Props) => {
           </TableBody>
         </Table>
       </div>
+      {products.length > 5 && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="mt-3 w-full text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2 rounded-lg hover:bg-primary/5"
+        >
+          {expanded ? `Show Top 5 ▲` : `Show All ${products.length} Products ▼`}
+        </button>
+      )}
     </div>
   );
 };
