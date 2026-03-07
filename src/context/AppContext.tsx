@@ -48,6 +48,7 @@ interface AppContextType {
   updateFeature: (featureId: number, updates: Partial<Feature>) => void;
   deleteFeature: (featureId: number) => void;
   updateProduct: (productId: number, updates: Partial<Product>) => void;
+  updatePortfolio: (portfolioId: number, updates: Partial<Portfolio>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -183,6 +184,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const updatePortfolio = (portfolioId: number, updates: Partial<Portfolio>) => {
+    setState(prev => ({
+      ...prev,
+      portfolios: prev.portfolios.map(p =>
+        p.id === portfolioId ? { ...p, ...updates } : p
+      )
+    }));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -208,7 +218,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         addFeature,
         updateFeature,
         deleteFeature,
-        updateProduct
+        updateProduct,
+        updatePortfolio
       }}
     >
       {children}
