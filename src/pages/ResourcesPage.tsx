@@ -22,7 +22,8 @@ const ResourcesPage = () => {
   const [deleteResourceConfirmId, setDeleteResourceConfirmId] = useState<number | null>(null);
   const [editingResource, setEditingResource] = useState<number | null>(null);
 
-  const [newResource, setNewResource] = useState({ name: '', role: '', costRate: 0, capacity: 40, status: 'Active' as 'Active' | 'Inactive' });
+  const defaultResource = { name: '', employeeId: '', role: '', location: 'On-site' as 'On-site' | 'Offshore', category: 'Technical' as 'Technical' | 'Business' | 'Operation', lineManager: '', costRate: 0, capacity: 40, status: 'Active' as 'Active' | 'Inactive' };
+  const [newResource, setNewResource] = useState(defaultResource);
   const [newAssignment, setNewAssignment] = useState({ resourceId: 0, portfolioId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
 
   const getUtilization = (resourceId: number): number => {
@@ -44,13 +45,13 @@ const ResourcesPage = () => {
     } else {
       addResource(newResource);
     }
-    setNewResource({ name: '', role: '', costRate: 0, capacity: 40, status: 'Active' });
+    setNewResource(defaultResource);
     setShowAddResourceModal(false);
   };
 
   const openEditResource = (resource: typeof state.resources[0]) => {
     setEditingResource(resource.id);
-    setNewResource({ name: resource.name, role: resource.role, costRate: resource.costRate, capacity: resource.capacity, status: resource.status });
+    setNewResource({ name: resource.name, employeeId: resource.employeeId || '', role: resource.role, location: resource.location || 'On-site', category: resource.category || 'Technical', lineManager: resource.lineManager || '', costRate: resource.costRate, capacity: resource.capacity, status: resource.status });
     setShowAddResourceModal(true);
   };
 
