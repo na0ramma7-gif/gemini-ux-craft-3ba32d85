@@ -11,14 +11,16 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Users, Calendar, Plus, Trash2, BarChart3 } from 'lucide-react';
+import { Users, Calendar, Plus, Trash2, BarChart3, Edit, MoreHorizontal } from 'lucide-react';
 
 const ResourcesPage = () => {
-  const { state, addResource, addAssignment, deleteAssignment, t, language } = useApp();
+  const { state, addResource, updateResource, deleteResource, addAssignment, deleteAssignment, t, language } = useApp();
   const [activeTab, setActiveTab] = useState('directory');
   const [showAddResourceModal, setShowAddResourceModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deleteResourceConfirmId, setDeleteResourceConfirmId] = useState<number | null>(null);
+  const [editingResource, setEditingResource] = useState<number | null>(null);
 
   const [newResource, setNewResource] = useState({ name: '', role: '', costRate: 0, capacity: 40, status: 'Active' as const });
   const [newAssignment, setNewAssignment] = useState({ resourceId: 0, portfolioId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
@@ -34,12 +36,25 @@ const ResourcesPage = () => {
     })).sort((a, b) => b.utilization - a.utilization);
   }, [state]);
 
-  const handleAddResource = () => {
+  const handleAddOrUpdateResource = () => {
     if (!newResource.name || !newResource.role) return;
-    addResource(newResource);
+    if (editingResource) {
+      updateResource(editingResource, newResource);
+      setEditingResource(null);
+    } else {
+      addResource(newResource);
+    }
     setNewResource({ name: '', role: '', costRate: 0, capacity: 40, status: 'Active' });
     setShowAddResourceModal(false);
   };
+
+  const openEditResource = (resource: typeof state.resources[0]) => {
+    setEditingResource(resource.id);
+    setNewResource({ name: resource.name, role: resource.role, costRate: resource.costRate, capacity: resource.capacity, status: resource.status });
+    setShowAddResourceModal(true);
+  };
+
+  const handleDeleteResource = (id: number) => { deleteResource(id); setDeleteResourceConfirmId(null); };
 
   const handleAssignResource = () => {
     if (!newAssignment.resourceId || !newAssignment.productId) return;
@@ -136,7 +151,15 @@ const ResourcesPage = () => {
                           </td>
                           <td className="px-4 py-2.5 text-center"><StatusBadge status={resource.status} /></td>
                           <td className="px-4 py-2.5 text-center">
-                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openAssignModal(resource.id)}>{t('assign')}</Button>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openAssignModal(resource.id)}>{t('assign')}</Button>
+                              <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEditResource(resource)}>
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => setDeleteResourceConfirmId(resource.id)}>
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
