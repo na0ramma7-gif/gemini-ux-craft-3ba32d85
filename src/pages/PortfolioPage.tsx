@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import {
   ArrowLeft, ArrowRight, LayoutGrid, Package, Users, DollarSign, Target,
-  Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3, Zap, Star,
+  Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -21,9 +21,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, PieChart, Pie, Cell, RadarChart, Radar,
-  PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Cell,
 } from 'recharts';
 
 interface PortfolioPageProps {
@@ -39,11 +38,6 @@ const LIFECYCLE_COLORS: Record<string, string> = {
   Mature: 'hsl(var(--accent-foreground))',
   Sunset: 'hsl(38 92% 50%)',
 };
-
-const PIE_COLORS = [
-  'hsl(var(--primary))', 'hsl(142 71% 45%)', 'hsl(0 84% 60%)',
-  'hsl(38 92% 50%)', 'hsl(262 83% 58%)', 'hsl(200 98% 39%)',
-];
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload) return null;
@@ -107,15 +101,8 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
     };
   }, [products, state]);
 
-  // Lifecycle distribution
-  const lifecycleDistribution = useMemo(() => {
-    const counts: Record<string, number> = {};
-    products.forEach(p => {
-      const stage = p.lifecycleStage || 'Development';
-      counts[stage] = (counts[stage] || 0) + 1;
-    });
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [products]);
+
+
 
   // Revenue by product for bar chart
   const revenueByProduct = portfolioMetrics.productData;
@@ -236,74 +223,75 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
             {/* OVERVIEW / DASHBOARD TAB */}
             <TabsContent value="overview" className="mt-0 space-y-6">
 
-              {/* Portfolio Financial Performance */}
+              {/* Row 1: Revenue Contribution + Profitability */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Revenue & Cost by Product */}
+                {/* Product Revenue Contribution — horizontal bar */}
                 <div className="bg-secondary/30 rounded-xl p-5">
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-primary" /> Revenue & Cost by Product
+                    <BarChart3 className="w-4 h-4 text-primary" /> Product Revenue Contribution
                   </h4>
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={revenueByProduct} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                        <XAxis dataKey="name" fontSize={10} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
-                        <YAxis fontSize={10} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                      <BarChart data={[...revenueByProduct].sort((a, b) => b.revenue - a.revenue)} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                        <XAxis type="number" fontSize={10} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                        <YAxis dataKey="name" type="category" width={140} fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                        <Bar dataKey="revenue" name={t('revenue')} fill="hsl(142 71% 45%)" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="cost" name={t('cost')} fill="hsl(0 84% 60%)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="revenue" name={t('revenue')} fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} barSize={22} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
 
-                {/* Profitability by Product */}
+                {/* Profitability by Product — with zero baseline */}
                 <div className="bg-secondary/30 rounded-xl p-5">
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-primary" /> Profitability by Product
                   </h4>
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={revenueByProduct} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                      <BarChart data={revenueByProduct} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                         <XAxis dataKey="name" fontSize={10} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                         <YAxis fontSize={10} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Bar dataKey="profit" name={t('netProfit')} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        {/* Zero baseline reference */}
+                        <CartesianGrid strokeDasharray="0" stroke="hsl(var(--muted-foreground))" horizontal={false} vertical={false} />
+                        <Bar dataKey="profit" name={t('netProfit')} radius={[4, 4, 4, 4]} barSize={32}>
+                          {revenueByProduct.map((entry, idx) => (
+                            <Cell key={idx} fill={entry.profit >= 0 ? 'hsl(142 71% 45%)' : 'hsl(0 84% 60%)'} />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                  </div>
+                  <div className="flex items-center justify-center gap-5 mt-2 text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: 'hsl(142 71% 45%)' }} /> Profitable</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: 'hsl(0 84% 60%)' }} /> Loss</span>
                   </div>
                 </div>
               </div>
 
-              {/* Product Distribution & Delivery Health */}
+              {/* Row 2: Lifecycle Distribution + Delivery Health + Strategic Alignment */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Lifecycle Distribution */}
+                {/* Lifecycle Distribution — metric cards */}
                 <div className="bg-secondary/30 rounded-xl p-5">
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Package className="w-4 h-4 text-primary" /> Product Distribution
+                    <Package className="w-4 h-4 text-primary" /> Products by Lifecycle
                   </h4>
-                  <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={lifecycleDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={35}
-                          label={({ name, value }) => `${name} (${value})`} labelLine={false}>
-                          {lifecycleDistribution.map((_, i) => (
-                            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-2 justify-center">
-                    {lifecycleDistribution.map((item, i) => (
-                      <div key={item.name} className="flex items-center gap-1.5 text-[11px]">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                        <span className="text-muted-foreground">{item.name}: <span className="font-semibold text-foreground">{item.value}</span></span>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-2 gap-3">
+                    {(['Ideation', 'Development', 'Growth', 'Mature'] as const).map(stage => {
+                      const count = products.filter(p => (p.lifecycleStage || 'Development') === stage).length;
+                      return (
+                        <div key={stage} className="bg-card rounded-lg p-3 border border-border/50">
+                          <div className="text-2xl font-bold text-foreground">{count}</div>
+                          <div className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: LIFECYCLE_COLORS[stage] || 'hsl(var(--muted-foreground))' }} />
+                            {stage}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -318,7 +306,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                       <div className="text-[10px] text-muted-foreground mt-1">Active Releases</div>
                     </div>
                     <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
-                      <div className="text-2xl font-bold text-accent">{portfolioMetrics.inProgressFeatures}</div>
+                      <div className="text-2xl font-bold text-accent-foreground">{portfolioMetrics.inProgressFeatures}</div>
                       <div className="text-[10px] text-muted-foreground mt-1">In Progress</div>
                     </div>
                     <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
@@ -340,7 +328,11 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                   <div className="space-y-3">
                     {Object.entries(strategicAlignment).map(([objective, prods]) => (
                       <div key={objective} className="bg-card rounded-lg p-3 border border-border/50">
-                        <div className="text-[11px] text-muted-foreground font-medium mb-1.5 line-clamp-2">{objective}</div>
+                        <div className="text-[11px] text-muted-foreground font-medium mb-2 flex items-center gap-1.5">
+                          <Target className="w-3 h-3 text-primary shrink-0" />
+                          <span className="line-clamp-2">{objective}</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mb-1.5">Products contributing:</div>
                         <div className="flex flex-wrap gap-1">
                           {prods.map(p => (
                             <Badge key={p} variant="secondary" className="text-[10px]">{p}</Badge>
@@ -359,75 +351,104 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                     <BarChart3 className="w-4 h-4 text-primary" /> Revenue Contribution Heatmap
                   </h4>
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[500px]">
+                    <table className="w-full min-w-[600px]">
                       <thead>
                         <tr>
                           <th className="text-start text-[10px] font-medium text-muted-foreground uppercase px-3 py-2">Product</th>
                           {heatmapMonths.map(m => (
                             <th key={m} className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2">{m}</th>
                           ))}
+                          <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2">Total</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {heatmapData.map((row: any) => (
-                          <tr key={row.product}>
-                            <td className="px-3 py-2 text-xs font-medium text-foreground">{row.product}</td>
-                            {heatmapMonths.map(m => {
-                              const val = row[m] || 0;
-                              const intensity = maxHeatmapVal > 0 ? val / maxHeatmapVal : 0;
-                              return (
-                                <td key={m} className="px-1 py-1.5">
-                                  <div
-                                    className="rounded-md h-8 flex items-center justify-center text-[10px] font-medium"
-                                    style={{
-                                      backgroundColor: val > 0 ? `hsla(142, 71%, 45%, ${0.1 + intensity * 0.6})` : 'hsl(var(--secondary))',
-                                      color: intensity > 0.5 ? 'white' : 'hsl(var(--foreground))',
-                                    }}
-                                  >
-                                    {val > 0 ? `${(val / 1000).toFixed(0)}k` : '—'}
-                                  </div>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
+                        {heatmapData.map((row: any) => {
+                          const rowTotal = heatmapMonths.reduce((sum, m) => sum + ((row[m] as number) || 0), 0);
+                          return (
+                            <tr key={row.product}>
+                              <td className="px-3 py-2 text-xs font-medium text-foreground">{row.product}</td>
+                              {heatmapMonths.map(m => {
+                                const val = row[m] || 0;
+                                const intensity = maxHeatmapVal > 0 ? val / maxHeatmapVal : 0;
+                                return (
+                                  <td key={m} className="px-1 py-1.5" title={val > 0 ? formatCurrency(val, language) : '—'}>
+                                    <div
+                                      className="rounded-md h-9 flex items-center justify-center text-[10px] font-semibold transition-colors"
+                                      style={{
+                                        backgroundColor: val > 0 ? `hsla(142, 71%, 45%, ${0.15 + intensity * 0.7})` : 'hsl(var(--secondary))',
+                                        color: intensity > 0.4 ? 'white' : 'hsl(var(--foreground))',
+                                      }}
+                                    >
+                                      {val > 0 ? `${(val / 1000).toFixed(0)}k` : '—'}
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                              <td className="px-3 py-2 text-end text-xs font-bold text-foreground">{formatCurrency(rowTotal, language)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 </div>
               )}
 
-              {/* Products Grid */}
+              {/* Products Overview — expanded cards */}
               <div className="bg-secondary/30 rounded-xl p-5">
                 <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Package className="w-4 h-4 text-primary" /> {t('productsOverview')}
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {products.map(product => {
-                    const pd = portfolioMetrics.productData.find(d => d.name === product.name);
-                    return (
-                      <div key={product.id} onClick={() => onProductClick(product)}
-                        className="bg-card border border-border rounded-xl p-4 hover:shadow-card-hover transition-all cursor-pointer hover:border-primary/30">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs text-muted-foreground">{product.code}</div>
-                            <h4 className="text-sm font-semibold text-foreground truncate">{product.name}</h4>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <StatusBadge status={product.status} />
-                            {product.lifecycleStage && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">{product.lifecycleStage}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                          <div><div className="text-xs font-bold text-success">{formatCurrency(pd?.revenue || 0, language)}</div><div className="text-[10px] text-muted-foreground">{t('revenue')}</div></div>
-                          <div><div className="text-xs font-bold text-destructive">{formatCurrency(pd?.cost || 0, language)}</div><div className="text-[10px] text-muted-foreground">{t('cost')}</div></div>
-                          <div><div className={cn("text-xs font-bold", (pd?.profit || 0) >= 0 ? 'text-primary' : 'text-destructive')}>{formatCurrency(pd?.profit || 0, language)}</div><div className="text-[10px] text-muted-foreground">{t('netProfit')}</div></div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[700px]">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-start text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('product')}</th>
+                        <th className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">Lifecycle</th>
+                        <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('revenue')}</th>
+                        <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('cost')}</th>
+                        <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('netProfit')}</th>
+                        <th className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('features')}</th>
+                        <th className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">Releases</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {products.map(product => {
+                        const pd = portfolioMetrics.productData.find(d => d.name === product.name);
+                        const featureCount = state.features.filter(f => f.productId === product.id).length;
+                        const activeFeatures = state.features.filter(f => f.productId === product.id && f.status === 'In Progress').length;
+                        const releaseCount = state.releases.filter(r => r.productId === product.id).length;
+                        const activeRelCount = state.releases.filter(r => r.productId === product.id && r.status === 'In Progress').length;
+                        return (
+                          <tr key={product.id} onClick={() => onProductClick(product)}
+                            className="hover:bg-muted/50 cursor-pointer transition-colors">
+                            <td className="px-3 py-3">
+                              <div className="text-sm font-semibold text-foreground">{product.name}</div>
+                              <div className="text-[10px] text-muted-foreground">{product.code}</div>
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
+                                {product.lifecycleStage || 'Development'}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-end text-sm font-semibold text-success">{formatCurrency(pd?.revenue || 0, language)}</td>
+                            <td className="px-3 py-3 text-end text-sm font-semibold text-destructive">{formatCurrency(pd?.cost || 0, language)}</td>
+                            <td className={cn("px-3 py-3 text-end text-sm font-semibold", (pd?.profit || 0) >= 0 ? 'text-primary' : 'text-destructive')}>
+                              {formatCurrency(pd?.profit || 0, language)}
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm">
+                              <span className="font-semibold text-foreground">{activeFeatures}</span>
+                              <span className="text-muted-foreground">/{featureCount}</span>
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm">
+                              <span className="font-semibold text-foreground">{activeRelCount}</span>
+                              <span className="text-muted-foreground">/{releaseCount}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </TabsContent>
