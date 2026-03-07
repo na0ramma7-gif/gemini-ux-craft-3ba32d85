@@ -48,13 +48,14 @@ interface ProductPageProps {
 }
 
 const ProductPage = ({ product, onBack }: ProductPageProps) => {
-  const { state, addFeature, updateFeature, deleteFeature, addRelease, t, language, isRTL } = useApp();
+  const { state, addFeature, updateFeature, deleteFeature, addRelease, updateRelease, t, language, isRTL } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('list');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingFeature, setEditingFeature] = useState<Feature | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [showAddReleaseModal, setShowAddReleaseModal] = useState(false);
+  const [editingRelease, setEditingRelease] = useState<Release | null>(null);
   const [newRelease, setNewRelease] = useState({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' as Release['status'] });
   const [selectedFeatureForFinancials, setSelectedFeatureForFinancials] = useState<Feature | null>(null);
   
@@ -542,7 +543,18 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                           <h4 className="text-base sm:text-lg font-semibold text-foreground">{release.version}</h4>
                           <p className="text-xs sm:text-sm text-muted-foreground">{release.name}</p>
                         </div>
-                        <StatusBadge status={release.status} />
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={release.status} />
+                          <button
+                            onClick={() => {
+                              setEditingRelease(release);
+                              setNewRelease({ version: release.version, name: release.name, startDate: release.startDate, endDate: release.endDate, status: release.status });
+                            }}
+                            className="p-1 rounded hover:bg-muted transition-colors"
+                          >
+                            <Edit className="w-3.5 h-3.5 text-muted-foreground" />
+                          </button>
+                        </div>
                       </div>
                       <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
@@ -564,11 +576,11 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                 })}
               </div>
 
-              {/* Add Release Modal */}
-              <Dialog open={showAddReleaseModal} onOpenChange={setShowAddReleaseModal}>
+              {/* Add/Edit Release Modal */}
+              <Dialog open={showAddReleaseModal || !!editingRelease} onOpenChange={open => { if (!open) { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); } }}>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>{t('addRelease')}</DialogTitle>
+                    <DialogTitle>{editingRelease ? t('editRelease') : t('addRelease')}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-2">
                     <div className="grid grid-cols-2 gap-3">
@@ -604,13 +616,18 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowAddReleaseModal(false)}>{t('cancel')}</Button>
+                    <Button variant="outline" onClick={() => { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); }}>{t('cancel')}</Button>
                     <Button
                       disabled={!newRelease.version || !newRelease.name || !newRelease.startDate || !newRelease.endDate}
                       onClick={() => {
-                        addRelease({ productId: product.id, ...newRelease });
+                        if (editingRelease) {
+                          updateRelease(editingRelease.id, newRelease);
+                          setEditingRelease(null);
+                        } else {
+                          addRelease({ productId: product.id, ...newRelease });
+                          setShowAddReleaseModal(false);
+                        }
                         setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' });
-                        setShowAddReleaseModal(false);
                       }}
                     >
                       {t('save')}
