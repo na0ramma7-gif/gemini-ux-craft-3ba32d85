@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Feature } from '@/types';
+import FeatureForecast from '@/components/FeatureForecast';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -763,11 +764,11 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
             {/* FORECAST TAB */}
             <TabsContent value="forecast" className="mt-0">
-              <div className="text-center py-12 bg-secondary/20 rounded-xl border-2 border-dashed border-border">
-                <TrendingUp className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">{t('forecast')}</h3>
-                <p className="text-sm text-muted-foreground">{t('forecastComingSoon')}</p>
-              </div>
+              <FeatureForecast
+                feature={feature}
+                revenueEntries={revenueEntries}
+                costEntries={costEntries}
+              />
             </TabsContent>
           </div>
         </div>
