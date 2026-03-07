@@ -60,7 +60,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
     name: '',
     startDate: '',
     endDate: '',
-    status: 'Planned' as const,
+    status: 'To Do' as const,
     owner: '',
     priority: 'Medium' as const,
     releaseId: null as number | null
