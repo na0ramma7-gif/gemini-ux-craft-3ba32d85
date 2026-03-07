@@ -7,15 +7,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import {
   ArrowLeft, ArrowRight, LayoutGrid, Package, Users, DollarSign, Target,
-  Edit, Upload, X, TrendingUp, Activity, User, Lightbulb, Star, Zap, Clock, Save, Pencil,
+  Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3, Zap, Star,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell, RadarChart, Radar,
+  PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+} from 'recharts';
 
 interface PortfolioPageProps {
   portfolio: Portfolio;
@@ -23,35 +32,33 @@ interface PortfolioPageProps {
   onProductClick: (product: Product) => void;
 }
 
-const OwnerRow = ({ label, name }: { label: string; name: string }) => (
-  <div className="flex items-center gap-3 p-2.5 rounded-lg bg-card border border-border/50">
-    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-      <User className="w-4 h-4 text-primary" />
-    </div>
-    <div className="min-w-0">
-      <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className="text-sm font-medium text-foreground truncate">{name}</div>
-    </div>
-  </div>
-);
+const LIFECYCLE_COLORS: Record<string, string> = {
+  Ideation: 'hsl(var(--muted-foreground))',
+  Development: 'hsl(var(--primary))',
+  Growth: 'hsl(142 71% 45%)',
+  Mature: 'hsl(var(--accent-foreground))',
+  Sunset: 'hsl(38 92% 50%)',
+};
 
-const HealthCard = ({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) => (
-  <div className="bg-card border border-border/50 rounded-lg p-3 text-center">
-    <div className="flex justify-center mb-1.5">{icon}</div>
-    <div className={`text-base font-bold ${color}`}>{value}</div>
-    <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
-  </div>
-);
+const PIE_COLORS = [
+  'hsl(var(--primary))', 'hsl(142 71% 45%)', 'hsl(0 84% 60%)',
+  'hsl(38 92% 50%)', 'hsl(262 83% 58%)', 'hsl(200 98% 39%)',
+];
 
-const ContextCard = ({ icon, label, value, placeholder }: { icon: React.ReactNode; label: string; value?: string; placeholder: string }) => (
-  <div className="bg-card border border-border/50 rounded-lg p-4">
-    <div className="flex items-center gap-2 mb-2">
-      {icon}
-      <span className="text-xs font-semibold text-foreground">{label}</span>
+const ChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload) return null;
+  return (
+    <div className="bg-card border border-border rounded-lg p-2.5 shadow-lg text-xs">
+      <p className="font-medium text-foreground mb-1">{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <p key={i} style={{ color: entry.color }} className="flex justify-between gap-4">
+          <span>{entry.name}:</span>
+          <span className="font-semibold">{typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}</span>
+        </p>
+      ))}
     </div>
-    <p className="text-sm text-muted-foreground leading-relaxed">{value || placeholder}</p>
-  </div>
-);
+  );
+};
 
 const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps) => {
   const { state, updatePortfolio, t, language, isRTL } = useApp();
@@ -60,78 +67,121 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
   const [editData, setEditData] = useState<Partial<Portfolio>>({});
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  const products = useMemo(() =>
-    state.products.filter(p => p.portfolioId === portfolio.id),
-    [state.products, portfolio.id]
-  );
+  const products = useMemo(() => state.products.filter(p => p.portfolioId === portfolio.id), [state.products, portfolio.id]);
 
   const portfolioMetrics = useMemo(() => {
-    let totalRevenue = 0;
-    let totalCost = 0;
-    let totalFeatures = 0;
-    let deliveredFeatures = 0;
-    let inProgressFeatures = 0;
+    let totalRevenue = 0, totalCost = 0, totalFeatures = 0, deliveredFeatures = 0, inProgressFeatures = 0, delayedFeatures = 0, activeReleases = 0;
 
-    products.forEach(product => {
+    const productData = products.map(product => {
       const productFeatures = state.features.filter(f => f.productId === product.id);
       totalFeatures += productFeatures.length;
       deliveredFeatures += productFeatures.filter(f => f.status === 'Delivered').length;
       inProgressFeatures += productFeatures.filter(f => f.status === 'In Progress').length;
 
-      productFeatures.forEach(feature => {
-        state.revenuePlan.filter(r => r.featureId === feature.id).forEach(r => { totalRevenue += r.expected; });
-      });
+      const productReleases = state.releases.filter(r => r.productId === product.id);
+      activeReleases += productReleases.filter(r => r.status === 'In Progress').length;
 
-      state.costs.filter(c => c.productId === product.id).forEach(c => {
-        if (c.type === 'CAPEX' && c.total && c.amortization) {
-          totalCost += (c.total / c.amortization) * 6;
-        } else if (c.monthly) {
-          totalCost += c.monthly * 6;
-        }
+      let rev = 0, cost = 0, planned = 0;
+      productFeatures.forEach(f => {
+        state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { rev += r.actual; });
+        state.revenuePlan.filter(r => r.featureId === f.id).forEach(r => { planned += r.expected; });
       });
+      state.costs.filter(c => c.productId === product.id).forEach(c => {
+        if (c.type === 'CAPEX' && c.total && c.amortization) cost += (c.total / c.amortization) * 6;
+        else if (c.monthly) cost += c.monthly * 6;
+      });
+      totalRevenue += rev;
+      totalCost += cost;
+
+      return { name: product.name, revenue: rev, cost, profit: rev - cost, lifecycle: product.lifecycleStage || 'Development' };
     });
 
     const profit = totalRevenue - totalCost;
     const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
 
-    return { totalRevenue, totalCost, profit, margin, productCount: products.length, featureCount: totalFeatures, deliveredFeatures, inProgressFeatures };
+    return {
+      totalRevenue, totalCost, profit, margin,
+      productCount: products.length, featureCount: totalFeatures,
+      deliveredFeatures, inProgressFeatures, delayedFeatures, activeReleases,
+      productData,
+    };
   }, [products, state]);
+
+  // Lifecycle distribution
+  const lifecycleDistribution = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach(p => {
+      const stage = p.lifecycleStage || 'Development';
+      counts[stage] = (counts[stage] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [products]);
+
+  // Revenue by product for bar chart
+  const revenueByProduct = portfolioMetrics.productData;
+
+  // Revenue heatmap data (product x month)
+  const heatmapData = useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    return products.map(product => {
+      const features = state.features.filter(f => f.productId === product.id);
+      const monthlyRev: Record<string, number> = {};
+      months.forEach(m => { monthlyRev[m] = 0; });
+      features.forEach(f => {
+        state.revenueActual.filter(r => r.featureId === f.id).forEach(r => {
+          const month = new Date(r.month + '-01').toLocaleString('en', { month: 'short' });
+          if (monthlyRev[month] !== undefined) monthlyRev[month] += r.actual;
+        });
+      });
+      return { product: product.name, ...monthlyRev };
+    });
+  }, [products, state]);
+
+  // Strategic alignment
+  const strategicAlignment = useMemo(() => {
+    const objectives: Record<string, string[]> = {};
+    products.forEach(p => {
+      const obj = p.strategicObjective || 'No Objective Defined';
+      const shortObj = obj.length > 50 ? obj.slice(0, 50) + '...' : obj;
+      if (!objectives[shortObj]) objectives[shortObj] = [];
+      objectives[shortObj].push(p.name);
+    });
+    return objectives;
+  }, [products]);
 
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
 
   const openEditModal = () => {
     setEditData({
-      name: portfolio.name,
-      description: portfolio.description,
-      purpose: portfolio.purpose,
-      strategicObjective: portfolio.strategicObjective,
-      businessValue: portfolio.businessValue,
-      owner: portfolio.owner,
-      technicalLead: portfolio.technicalLead,
-      businessStakeholder: portfolio.businessStakeholder,
-      priority: portfolio.priority,
+      name: portfolio.name, description: portfolio.description, purpose: portfolio.purpose,
+      strategicObjective: portfolio.strategicObjective, businessValue: portfolio.businessValue,
+      owner: portfolio.owner, technicalLead: portfolio.technicalLead,
+      businessStakeholder: portfolio.businessStakeholder, priority: portfolio.priority,
     });
     setShowEditModal(true);
   };
 
-  const handleSave = () => {
-    updatePortfolio(portfolio.id, editData);
-    setShowEditModal(false);
-  };
+  const handleSave = () => { updatePortfolio(portfolio.id, editData); setShowEditModal(false); };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onloadend = () => {
-      updatePortfolio(portfolio.id, { logo: reader.result as string });
-    };
+    reader.onloadend = () => { updatePortfolio(portfolio.id, { logo: reader.result as string }); };
     reader.readAsDataURL(file);
   };
 
-  const handleRemoveLogo = () => {
-    updatePortfolio(portfolio.id, { logo: undefined });
-  };
+  const heatmapMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  const maxHeatmapVal = useMemo(() => {
+    let max = 0;
+    heatmapData.forEach(row => {
+      heatmapMonths.forEach(m => {
+        const v = (row as any)[m] || 0;
+        if (v > max) max = v;
+      });
+    });
+    return max || 1;
+  }, [heatmapData]);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -144,20 +194,25 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded">{portfolio.code}</span>
             <h1 className="text-foreground truncate">{portfolio.name}</h1>
+            <span className={cn("px-2 py-0.5 rounded-full text-[11px] font-semibold",
+              portfolio.priority === 'High' ? 'bg-destructive/10 text-destructive' :
+              portfolio.priority === 'Medium' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
+            )}>{portfolio.priority}</span>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">{portfolio.description}</p>
         </div>
+        <Button variant="outline" size="sm" onClick={openEditModal} className="gap-1.5">
+          <Pencil className="w-3.5 h-3.5" /> {t('edit')}
+        </Button>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KPICard title={t('totalRevenue')} value={formatCurrency(portfolioMetrics.totalRevenue, language)} subtitle={t('expectedFromFeatures')} icon={<span className="text-lg">💰</span>} variant="green"
-          progress={{ label: t('targetYear'), target: formatCurrency(portfolioMetrics.totalRevenue * 1.35, language), percent: 74, status: 'negative' }} />
-        <KPICard title={t('totalCost')} value={formatCurrency(portfolioMetrics.totalCost, language)} subtitle={t('resourcesCapexOpex')} icon={<span className="text-lg">💸</span>} variant="red"
-          progress={{ label: t('budgetYear'), target: formatCurrency(portfolioMetrics.totalCost * 1.18, language), percent: 85, status: 'positive' }} />
+        <KPICard title={t('totalRevenue')} value={formatCurrency(portfolioMetrics.totalRevenue, language)} icon={<span className="text-lg">💰</span>} variant="green" />
+        <KPICard title={t('totalCost')} value={formatCurrency(portfolioMetrics.totalCost, language)} icon={<span className="text-lg">💸</span>} variant="red" />
         <KPICard title={t('netProfit')} value={formatCurrency(portfolioMetrics.profit, language)} subtitle={`${t('margin')}: ${portfolioMetrics.margin.toFixed(1)}%`} icon={<span className="text-lg">✅</span>} variant={portfolioMetrics.profit >= 0 ? 'green' : 'red'} />
-        <KPICard title={t('targetVsAchieved')} value="74%" icon={<span className="text-lg">🎯</span>} variant="gradient" />
         <KPICard title={t('products')} value={portfolioMetrics.productCount.toString()} subtitle={`${portfolioMetrics.featureCount} ${t('features')}`} icon={<span className="text-lg">📦</span>} variant="purple" />
+        <KPICard title="Active Releases" value={portfolioMetrics.activeReleases.toString()} subtitle={`${portfolioMetrics.inProgressFeatures} in progress`} icon={<span className="text-lg">🚀</span>} variant="gradient" />
       </div>
 
       {/* Tabs */}
@@ -178,152 +233,197 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
           </TabsList>
 
           <div className="p-5">
-            {/* OVERVIEW / PROFILE TAB */}
+            {/* OVERVIEW / DASHBOARD TAB */}
             <TabsContent value="overview" className="mt-0 space-y-6">
-              {/* Section 1: Portfolio Identity */}
-              <div className="bg-secondary/30 rounded-xl p-6">
-                <div className="flex items-start justify-between mb-5">
-                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Package className="w-4 h-4 text-primary" />
-                    Portfolio Identity
-                  </h3>
-                  <Button variant="outline" size="sm" onClick={openEditModal} className="gap-1.5">
-                    <Pencil className="w-3.5 h-3.5" />
-                    {t('edit')}
-                  </Button>
-                </div>
 
-                <div className="flex items-start gap-5">
-                  {/* Logo */}
-                  <div className="flex-shrink-0">
-                    <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml" className="hidden" onChange={handleLogoUpload} />
-                    {portfolio.logo ? (
-                      <div className="relative group">
-                        <img src={portfolio.logo} alt={portfolio.name} className="w-20 h-20 rounded-xl object-cover border border-border" />
-                        <div className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                          <button onClick={() => logoInputRef.current?.click()} className="p-1.5 bg-white/20 rounded-lg hover:bg-white/30 transition-colors">
-                            <Upload className="w-3.5 h-3.5 text-white" />
-                          </button>
-                          <button onClick={handleRemoveLogo} className="p-1.5 bg-white/20 rounded-lg hover:bg-white/30 transition-colors">
-                            <X className="w-3.5 h-3.5 text-white" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button onClick={() => logoInputRef.current?.click()} className="w-20 h-20 rounded-xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-1 transition-colors bg-card">
-                        <Upload className="w-5 h-5 text-muted-foreground" />
-                        <span className="text-[10px] text-muted-foreground">Logo</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Identity Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h2 className="text-xl font-bold text-foreground">{portfolio.name}</h2>
-                      <span className={cn(
-                        "px-2.5 py-0.5 rounded-full text-[11px] font-semibold",
-                        portfolio.priority === 'High' ? 'bg-destructive/10 text-destructive' :
-                        portfolio.priority === 'Medium' ? 'bg-warning/10 text-warning' :
-                        'bg-muted text-muted-foreground'
-                      )}>
-                        {portfolio.priority}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      {portfolio.code} · {portfolioMetrics.productCount} {t('products')} · {portfolioMetrics.featureCount} {t('features')}
-                    </p>
-                    {portfolio.description && (
-                      <div className="mb-3">
-                        <div className="text-[11px] text-muted-foreground font-medium mb-0.5">{t('description')}</div>
-                        <p className="text-sm text-foreground leading-relaxed">{portfolio.description}</p>
-                      </div>
-                    )}
-                    {portfolio.purpose && (
-                      <div>
-                        <div className="text-[11px] text-muted-foreground font-medium mb-0.5">{t('purpose')}</div>
-                        <p className="text-sm text-foreground leading-relaxed">{portfolio.purpose}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Strategic Context */}
-              <div className="bg-secondary/30 rounded-xl p-5">
-                <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <Target className="w-4 h-4 text-primary" />
-                  {t('strategicContext')}
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <ContextCard icon={<Target className="w-4 h-4 text-primary" />} label={t('strategicObjective')} value={portfolio.strategicObjective} placeholder="No strategic objective defined yet." />
-                  <ContextCard icon={<TrendingUp className="w-4 h-4 text-success" />} label={t('businessValueLabel')} value={portfolio.businessValue} placeholder="No business value defined yet." />
-                  <ContextCard icon={<Lightbulb className="w-4 h-4 text-warning" />} label={t('purpose')} value={portfolio.purpose} placeholder="No purpose defined yet." />
-                </div>
-              </div>
-
-              {/* Section 3: Ownership & Health */}
+              {/* Portfolio Financial Performance */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Ownership */}
+                {/* Revenue & Cost by Product */}
                 <div className="bg-secondary/30 rounded-xl p-5">
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <User className="w-4 h-4 text-primary" />
-                    {t('productOwnership')}
+                    <BarChart3 className="w-4 h-4 text-primary" /> Revenue & Cost by Product
+                  </h4>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={revenueByProduct} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="name" fontSize={10} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                        <YAxis fontSize={10} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                        <Bar dataKey="revenue" name={t('revenue')} fill="hsl(142 71% 45%)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="cost" name={t('cost')} fill="hsl(0 84% 60%)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Profitability by Product */}
+                <div className="bg-secondary/30 rounded-xl p-5">
+                  <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-primary" /> Profitability by Product
+                  </h4>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={revenueByProduct} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="name" fontSize={10} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                        <YAxis fontSize={10} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Bar dataKey="profit" name={t('netProfit')} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Distribution & Delivery Health */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Lifecycle Distribution */}
+                <div className="bg-secondary/30 rounded-xl p-5">
+                  <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Package className="w-4 h-4 text-primary" /> Product Distribution
+                  </h4>
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={lifecycleDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={35}
+                          label={({ name, value }) => `${name} (${value})`} labelLine={false}>
+                          {lifecycleDistribution.map((_, i) => (
+                            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-2 justify-center">
+                    {lifecycleDistribution.map((item, i) => (
+                      <div key={item.name} className="flex items-center gap-1.5 text-[11px]">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                        <span className="text-muted-foreground">{item.name}: <span className="font-semibold text-foreground">{item.value}</span></span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Delivery Health */}
+                <div className="bg-secondary/30 rounded-xl p-5">
+                  <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-primary" /> Delivery Health
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
+                      <div className="text-2xl font-bold text-primary">{portfolioMetrics.activeReleases}</div>
+                      <div className="text-[10px] text-muted-foreground mt-1">Active Releases</div>
+                    </div>
+                    <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
+                      <div className="text-2xl font-bold text-accent">{portfolioMetrics.inProgressFeatures}</div>
+                      <div className="text-[10px] text-muted-foreground mt-1">In Progress</div>
+                    </div>
+                    <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
+                      <div className="text-2xl font-bold text-success">{portfolioMetrics.deliveredFeatures}</div>
+                      <div className="text-[10px] text-muted-foreground mt-1">Completed</div>
+                    </div>
+                    <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
+                      <div className="text-2xl font-bold text-foreground">{portfolioMetrics.featureCount}</div>
+                      <div className="text-[10px] text-muted-foreground mt-1">Total Features</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Strategic Alignment */}
+                <div className="bg-secondary/30 rounded-xl p-5">
+                  <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-primary" /> Strategic Alignment
                   </h4>
                   <div className="space-y-3">
-                    {portfolio.owner && <OwnerRow label={t('owner')} name={portfolio.owner} />}
-                    {portfolio.technicalLead && <OwnerRow label={t('technicalOwner')} name={portfolio.technicalLead} />}
-                    {portfolio.businessStakeholder && <OwnerRow label={t('businessStakeholder')} name={portfolio.businessStakeholder} />}
-                    {!portfolio.owner && !portfolio.technicalLead && !portfolio.businessStakeholder && (
-                      <p className="text-xs text-muted-foreground italic py-4 text-center">No ownership defined yet. Click Edit to add.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Health Indicators */}
-                <div className="bg-secondary/30 rounded-xl p-5">
-                  <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-primary" />
-                    {t('productHealth')}
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <HealthCard icon={<DollarSign className="w-4 h-4 text-success" />} label={t('revenue')} value={formatCurrency(portfolioMetrics.totalRevenue, language)} color="text-success" />
-                    <HealthCard icon={<DollarSign className="w-4 h-4 text-destructive" />} label={t('cost')} value={formatCurrency(portfolioMetrics.totalCost, language)} color="text-destructive" />
-                    <HealthCard icon={<TrendingUp className="w-4 h-4 text-primary" />} label={t('netProfit')} value={formatCurrency(portfolioMetrics.profit, language)} color={portfolioMetrics.profit >= 0 ? 'text-success' : 'text-destructive'} />
-                    <HealthCard icon={<Star className="w-4 h-4 text-accent" />} label={t('activeFeatures')} value={`${portfolioMetrics.inProgressFeatures}`} color="text-accent" />
-                    <HealthCard icon={<Zap className="w-4 h-4 text-primary" />} label={t('features')} value={`${portfolioMetrics.deliveredFeatures}/${portfolioMetrics.featureCount}`} color="text-primary" />
-                    <HealthCard icon={<Package className="w-4 h-4 text-foreground" />} label={t('products')} value={`${portfolioMetrics.productCount}`} color="text-foreground" />
+                    {Object.entries(strategicAlignment).map(([objective, prods]) => (
+                      <div key={objective} className="bg-card rounded-lg p-3 border border-border/50">
+                        <div className="text-[11px] text-muted-foreground font-medium mb-1.5 line-clamp-2">{objective}</div>
+                        <div className="flex flex-wrap gap-1">
+                          {prods.map(p => (
+                            <Badge key={p} variant="secondary" className="text-[10px]">{p}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              {/* Section 4: Products Overview */}
+              {/* Revenue Contribution Heatmap */}
+              {heatmapData.length > 0 && (
+                <div className="bg-secondary/30 rounded-xl p-5">
+                  <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-primary" /> Revenue Contribution Heatmap
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[500px]">
+                      <thead>
+                        <tr>
+                          <th className="text-start text-[10px] font-medium text-muted-foreground uppercase px-3 py-2">Product</th>
+                          {heatmapMonths.map(m => (
+                            <th key={m} className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2">{m}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {heatmapData.map((row: any) => (
+                          <tr key={row.product}>
+                            <td className="px-3 py-2 text-xs font-medium text-foreground">{row.product}</td>
+                            {heatmapMonths.map(m => {
+                              const val = row[m] || 0;
+                              const intensity = maxHeatmapVal > 0 ? val / maxHeatmapVal : 0;
+                              return (
+                                <td key={m} className="px-1 py-1.5">
+                                  <div
+                                    className="rounded-md h-8 flex items-center justify-center text-[10px] font-medium"
+                                    style={{
+                                      backgroundColor: val > 0 ? `hsla(142, 71%, 45%, ${0.1 + intensity * 0.6})` : 'hsl(var(--secondary))',
+                                      color: intensity > 0.5 ? 'white' : 'hsl(var(--foreground))',
+                                    }}
+                                  >
+                                    {val > 0 ? `${(val / 1000).toFixed(0)}k` : '—'}
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Products Grid */}
               <div className="bg-secondary/30 rounded-xl p-5">
                 <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <Package className="w-4 h-4 text-primary" />
-                  {t('productsOverview')}
+                  <Package className="w-4 h-4 text-primary" /> {t('productsOverview')}
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {products.map(product => {
-                    const productFeatures = state.features.filter(f => f.productId === product.id);
-                    let productRevenue = 0;
-                    productFeatures.forEach(f => {
-                      state.revenuePlan.filter(r => r.featureId === f.id).forEach(r => { productRevenue += r.expected; });
-                    });
+                    const pd = portfolioMetrics.productData.find(d => d.name === product.name);
                     return (
                       <div key={product.id} onClick={() => onProductClick(product)}
                         className="bg-card border border-border rounded-xl p-4 hover:shadow-card-hover transition-all cursor-pointer hover:border-primary/30">
-                        <div className="flex justify-between items-start mb-3">
+                        <div className="flex justify-between items-start mb-2">
                           <div className="min-w-0 flex-1">
-                            <div className="text-xs text-muted-foreground mb-0.5">{product.code}</div>
-                            <h4 className="text-base font-semibold text-foreground truncate">{product.name}</h4>
+                            <div className="text-xs text-muted-foreground">{product.code}</div>
+                            <h4 className="text-sm font-semibold text-foreground truncate">{product.name}</h4>
                           </div>
-                          <StatusBadge status={product.status} />
+                          <div className="flex items-center gap-1.5">
+                            <StatusBadge status={product.status} />
+                            {product.lifecycleStage && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">{product.lifecycleStage}</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="space-y-1.5 text-sm">
-                          <div className="flex justify-between"><span className="text-muted-foreground">{t('features')}:</span><span className="font-semibold">{productFeatures.length}</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">{t('revenue')}:</span><span className="font-semibold text-revenue">{formatCurrency(productRevenue, language)}</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">{t('owner')}:</span><span className="font-medium">{product.owner}</span></div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div><div className="text-xs font-bold text-success">{formatCurrency(pd?.revenue || 0, language)}</div><div className="text-[10px] text-muted-foreground">{t('revenue')}</div></div>
+                          <div><div className="text-xs font-bold text-destructive">{formatCurrency(pd?.cost || 0, language)}</div><div className="text-[10px] text-muted-foreground">{t('cost')}</div></div>
+                          <div><div className={cn("text-xs font-bold", (pd?.profit || 0) >= 0 ? 'text-primary' : 'text-destructive')}>{formatCurrency(pd?.profit || 0, language)}</div><div className="text-[10px] text-muted-foreground">{t('netProfit')}</div></div>
                         </div>
                       </div>
                     );
@@ -332,6 +432,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
               </div>
             </TabsContent>
 
+            {/* PRODUCTS TAB */}
             <TabsContent value="products" className="mt-0 space-y-4">
               <h3 className="text-foreground">{t('allProducts')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -347,10 +448,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                       <Target className="w-6 h-6 text-primary/50 flex-shrink-0 ms-2" />
                     </div>
                     <div className="space-y-1.5">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{t('owner')}:</span>
-                        <span className="font-medium">{product.owner}</span>
-                      </div>
+                      <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t('owner')}:</span><span className="font-medium">{product.owner}</span></div>
                     </div>
                     <div className="mt-3 text-center text-primary text-sm font-medium">{t('clickToView')}</div>
                   </div>
@@ -358,6 +456,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
               </div>
             </TabsContent>
 
+            {/* RESOURCES TAB */}
             <TabsContent value="resources" className="mt-0">
               <h3 className="text-foreground mb-4">{t('assignments')}</h3>
               <div className="overflow-x-auto">
@@ -372,73 +471,67 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {state.assignments
-                      .filter(a => products.some(p => p.id === a.productId))
-                      .map(assignment => {
-                        const resource = state.resources.find(r => r.id === assignment.resourceId);
-                        const product = products.find(p => p.id === assignment.productId);
-                        return (
-                          <tr key={assignment.id} className="hover:bg-secondary/30">
-                            <td className="px-4 py-2.5 font-medium text-sm">{resource?.name}</td>
-                            <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource?.role}</td>
-                            <td className="px-4 py-2.5 text-sm">{product?.name}</td>
-                            <td className="px-4 py-2.5 text-sm">{formatDate(assignment.startDate, language)} → {formatDate(assignment.endDate, language)}</td>
-                            <td className="px-4 py-2.5 text-end font-semibold text-primary text-sm">{assignment.utilization}%</td>
-                          </tr>
-                        );
-                      })}
+                    {state.assignments.filter(a => products.some(p => p.id === a.productId)).map(assignment => {
+                      const resource = state.resources.find(r => r.id === assignment.resourceId);
+                      const prod = products.find(p => p.id === assignment.productId);
+                      return (
+                        <tr key={assignment.id} className="hover:bg-secondary/30">
+                          <td className="px-4 py-2.5 font-medium text-sm">{resource?.name}</td>
+                          <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource?.role}</td>
+                          <td className="px-4 py-2.5 text-sm">{prod?.name}</td>
+                          <td className="px-4 py-2.5 text-sm">{formatDate(assignment.startDate, language)} → {formatDate(assignment.endDate, language)}</td>
+                          <td className="px-4 py-2.5 text-end font-semibold text-primary text-sm">{assignment.utilization}%</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </TabsContent>
 
+            {/* FINANCIALS TAB */}
             <TabsContent value="financials" className="mt-0 space-y-6">
               <div>
                 <div className="border-b pb-3 mb-4">
-                  <h3 className="text-base sm:text-lg font-bold text-foreground">💵 {t('revenue')}</h3>
+                  <h3 className="text-base font-bold text-foreground">💵 {t('revenue')}</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[800px]">
                     <thead className="bg-secondary">
                       <tr>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-start text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('product')}</th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-start text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('portfolio')}</th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('status')}</th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('expected')}</th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('actual')}</th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('cost')}</th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('variance')}</th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
+                        <th className="px-3 py-2 text-start text-[10px] font-medium text-muted-foreground uppercase">{t('product')}</th>
+                        <th className="px-3 py-2 text-center text-[10px] font-medium text-muted-foreground uppercase">{t('status')}</th>
+                        <th className="px-3 py-2 text-end text-[10px] font-medium text-muted-foreground uppercase">{t('expected')}</th>
+                        <th className="px-3 py-2 text-end text-[10px] font-medium text-muted-foreground uppercase">{t('actual')}</th>
+                        <th className="px-3 py-2 text-end text-[10px] font-medium text-muted-foreground uppercase">{t('cost')}</th>
+                        <th className="px-3 py-2 text-end text-[10px] font-medium text-muted-foreground uppercase">{t('variance')}</th>
+                        <th className="px-3 py-2 text-center text-[10px] font-medium text-muted-foreground uppercase">{t('actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
                       {products.map(prod => {
                         const prodFeatures = state.features.filter(f => f.productId === prod.id);
                         let expected = 0, actual = 0, cost = 0;
-                        prodFeatures.forEach(feature => {
-                          state.revenuePlan.filter(r => r.featureId === feature.id).forEach(r => { expected += r.expected; });
-                          state.revenueActual.filter(r => r.featureId === feature.id).forEach(r => { actual += r.actual; });
+                        prodFeatures.forEach(f => {
+                          state.revenuePlan.filter(r => r.featureId === f.id).forEach(r => { expected += r.expected; });
+                          state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { actual += r.actual; });
                         });
                         state.costs.filter(c => c.productId === prod.id).forEach(c => {
-                          if (c.type === 'CAPEX' && c.total && c.amortization) {
-                            cost += (c.total / c.amortization) * 6;
-                          } else if (c.monthly) {
-                            cost += c.monthly * 6;
-                          }
+                          if (c.type === 'CAPEX' && c.total && c.amortization) cost += (c.total / c.amortization) * 6;
+                          else if (c.monthly) cost += c.monthly * 6;
                         });
                         const variance = actual - expected;
                         return (
                           <tr key={prod.id} className="hover:bg-secondary/50">
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium text-foreground text-xs sm:text-sm">{prod.name}</td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-muted-foreground">{portfolio.name}</td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-center"><StatusBadge status={prod.status} /></td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-revenue text-xs sm:text-sm">{formatCurrency(expected, language)}</td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-foreground text-xs sm:text-sm">{formatCurrency(actual, language)}</td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-cost text-xs sm:text-sm">{formatCurrency(cost, language)}</td>
-                            <td className={cn("px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-xs sm:text-sm", variance >= 0 ? "text-revenue" : "text-cost")}>
+                            <td className="px-3 py-2.5 font-medium text-foreground text-sm">{prod.name}</td>
+                            <td className="px-3 py-2.5 text-center"><StatusBadge status={prod.status} /></td>
+                            <td className="px-3 py-2.5 text-end font-semibold text-revenue text-sm">{formatCurrency(expected, language)}</td>
+                            <td className="px-3 py-2.5 text-end font-semibold text-foreground text-sm">{formatCurrency(actual, language)}</td>
+                            <td className="px-3 py-2.5 text-end font-semibold text-cost text-sm">{formatCurrency(cost, language)}</td>
+                            <td className={cn("px-3 py-2.5 text-end font-semibold text-sm", variance >= 0 ? "text-revenue" : "text-cost")}>
                               {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
                             </td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
+                            <td className="px-3 py-2.5 text-center">
                               <Button size="sm" onClick={() => onProductClick(prod)}>{t('planFinancials')}</Button>
                             </td>
                           </tr>
@@ -453,48 +546,22 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
         </div>
       </Tabs>
 
-      {/* Edit Portfolio Profile Modal */}
+      {/* Edit Portfolio Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Portfolio Profile</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit Portfolio Profile</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('name')}</Label>
-                <Input value={editData.name || ''} onChange={e => setEditData(prev => ({ ...prev, name: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('owner')}</Label>
-                <Input value={editData.owner || ''} onChange={e => setEditData(prev => ({ ...prev, owner: e.target.value }))} placeholder="Portfolio Owner" />
-              </div>
+              <div className="space-y-1.5"><Label className="text-xs">{t('name')}</Label><Input value={editData.name || ''} onChange={e => setEditData(prev => ({ ...prev, name: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">{t('owner')}</Label><Input value={editData.owner || ''} onChange={e => setEditData(prev => ({ ...prev, owner: e.target.value }))} placeholder="Portfolio Owner" /></div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t('description')}</Label>
-              <Textarea rows={2} value={editData.description || ''} onChange={e => setEditData(prev => ({ ...prev, description: e.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t('purpose')}</Label>
-              <Textarea rows={2} value={editData.purpose || ''} onChange={e => setEditData(prev => ({ ...prev, purpose: e.target.value }))} placeholder="What is this portfolio's purpose?" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t('strategicObjective')}</Label>
-              <Textarea rows={2} value={editData.strategicObjective || ''} onChange={e => setEditData(prev => ({ ...prev, strategicObjective: e.target.value }))} placeholder="Define the strategic objective..." />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t('businessValueLabel')}</Label>
-              <Textarea rows={2} value={editData.businessValue || ''} onChange={e => setEditData(prev => ({ ...prev, businessValue: e.target.value }))} placeholder="What business value does this portfolio deliver?" />
-            </div>
+            <div className="space-y-1.5"><Label className="text-xs">{t('description')}</Label><Input value={editData.description || ''} onChange={e => setEditData(prev => ({ ...prev, description: e.target.value }))} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">{t('purpose')}</Label><Input value={editData.purpose || ''} onChange={e => setEditData(prev => ({ ...prev, purpose: e.target.value }))} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">{t('strategicObjective')}</Label><Input value={editData.strategicObjective || ''} onChange={e => setEditData(prev => ({ ...prev, strategicObjective: e.target.value }))} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">{t('businessValueLabel')}</Label><Input value={editData.businessValue || ''} onChange={e => setEditData(prev => ({ ...prev, businessValue: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('technicalOwner')}</Label>
-                <Input value={editData.technicalLead || ''} onChange={e => setEditData(prev => ({ ...prev, technicalLead: e.target.value }))} placeholder="Technical Lead" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('businessStakeholder')}</Label>
-                <Input value={editData.businessStakeholder || ''} onChange={e => setEditData(prev => ({ ...prev, businessStakeholder: e.target.value }))} placeholder="Business Stakeholder" />
-              </div>
+              <div className="space-y-1.5"><Label className="text-xs">{t('technicalOwner')}</Label><Input value={editData.technicalLead || ''} onChange={e => setEditData(prev => ({ ...prev, technicalLead: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">{t('businessStakeholder')}</Label><Input value={editData.businessStakeholder || ''} onChange={e => setEditData(prev => ({ ...prev, businessStakeholder: e.target.value }))} /></div>
             </div>
           </div>
           <DialogFooter>
