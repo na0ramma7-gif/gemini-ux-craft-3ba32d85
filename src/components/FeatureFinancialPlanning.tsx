@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Feature } from '@/types';
 import FeatureForecast from '@/components/FeatureForecast';
@@ -9,79 +9,49 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {
-  ArrowLeft,
-  ArrowRight,
-  Plus,
-  Trash2,
-  Edit,
-  DollarSign,
-  Users,
-  TrendingUp,
-  FileText,
-  Save,
-  ChevronDown,
-  ChevronRight,
-  UserPlus,
+  ArrowLeft, ArrowRight, Plus, Trash2, DollarSign, Users, TrendingUp, TrendingDown,
+  FileText, Save, ChevronDown, ChevronRight, UserPlus, Lightbulb, AlertTriangle,
+  BarChart3, PieChart,
 } from 'lucide-react';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend,
 } from 'recharts';
 
 // ── Data Types ──────────────────────────────────────────────
 
-interface RevenueEntry {
-  id: number;
+interface MonthlyRevenue {
   featureId: number;
-  month: number; // 0-11
-  year: number;
   planned: number;
   actual: number;
 }
 
-interface CostEntry {
-  id: number;
-  featureId: number;
-  month: number;
-  year: number;
-  category: string;
+interface CostItem {
+  id: string;
+  name: string;
   planned: number;
   actual: number;
-  resourceId?: number;
-  utilization?: number;
-  calculatedCost?: number;
+  notes: string;
 }
 
-interface ResourceAllocation {
-  id: number;
+interface ResourceAlloc {
   resourceId: number;
-  utilization: number; // percent
+  utilization: number;
+}
+
+interface MonthData {
+  revenues: MonthlyRevenue[];
+  costs: Record<string, CostItem[]>; // category -> items
+  resources: ResourceAlloc[];
 }
 
 interface FeatureFinancialPlanningProps {
@@ -89,20 +59,26 @@ interface FeatureFinancialPlanningProps {
   onClose: () => void;
 }
 
-const COST_CATEGORIES = ['Infrastructure', 'Licensing', 'Marketing', 'Resources', 'Other'];
+const COST_CATEGORIES = ['Infrastructure', 'Licensing', 'Marketing', 'Other'];
 const MONTHS_SHORT_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'] as const;
+
+const uid = () => Math.random().toString(36).slice(2, 9);
 
 // ── Component ───────────────────────────────────────────────
 
 const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanningProps) => {
   const { state, t, language, isRTL } = useApp();
-  const [tab, setTab] = useState('summary');
+  const [tab, setTab] = useState('planner');
   const [selectedYear, setSelectedYear] = useState(2025);
 
-  // Data stores
-  const [revenueEntries, setRevenueEntries] = useState<RevenueEntry[]>([]);
-  const [costEntries, setCostEntries] = useState<CostEntry[]>([]);
-  const [resourceAllocations, setResourceAllocations] = useState<ResourceAllocation[]>([]);
+  // All 12 months of data keyed by month index (0-11)
+  const [yearData, setYearData] = useState<Record<number, MonthData>>(() => {
+    const d: Record<number, MonthData> = {};
+    for (let i = 0; i < 12; i++) {
+      d[i] = { revenues: [], costs: {}, resources: [] };
+    }
+    return d;
+  });
 
   // Feature Profile
   const [featureProfile, setFeatureProfile] = useState({
@@ -114,372 +90,286 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     risksAndChallenges: feature.risks || '',
   });
 
-  // Expanded months in financials tab
-  const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
+  const [expandedMonths, setExpandedMonths] = useState<number[]>([]);
+  const [editingMonth, setEditingMonth] = useState<number | null>(null);
+  const [expandedCostCats, setExpandedCostCats] = useState<string[]>([]);
 
-  // Financial entry modal
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalFeatureId, setModalFeatureId] = useState(feature.id);
-  const [modalStartDate, setModalStartDate] = useState('');
-  const [modalEndDate, setModalEndDate] = useState('');
-  const [modalRevenuePlanned, setModalRevenuePlanned] = useState(0);
-  const [modalRevenueActual, setModalRevenueActual] = useState(0);
-  const [modalCostCategories, setModalCostCategories] = useState<Record<string, { planned: number; actual: number }>>({});
-  const [expandedCostCategories, setExpandedCostCategories] = useState<string[]>([]);
-  const [editingEntryId, setEditingEntryId] = useState<number | null>(null);
-  const [editingType, setEditingType] = useState<'revenue' | 'cost' | null>(null);
-  // Non-resource cost table entries per category
-  const [modalCostItems, setModalCostItems] = useState<Record<string, { name: string; planned: number; actual: number; notes: string }[]>>({});
-  // Modal resource allocations
-  const [modalResourceAllocations, setModalResourceAllocations] = useState<{ resourceId: number; utilization: number }[]>([]);
-  const [modalResourceSelectorOpen, setModalResourceSelectorOpen] = useState(false);
-  const [modalSelectedResourceIds, setModalSelectedResourceIds] = useState<number[]>([]);
-
-  // Resource selector dialog
+  // Resource selector
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
+  const [resourceSelectorMonth, setResourceSelectorMonth] = useState<number>(0);
   const [selectedResourceIds, setSelectedResourceIds] = useState<number[]>([]);
 
-  // Delete confirm
-  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'revenue' | 'cost'; id: number } | null>(null);
+  // Inline editing state for the month being edited
+  const [inlinePlannedRev, setInlinePlannedRev] = useState(0);
+  const [inlineActualRev, setInlineActualRev] = useState(0);
 
   const product = state.products.find(p => p.id === feature.productId);
   const productFeatures = state.features.filter(f => f.productId === feature.productId);
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
 
-  // ── Monthly aggregation ───────────────────────────────────
+  // ── Computed monthly summaries ────────────────────────────
 
-  const monthlyData = useMemo(() => {
-    const months: Record<string, {
-      key: string;
-      monthIdx: number;
-      year: number;
-      label: string;
-      revenue: number;
-      cost: number;
-      profit: number;
-      revenueDetails: { featureId: number; featureName: string; planned: number; actual: number }[];
-      costDetails: Record<string, { planned: number; actual: number }>;
-    }> = {};
+  const monthlySummaries = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const md = yearData[i];
+      const plannedRev = md.revenues.reduce((s, r) => s + r.planned, 0);
+      const actualRev = md.revenues.reduce((s, r) => s + r.actual, 0);
 
-    // Aggregate revenue
-    revenueEntries.filter(e => e.year === selectedYear).forEach(e => {
-      const key = `${e.year}-${e.month}`;
-      if (!months[key]) {
-        months[key] = {
-          key,
-          monthIdx: e.month,
-          year: e.year,
-          label: `${t(MONTHS_SHORT_KEYS[e.month])} ${e.year}`,
-          revenue: 0,
-          cost: 0,
-          profit: 0,
-          revenueDetails: [],
-          costDetails: {},
-        };
-      }
-      months[key].revenue += e.planned;
-      const feat = productFeatures.find(f => f.id === e.featureId);
-      months[key].revenueDetails.push({
-        featureId: e.featureId,
-        featureName: feat?.name || 'Unknown',
-        planned: e.planned,
-        actual: e.actual,
+      let plannedCost = 0;
+      let actualCost = 0;
+      Object.values(md.costs).forEach(items => {
+        items.forEach(item => { plannedCost += item.planned; actualCost += item.actual; });
       });
+
+      // Resource costs
+      let resourceCost = 0;
+      md.resources.forEach(a => {
+        const r = state.resources.find(res => res.id === a.resourceId);
+        if (r) resourceCost += r.costRate * (a.utilization / 100);
+      });
+      plannedCost += resourceCost;
+
+      return {
+        month: i,
+        label: `${t(MONTHS_SHORT_KEYS[i])} ${selectedYear}`,
+        plannedRev, actualRev, plannedCost, actualCost,
+        netProfit: plannedRev - plannedCost,
+        resourceCost,
+      };
     });
+  }, [yearData, selectedYear, state.resources, t]);
 
-    // Aggregate costs
-    costEntries.filter(e => e.year === selectedYear).forEach(e => {
-      const key = `${e.year}-${e.month}`;
-      if (!months[key]) {
-        months[key] = {
-          key,
-          monthIdx: e.month,
-          year: e.year,
-          label: `${t(MONTHS_SHORT_KEYS[e.month])} ${e.year}`,
-          revenue: 0,
-          cost: 0,
-          profit: 0,
-          revenueDetails: [],
-          costDetails: {},
-        };
-      }
-      const amount = e.calculatedCost || e.planned;
-      months[key].cost += amount;
-      if (!months[key].costDetails[e.category]) {
-        months[key].costDetails[e.category] = { planned: 0, actual: 0 };
-      }
-      months[key].costDetails[e.category].planned += amount;
-      months[key].costDetails[e.category].actual += e.actual;
-    });
-
-    // Calculate profit
-    Object.values(months).forEach(m => {
-      m.profit = m.revenue - m.cost;
-    });
-
-    return Object.values(months).sort((a, b) => a.monthIdx - b.monthIdx);
-  }, [revenueEntries, costEntries, selectedYear, productFeatures, t]);
-
-  // Overall totals
   const totals = useMemo(() => {
-    const rev = monthlyData.reduce((s, m) => s + m.revenue, 0);
-    const cost = monthlyData.reduce((s, m) => s + m.cost, 0);
-    return { revenue: rev, cost, profit: rev - cost };
-  }, [monthlyData]);
+    const r = monthlySummaries.reduce((a, m) => ({
+      plannedRev: a.plannedRev + m.plannedRev,
+      actualRev: a.actualRev + m.actualRev,
+      plannedCost: a.plannedCost + m.plannedCost,
+      actualCost: a.actualCost + m.actualCost,
+    }), { plannedRev: 0, actualRev: 0, plannedCost: 0, actualCost: 0 });
+    const profit = r.plannedRev - r.plannedCost;
+    const margin = r.plannedRev > 0 ? (profit / r.plannedRev) * 100 : 0;
+    return { ...r, profit, margin };
+  }, [monthlySummaries]);
 
   // Chart data
-  const chartData = useMemo(() => {
-    return monthlyData.map(m => ({
-      month: t(MONTHS_SHORT_KEYS[m.monthIdx]),
-      revenue: m.revenue,
-      cost: m.cost,
-      profit: m.profit,
-    }));
-  }, [monthlyData, t]);
+  const chartData = useMemo(() =>
+    monthlySummaries.map(m => ({
+      month: t(MONTHS_SHORT_KEYS[m.month]),
+      revenue: m.plannedRev,
+      actualRevenue: m.actualRev,
+      cost: m.plannedCost,
+      profit: m.netProfit,
+    }))
+  , [monthlySummaries, t]);
 
-  // ── Toggle month expansion ────────────────────────────────
-
-  const toggleMonth = (key: string) => {
-    setExpandedMonths(prev =>
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-    );
-  };
-
-  // ── Modal helpers ─────────────────────────────────────────
-
-  // Compute duration from modal dates
-  const modalDuration = useMemo(() => {
-    if (!modalStartDate || !modalEndDate) return null;
-    const start = new Date(modalStartDate);
-    const end = new Date(modalEndDate);
-    if (end <= start) return null;
-    const diffMs = end.getTime() - start.getTime();
-    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    const months = Math.round(days / 30.44);
-    return { days, months: months || 1 };
-  }, [modalStartDate, modalEndDate]);
-
-  // Modal live summary
-  const modalSummary = useMemo(() => {
-    const totalCostFromCategories = Object.values(modalCostCategories).reduce((s, v) => s + v.planned, 0);
-    const totalCostFromItems = Object.values(modalCostItems).reduce((s, items) => s + items.reduce((si, i) => si + i.planned, 0), 0);
-    const totalResourceCost = modalResourceAllocations.reduce((s, a) => {
-      const r = state.resources.find(res => res.id === a.resourceId);
-      return s + (r ? r.costRate * (a.utilization / 100) : 0);
-    }, 0);
-    const totalCost = totalCostFromCategories + totalCostFromItems + totalResourceCost;
-    const profit = modalRevenuePlanned - totalCost;
-    const margin = modalRevenuePlanned > 0 ? (profit / modalRevenuePlanned) * 100 : 0;
-    return { revenue: modalRevenuePlanned, cost: totalCost, profit, margin, resourceCost: totalResourceCost };
-  }, [modalRevenuePlanned, modalCostCategories, modalCostItems, modalResourceAllocations, state.resources]);
-
-  const revenueVariance = modalRevenueActual - modalRevenuePlanned;
-
-  const openAddModal = () => {
-    const now = new Date();
-    const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    const lastDayStr = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
-    setModalFeatureId(feature.id);
-    setModalStartDate(firstDay);
-    setModalEndDate(lastDayStr);
-    setModalRevenuePlanned(0);
-    setModalRevenueActual(0);
-    setModalCostCategories({});
-    setModalCostItems({});
-    setExpandedCostCategories([]);
-    setModalResourceAllocations([]);
-    setEditingEntryId(null);
-    setEditingType(null);
-    setModalOpen(true);
-  };
-
-  const toggleCostCategory = (cat: string) => {
-    setExpandedCostCategories(prev =>
-      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
-    );
-    if (!modalCostCategories[cat]) {
-      setModalCostCategories(prev => ({ ...prev, [cat]: { planned: 0, actual: 0 } }));
-    }
-  };
-
-  const saveModal = () => {
-    const startD = new Date(modalStartDate);
-    const modalMonth = startD.getMonth();
-    const year = startD.getFullYear();
-
-    // Save revenue
-    if (modalRevenuePlanned > 0 || modalRevenueActual > 0) {
-      if (editingType === 'revenue' && editingEntryId) {
-        setRevenueEntries(prev => prev.map(e =>
-          e.id === editingEntryId
-            ? { ...e, featureId: modalFeatureId, month: modalMonth, planned: modalRevenuePlanned, actual: modalRevenueActual }
-            : e
-        ));
-      } else {
-        setRevenueEntries(prev => [...prev, {
-          id: Date.now(),
-          featureId: modalFeatureId,
-          month: modalMonth,
-          year,
-          planned: modalRevenuePlanned,
-          actual: modalRevenueActual,
-        }]);
-      }
-    }
-
-    // Save costs by category (from category totals)
-    Object.entries(modalCostCategories).forEach(([category, values], idx) => {
-      if (values.planned > 0 || values.actual > 0) {
-        setCostEntries(prev => [...prev, {
-          id: Date.now() + idx + 1,
-          featureId: modalFeatureId,
-          month: modalMonth,
-          year,
-          category,
-          planned: values.planned,
-          actual: values.actual,
-        }]);
-      }
-    });
-
-    // Save cost items per category
-    let itemIdx = 100;
-    Object.entries(modalCostItems).forEach(([category, items]) => {
-      items.forEach(item => {
-        if (item.planned > 0 || item.actual > 0) {
-          setCostEntries(prev => [...prev, {
-            id: Date.now() + itemIdx++,
-            featureId: modalFeatureId,
-            month: modalMonth,
-            year,
-            category,
-            planned: item.planned,
-            actual: item.actual,
-          }]);
-        }
+  // Cost breakdown for stacked chart
+  const costBreakdownData = useMemo(() =>
+    monthlySummaries.map(m => {
+      const md = yearData[m.month];
+      const breakdown: Record<string, number> = { month: m.month as any };
+      breakdown.monthLabel = t(MONTHS_SHORT_KEYS[m.month]) as any;
+      COST_CATEGORIES.forEach(cat => {
+        breakdown[cat] = (md.costs[cat] || []).reduce((s, i) => s + i.planned, 0);
       });
-    });
+      breakdown['Resources'] = m.resourceCost;
+      return breakdown;
+    })
+  , [monthlySummaries, yearData, t]);
 
-    // Save resource allocations as cost entries + to main allocations
-    modalResourceAllocations.forEach((alloc, idx) => {
-      const resource = state.resources.find(r => r.id === alloc.resourceId);
-      if (resource) {
-        const calculatedCost = resource.costRate * (alloc.utilization / 100);
-        if (!resourceAllocations.find(a => a.resourceId === alloc.resourceId)) {
-          setResourceAllocations(prev => [...prev, {
-            id: Date.now() + 200 + idx,
-            resourceId: alloc.resourceId,
-            utilization: alloc.utilization,
-          }]);
-        }
-        setCostEntries(prev => [...prev, {
-          id: Date.now() + 300 + idx,
-          featureId: modalFeatureId,
-          month: modalMonth,
-          year,
-          category: 'Resources',
-          planned: calculatedCost,
-          actual: 0,
-          resourceId: alloc.resourceId,
-          utilization: alloc.utilization,
-          calculatedCost,
-        }]);
-      }
-    });
+  // Quick insights
+  const insights = useMemo(() => {
+    const results: { text: string; icon: 'up' | 'down' | 'alert' }[] = [];
 
-    setModalOpen(false);
+    // Highest revenue month
+    const topMonth = [...monthlySummaries].sort((a, b) => b.plannedRev - a.plannedRev)[0];
+    if (topMonth && topMonth.plannedRev > 0) {
+      results.push({ text: `${topMonth.label} has the highest planned revenue (${formatCurrency(topMonth.plannedRev, language)})`, icon: 'up' });
+    }
+
+    // Total margin
+    if (totals.margin > 0) {
+      results.push({ text: `Overall profit margin: ${totals.margin.toFixed(0)}%`, icon: 'up' });
+    } else if (totals.plannedRev > 0) {
+      results.push({ text: `Negative profit margin: ${totals.margin.toFixed(0)}%`, icon: 'alert' });
+    }
+
+    // Months with no data
+    const emptyMonths = monthlySummaries.filter(m => m.plannedRev === 0 && m.plannedCost === 0).length;
+    if (emptyMonths > 0 && emptyMonths < 12) {
+      results.push({ text: `${emptyMonths} month(s) have no financial data yet`, icon: 'alert' });
+    }
+
+    // Revenue vs actual variance
+    if (totals.actualRev > 0) {
+      const variance = totals.actualRev - totals.plannedRev;
+      results.push({
+        text: `Revenue variance: ${variance >= 0 ? '+' : ''}${formatCurrency(variance, language)}`,
+        icon: variance >= 0 ? 'up' : 'down',
+      });
+    }
+
+    // Resource cost contribution
+    const totalResourceCost = monthlySummaries.reduce((s, m) => s + m.resourceCost, 0);
+    if (totalResourceCost > 0 && totals.plannedCost > 0) {
+      const pct = ((totalResourceCost / totals.plannedCost) * 100).toFixed(0);
+      results.push({ text: `Resources account for ${pct}% of total costs`, icon: 'up' });
+    }
+
+    return results;
+  }, [monthlySummaries, totals, language]);
+
+  // ── Helpers ───────────────────────────────────────────────
+
+  const toggleMonth = (idx: number) => {
+    setExpandedMonths(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
   };
 
-  // ── Resource allocation ───────────────────────────────────
+  const updateMonthData = useCallback((monthIdx: number, updater: (md: MonthData) => MonthData) => {
+    setYearData(prev => ({ ...prev, [monthIdx]: updater(prev[monthIdx]) }));
+  }, []);
 
-  const addResourceAllocations = () => {
-    const newAllocations = selectedResourceIds
-      .filter(rid => !resourceAllocations.find(a => a.resourceId === rid))
-      .map((rid, idx) => ({
-        id: Date.now() + idx,
-        resourceId: rid,
-        utilization: 100,
-      }));
-    setResourceAllocations(prev => [...prev, ...newAllocations]);
+  const startInlineEdit = (monthIdx: number) => {
+    const md = yearData[monthIdx];
+    const rev = md.revenues.find(r => r.featureId === feature.id);
+    setInlinePlannedRev(rev?.planned || 0);
+    setInlineActualRev(rev?.actual || 0);
+    setEditingMonth(monthIdx);
+    setExpandedCostCats([]);
+  };
 
-    // Also add as cost entries
-    newAllocations.forEach(alloc => {
-      const resource = state.resources.find(r => r.id === alloc.resourceId);
-      if (resource) {
-        const calculatedCost = resource.costRate * (alloc.utilization / 100);
-        setCostEntries(prev => [...prev, {
-          id: Date.now() + alloc.resourceId,
-          featureId: feature.id,
-          month: new Date().getMonth(),
-          year: selectedYear,
-          category: 'Resources',
-          planned: calculatedCost,
-          actual: 0,
-          resourceId: alloc.resourceId,
-          utilization: alloc.utilization,
-          calculatedCost,
-        }]);
+  const saveInlineRevenue = (monthIdx: number) => {
+    updateMonthData(monthIdx, md => {
+      const existing = md.revenues.findIndex(r => r.featureId === feature.id);
+      const newRevs = [...md.revenues];
+      if (existing >= 0) {
+        newRevs[existing] = { ...newRevs[existing], planned: inlinePlannedRev, actual: inlineActualRev };
+      } else if (inlinePlannedRev > 0 || inlineActualRev > 0) {
+        newRevs.push({ featureId: feature.id, planned: inlinePlannedRev, actual: inlineActualRev });
       }
+      return { ...md, revenues: newRevs };
     });
+  };
 
+  const addCostItem = (monthIdx: number, category: string) => {
+    updateMonthData(monthIdx, md => ({
+      ...md,
+      costs: {
+        ...md.costs,
+        [category]: [...(md.costs[category] || []), { id: uid(), name: '', planned: 0, actual: 0, notes: '' }],
+      },
+    }));
+  };
+
+  const updateCostItem = (monthIdx: number, category: string, itemId: string, updates: Partial<CostItem>) => {
+    updateMonthData(monthIdx, md => ({
+      ...md,
+      costs: {
+        ...md.costs,
+        [category]: (md.costs[category] || []).map(i => i.id === itemId ? { ...i, ...updates } : i),
+      },
+    }));
+  };
+
+  const removeCostItem = (monthIdx: number, category: string, itemId: string) => {
+    updateMonthData(monthIdx, md => ({
+      ...md,
+      costs: {
+        ...md.costs,
+        [category]: (md.costs[category] || []).filter(i => i.id !== itemId),
+      },
+    }));
+  };
+
+  const updateResourceUtil = (monthIdx: number, resourceId: number, utilization: number) => {
+    updateMonthData(monthIdx, md => ({
+      ...md,
+      resources: md.resources.map(a => a.resourceId === resourceId ? { ...a, utilization } : a),
+    }));
+  };
+
+  const removeResource = (monthIdx: number, resourceId: number) => {
+    updateMonthData(monthIdx, md => ({
+      ...md,
+      resources: md.resources.filter(a => a.resourceId !== resourceId),
+    }));
+  };
+
+  const openResourceSelector = (monthIdx: number) => {
+    setResourceSelectorMonth(monthIdx);
+    setSelectedResourceIds([]);
+    setResourceSelectorOpen(true);
+  };
+
+  const addSelectedResources = () => {
+    const monthIdx = resourceSelectorMonth;
+    updateMonthData(monthIdx, md => ({
+      ...md,
+      resources: [
+        ...md.resources,
+        ...selectedResourceIds
+          .filter(rid => !md.resources.some(a => a.resourceId === rid))
+          .map(rid => ({ resourceId: rid, utilization: 100 })),
+      ],
+    }));
     setSelectedResourceIds([]);
     setResourceSelectorOpen(false);
   };
 
-  const updateResourceUtilization = (allocId: number, utilization: number) => {
-    setResourceAllocations(prev => prev.map(a =>
-      a.id === allocId ? { ...a, utilization } : a
-    ));
+  // Convert to legacy format for FeatureForecast compatibility
+  const revenueEntries = useMemo(() => {
+    const entries: any[] = [];
+    Object.entries(yearData).forEach(([monthStr, md]) => {
+      md.revenues.forEach(r => {
+        entries.push({ id: Date.now() + parseInt(monthStr), featureId: r.featureId, month: parseInt(monthStr), year: selectedYear, planned: r.planned, actual: r.actual });
+      });
+    });
+    return entries;
+  }, [yearData, selectedYear]);
 
-    // Update corresponding cost entry
-    const alloc = resourceAllocations.find(a => a.id === allocId);
-    if (alloc) {
-      const resource = state.resources.find(r => r.id === alloc.resourceId);
-      if (resource) {
-        const calculatedCost = resource.costRate * (utilization / 100);
-        setCostEntries(prev => prev.map(e =>
-          e.category === 'Resources' && e.resourceId === alloc.resourceId
-            ? { ...e, utilization, planned: calculatedCost, calculatedCost }
-            : e
-        ));
-      }
-    }
+  const costEntries = useMemo(() => {
+    const entries: any[] = [];
+    Object.entries(yearData).forEach(([monthStr, md]) => {
+      const mi = parseInt(monthStr);
+      Object.entries(md.costs).forEach(([cat, items]) => {
+        items.forEach(item => {
+          entries.push({ id: item.id, featureId: feature.id, month: mi, year: selectedYear, category: cat, planned: item.planned, actual: item.actual });
+        });
+      });
+      md.resources.forEach(a => {
+        const r = state.resources.find(res => res.id === a.resourceId);
+        if (r) {
+          entries.push({ id: `res-${mi}-${a.resourceId}`, featureId: feature.id, month: mi, year: selectedYear, category: 'Resources', planned: r.costRate * (a.utilization / 100), actual: 0, resourceId: a.resourceId, utilization: a.utilization, calculatedCost: r.costRate * (a.utilization / 100) });
+        }
+      });
+    });
+    return entries;
+  }, [yearData, selectedYear, feature.id, state.resources]);
+
+  // ── Insight Icon ──────────────────────────────────────────
+
+  const InsightIcon = ({ type }: { type: string }) => {
+    if (type === 'up') return <TrendingUp className="w-4 h-4 text-emerald-600 shrink-0" />;
+    if (type === 'down') return <TrendingDown className="w-4 h-4 text-destructive shrink-0" />;
+    return <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />;
   };
 
-  const removeResourceAllocation = (allocId: number) => {
-    const alloc = resourceAllocations.find(a => a.id === allocId);
-    setResourceAllocations(prev => prev.filter(a => a.id !== allocId));
-    if (alloc) {
-      setCostEntries(prev => prev.filter(e => !(e.category === 'Resources' && e.resourceId === alloc.resourceId)));
-    }
-  };
+  // ── Custom Tooltip ────────────────────────────────────────
 
-  // ── Delete ────────────────────────────────────────────────
-
-  const handleDelete = () => {
-    if (!deleteConfirm) return;
-    if (deleteConfirm.type === 'revenue') {
-      setRevenueEntries(prev => prev.filter(e => e.id !== deleteConfirm.id));
-    } else {
-      setCostEntries(prev => prev.filter(e => e.id !== deleteConfirm.id));
-    }
-    setDeleteConfirm(null);
-  };
-
-  // ── Summary Card ──────────────────────────────────────────
-
-  const SummaryCard = ({ title, value, colorClass, icon }: { title: string; value: string; colorClass: string; icon: React.ReactNode }) => (
-    <div className="bg-card rounded-xl p-5 border border-border shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-muted-foreground">{title}</span>
-        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", colorClass)}>
-          {icon}
-        </div>
+  const ChartTooltipContent = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="bg-card border border-border rounded-xl shadow-lg p-3 text-xs space-y-1.5">
+        <p className="font-semibold text-foreground text-sm">{label}</p>
+        {payload.map((entry: any) => (
+          <div key={entry.dataKey} className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
+            <span className="text-muted-foreground">{entry.name}:</span>
+            <span className="font-semibold text-foreground">{formatCurrency(entry.value, language)}</span>
+          </div>
+        ))}
       </div>
-      <div className="text-2xl font-bold text-foreground">{value}</div>
-    </div>
-  );
+    );
+  };
 
   // ── Main Render ───────────────────────────────────────────
 
@@ -496,17 +386,31 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
             <p className="text-sm text-muted-foreground">{product?.name} • {t('financialPlanning')}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(parseInt(v))}>
-            <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {[2024, 2025, 2026, 2027].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button onClick={openAddModal} className="bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4 me-2" />{t('addFinancialEntry')}
-          </Button>
-        </div>
+        <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(parseInt(v))}>
+          <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[2024, 2025, 2026, 2027].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {[
+          { label: t('totalRevenue'), value: formatCurrency(totals.plannedRev, language), color: 'text-emerald-600', bgColor: 'bg-emerald-500/10', icon: <DollarSign className="w-4 h-4" /> },
+          { label: t('actualRevenue'), value: formatCurrency(totals.actualRev, language), color: 'text-emerald-700', bgColor: 'bg-emerald-500/10', icon: <TrendingUp className="w-4 h-4" /> },
+          { label: t('totalCost'), value: formatCurrency(totals.plannedCost, language), color: 'text-destructive', bgColor: 'bg-destructive/10', icon: <TrendingDown className="w-4 h-4" /> },
+          { label: t('netProfit'), value: formatCurrency(totals.profit, language), color: totals.profit >= 0 ? 'text-primary' : 'text-destructive', bgColor: totals.profit >= 0 ? 'bg-primary/10' : 'bg-destructive/10', icon: <BarChart3 className="w-4 h-4" /> },
+          { label: t('profitMargin'), value: `${totals.margin.toFixed(1)}%`, color: totals.margin >= 0 ? 'text-primary' : 'text-destructive', bgColor: totals.margin >= 0 ? 'bg-primary/10' : 'bg-destructive/10', icon: <PieChart className="w-4 h-4" /> },
+        ].map((card, idx) => (
+          <div key={idx} className="bg-card rounded-xl border border-border p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
+              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", card.bgColor, card.color)}>{card.icon}</div>
+            </div>
+            <div className={cn("text-lg font-bold", card.color)}>{card.value}</div>
+          </div>
+        ))}
       </div>
 
       {/* Tabs */}
@@ -514,9 +418,10 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
           <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto flex-nowrap">
             {[
-              { value: 'summary', icon: <FileText className="w-4 h-4 me-1.5" />, label: t('summary') },
-              { value: 'financials', icon: <DollarSign className="w-4 h-4 me-1.5" />, label: t('financials') },
-              { value: 'resources', icon: <Users className="w-4 h-4 me-1.5" />, label: t('resources') },
+              { value: 'planner', icon: <DollarSign className="w-4 h-4 me-1.5" />, label: t('financialPlanning') },
+              { value: 'profile', icon: <FileText className="w-4 h-4 me-1.5" />, label: t('featureProfile') },
+              { value: 'charts', icon: <BarChart3 className="w-4 h-4 me-1.5" />, label: 'Charts' },
+              { value: 'insights', icon: <Lightbulb className="w-4 h-4 me-1.5" />, label: 'Insights' },
               { value: 'forecast', icon: <TrendingUp className="w-4 h-4 me-1.5" />, label: t('forecast') },
             ].map(tabItem => (
               <TabsTrigger key={tabItem.value} value={tabItem.value}
@@ -527,11 +432,277 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
           </TabsList>
 
           <div className="p-5 sm:p-6">
-            {/* ── SUMMARY TAB ──────────────────────────────── */}
-            <TabsContent value="summary" className="mt-0 space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-foreground">{t('featureProfile')}</h3>
+            {/* ── PLANNER TAB ──────────────────────────────── */}
+            <TabsContent value="planner" className="mt-0 space-y-4">
+              <div className="rounded-xl border border-border overflow-hidden">
+                {/* Table Header */}
+                <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-0 bg-secondary/50 px-4 py-3">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase">{t('month')}</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase text-end">{t('plannedRevenue')}</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase text-end">{t('actualRevenue')}</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase text-end">{t('plannedCost')}</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase text-end">{t('actualCost')}</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase text-end">{t('netProfit')}</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase text-center w-20">{t('actions')}</span>
+                </div>
+
+                {/* Month Rows */}
+                {monthlySummaries.map(ms => {
+                  const isExpanded = expandedMonths.includes(ms.month);
+                  const hasData = ms.plannedRev > 0 || ms.actualRev > 0 || ms.plannedCost > 0;
+                  return (
+                    <div key={ms.month} className="border-t border-border">
+                      <div
+                        className={cn("grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-0 px-4 py-3 hover:bg-secondary/30 cursor-pointer transition-colors", hasData && "bg-card")}
+                        onClick={() => toggleMonth(ms.month)}
+                      >
+                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                          {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                          {ms.label}
+                          {!hasData && <span className="text-xs text-muted-foreground font-normal ml-1">—</span>}
+                        </div>
+                        <div className="text-sm font-medium text-emerald-600 text-end">{ms.plannedRev > 0 ? formatCurrency(ms.plannedRev, language) : '—'}</div>
+                        <div className="text-sm font-medium text-emerald-700 text-end">{ms.actualRev > 0 ? formatCurrency(ms.actualRev, language) : '—'}</div>
+                        <div className="text-sm font-medium text-destructive text-end">{ms.plannedCost > 0 ? formatCurrency(ms.plannedCost, language) : '—'}</div>
+                        <div className="text-sm font-medium text-destructive/80 text-end">{ms.actualCost > 0 ? formatCurrency(ms.actualCost, language) : '—'}</div>
+                        <div className={cn("text-sm font-bold text-end", ms.netProfit >= 0 ? "text-primary" : "text-destructive")}>
+                          {ms.plannedRev > 0 || ms.plannedCost > 0 ? formatCurrency(ms.netProfit, language) : '—'}
+                        </div>
+                        <div className="w-20 flex items-center justify-center">
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                            onClick={e => { e.stopPropagation(); startInlineEdit(ms.month); if (!isExpanded) toggleMonth(ms.month); }}>
+                            <Plus className="w-3.5 h-3.5 me-1" />{t('edit')}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Expanded Month Detail */}
+                      {isExpanded && (
+                        <div className="bg-secondary/5 border-t border-border/50 px-6 py-5 space-y-5">
+                          {/* Revenue Section */}
+                          <div className="bg-card rounded-xl border border-border p-4">
+                            <h5 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('revenue')}
+                            </h5>
+                            {editingMonth === ms.month ? (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('planned')} (SAR)</label>
+                                    <Input type="number" value={inlinePlannedRev || ''} placeholder="0"
+                                      onChange={e => setInlinePlannedRev(parseFloat(e.target.value) || 0)} />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('actual')} (SAR)</label>
+                                    <Input type="number" value={inlineActualRev || ''} placeholder="0"
+                                      onChange={e => setInlineActualRev(parseFloat(e.target.value) || 0)} />
+                                  </div>
+                                </div>
+                                {(inlinePlannedRev > 0 || inlineActualRev > 0) && (
+                                  <div className={cn("px-3 py-2 rounded-lg border text-xs font-semibold",
+                                    inlineActualRev - inlinePlannedRev >= 0
+                                      ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
+                                      : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400"
+                                  )}>
+                                    {t('revenueVariance')}: {inlineActualRev - inlinePlannedRev >= 0 ? '+' : ''}{formatCurrency(inlineActualRev - inlinePlannedRev, language)}
+                                  </div>
+                                )}
+                                <div className="flex gap-2">
+                                  <Button size="sm" onClick={() => { saveInlineRevenue(ms.month); setEditingMonth(null); }} className="bg-primary hover:bg-primary/90">
+                                    <Save className="w-3.5 h-3.5 me-1" /> {t('save')}
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => setEditingMonth(null)}>{t('cancel')}</Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                {yearData[ms.month].revenues.length > 0 ? (
+                                  <div className="rounded-lg border border-border overflow-hidden">
+                                    <div className="grid grid-cols-3 bg-secondary/30 px-3 py-2">
+                                      <span className="text-xs font-semibold text-muted-foreground">{t('feature')}</span>
+                                      <span className="text-xs font-semibold text-muted-foreground text-end">{t('planned')}</span>
+                                      <span className="text-xs font-semibold text-muted-foreground text-end">{t('actual')}</span>
+                                    </div>
+                                    {yearData[ms.month].revenues.map((rev, idx) => {
+                                      const feat = productFeatures.find(f => f.id === rev.featureId);
+                                      return (
+                                        <div key={idx} className="grid grid-cols-3 px-3 py-2 border-t border-border/50">
+                                          <span className="text-sm text-foreground">{feat?.name || feature.name}</span>
+                                          <span className="text-sm text-end font-medium text-foreground">{formatCurrency(rev.planned, language)}</span>
+                                          <span className="text-sm text-end font-medium text-emerald-600">{formatCurrency(rev.actual, language)}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">{t('noRevenueData')}</p>
+                                )}
+                                <Button size="sm" variant="outline" className="mt-2" onClick={() => startInlineEdit(ms.month)}>
+                                  <Plus className="w-3.5 h-3.5 me-1" /> {t('addEntry')}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Costs Section */}
+                          <div className="bg-card rounded-xl border border-border p-4">
+                            <h5 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                              <DollarSign className="w-4 h-4 text-destructive" /> {t('costCategories')}
+                            </h5>
+                            <div className="space-y-2">
+                              {/* Resources */}
+                              <Collapsible open={expandedCostCats.includes(`res-${ms.month}`)}
+                                onOpenChange={() => setExpandedCostCats(prev => prev.includes(`res-${ms.month}`) ? prev.filter(c => c !== `res-${ms.month}`) : [...prev, `res-${ms.month}`])}>
+                                <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/30 transition-colors">
+                                  <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-primary" /> {t('resources')}
+                                    {yearData[ms.month].resources.length > 0 && (
+                                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{yearData[ms.month].resources.length}</span>
+                                    )}
+                                  </span>
+                                  <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", expandedCostCats.includes(`res-${ms.month}`) && "rotate-180")} />
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <div className="mt-2 space-y-2">
+                                    {yearData[ms.month].resources.length > 0 && (
+                                      <div className="overflow-x-auto rounded-lg border border-border">
+                                        <table className="w-full text-sm">
+                                          <thead className="bg-secondary/50">
+                                            <tr>
+                                              <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('resource')}</th>
+                                              <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('monthlyCost')}</th>
+                                              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground">{t('utilization')} %</th>
+                                              <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('allocatedCost')}</th>
+                                              <th className="px-3 py-2 w-10" />
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-border">
+                                            {yearData[ms.month].resources.map(alloc => {
+                                              const resource = state.resources.find(r => r.id === alloc.resourceId);
+                                              if (!resource) return null;
+                                              const allocCost = resource.costRate * (alloc.utilization / 100);
+                                              return (
+                                                <tr key={alloc.resourceId} className="hover:bg-secondary/30">
+                                                  <td className="px-3 py-2">
+                                                    <div className="font-medium text-foreground">{resource.name}</div>
+                                                    <div className="text-xs text-muted-foreground">{resource.role}</div>
+                                                  </td>
+                                                  <td className="px-3 py-2 text-end text-foreground">{formatCurrency(resource.costRate, language)}</td>
+                                                  <td className="px-3 py-2 text-center">
+                                                    <Input type="number" className="h-7 text-xs text-center w-16 mx-auto" value={alloc.utilization} min={0} max={100}
+                                                      onChange={e => updateResourceUtil(ms.month, alloc.resourceId, parseInt(e.target.value) || 0)} />
+                                                  </td>
+                                                  <td className="px-3 py-2 text-end font-semibold text-primary">{formatCurrency(allocCost, language)}</td>
+                                                  <td className="px-3 py-2 text-center">
+                                                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive"
+                                                      onClick={() => removeResource(ms.month, alloc.resourceId)}>
+                                                      <Trash2 className="w-3 h-3" />
+                                                    </Button>
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+                                    <Button size="sm" variant="outline" onClick={() => openResourceSelector(ms.month)}>
+                                      <UserPlus className="w-3.5 h-3.5 me-1.5" /> {t('addResources')}
+                                    </Button>
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+
+                              {/* Other cost categories */}
+                              {COST_CATEGORIES.map(cat => {
+                                const catKey = `${cat}-${ms.month}`;
+                                const items = yearData[ms.month].costs[cat] || [];
+                                return (
+                                  <Collapsible key={cat} open={expandedCostCats.includes(catKey)}
+                                    onOpenChange={() => setExpandedCostCats(prev => prev.includes(catKey) ? prev.filter(c => c !== catKey) : [...prev, catKey])}>
+                                    <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/30 transition-colors">
+                                      <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                                        {cat}
+                                        {items.length > 0 && <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{items.length}</span>}
+                                      </span>
+                                      <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", expandedCostCats.includes(catKey) && "rotate-180")} />
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                      <div className="mt-2 space-y-2">
+                                        {items.length > 0 && (
+                                          <div className="overflow-x-auto rounded-lg border border-border">
+                                            <table className="w-full text-sm">
+                                              <thead className="bg-secondary/50">
+                                                <tr>
+                                                  <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('costName')}</th>
+                                                  <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('planned')} (SAR)</th>
+                                                  <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('actual')} (SAR)</th>
+                                                  <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('notes')}</th>
+                                                  <th className="px-3 py-2 w-10" />
+                                                </tr>
+                                              </thead>
+                                              <tbody className="divide-y divide-border">
+                                                {items.map(item => (
+                                                  <tr key={item.id} className="hover:bg-secondary/30">
+                                                    <td className="px-3 py-1.5">
+                                                      <Input className="h-7 text-xs" value={item.name} placeholder={t('costName')}
+                                                        onChange={e => updateCostItem(ms.month, cat, item.id, { name: e.target.value })} />
+                                                    </td>
+                                                    <td className="px-3 py-1.5">
+                                                      <Input type="number" className="h-7 text-xs text-end" value={item.planned || ''} placeholder="0"
+                                                        onChange={e => updateCostItem(ms.month, cat, item.id, { planned: parseFloat(e.target.value) || 0 })} />
+                                                    </td>
+                                                    <td className="px-3 py-1.5">
+                                                      <Input type="number" className="h-7 text-xs text-end" value={item.actual || ''} placeholder="0"
+                                                        onChange={e => updateCostItem(ms.month, cat, item.id, { actual: parseFloat(e.target.value) || 0 })} />
+                                                    </td>
+                                                    <td className="px-3 py-1.5">
+                                                      <Input className="h-7 text-xs" value={item.notes} placeholder="..."
+                                                        onChange={e => updateCostItem(ms.month, cat, item.id, { notes: e.target.value })} />
+                                                    </td>
+                                                    <td className="px-3 py-1.5 text-center">
+                                                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive"
+                                                        onClick={() => removeCostItem(ms.month, cat, item.id)}>
+                                                        <Trash2 className="w-3 h-3" />
+                                                      </Button>
+                                                    </td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        )}
+                                        <Button size="sm" variant="outline" onClick={() => addCostItem(ms.month, cat)}>
+                                          <Plus className="w-3.5 h-3.5 me-1.5" /> {t('addCostEntry')}
+                                        </Button>
+                                      </div>
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Totals Footer */}
+                <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-0 bg-secondary/30 px-4 py-3 border-t-2 border-border font-bold">
+                  <span className="text-sm text-foreground ps-6">{t('total')}</span>
+                  <span className="text-sm text-emerald-600 text-end">{formatCurrency(totals.plannedRev, language)}</span>
+                  <span className="text-sm text-emerald-700 text-end">{formatCurrency(totals.actualRev, language)}</span>
+                  <span className="text-sm text-destructive text-end">{formatCurrency(totals.plannedCost, language)}</span>
+                  <span className="text-sm text-destructive/80 text-end">{formatCurrency(totals.actualCost, language)}</span>
+                  <span className={cn("text-sm text-end", totals.profit >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(totals.profit, language)}</span>
+                  <span className="w-20" />
+                </div>
               </div>
+            </TabsContent>
+
+            {/* ── PROFILE TAB ──────────────────────────────── */}
+            <TabsContent value="profile" className="mt-0 space-y-6">
               <div className="bg-card rounded-xl border border-border p-5">
                 <label className="block text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <span className="text-lg">📝</span>{t('description')}
@@ -564,631 +735,116 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               </div>
             </TabsContent>
 
-            {/* ── FINANCIALS TAB — Monthly Summary ─────────── */}
-            <TabsContent value="financials" className="mt-0 space-y-6">
-              {/* Monthly Dashboard Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <SummaryCard
-                  title={t('totalRevenue')}
-                  value={formatCurrency(totals.revenue, language)}
-                  colorClass="bg-emerald-100 dark:bg-emerald-900/30"
-                  icon={<DollarSign className="w-5 h-5 text-emerald-600" />}
-                />
-                <SummaryCard
-                  title={t('totalCost')}
-                  value={formatCurrency(totals.cost, language)}
-                  colorClass="bg-red-100 dark:bg-red-900/30"
-                  icon={<DollarSign className="w-5 h-5 text-red-500" />}
-                />
-                <SummaryCard
-                  title={t('netProfit')}
-                  value={formatCurrency(totals.profit, language)}
-                  colorClass={totals.profit >= 0 ? "bg-blue-100 dark:bg-blue-900/30" : "bg-red-100 dark:bg-red-900/30"}
-                  icon={<TrendingUp className={cn("w-5 h-5", totals.profit >= 0 ? "text-blue-600" : "text-red-500")} />}
-                />
+            {/* ── CHARTS TAB ───────────────────────────────── */}
+            <TabsContent value="charts" className="mt-0 space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* Revenue vs Cost Trend */}
+                <div className="bg-card rounded-xl border border-border p-5">
+                  <h5 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-primary" /> {t('revenueCostTrend')}
+                  </h5>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="month" fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                        <YAxis fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                        <Line type="monotone" dataKey="revenue" name={t('plannedRevenue')} stroke="hsl(var(--revenue, 142 71% 45%))" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(var(--revenue, 142 71% 45%))' }} />
+                        <Line type="monotone" dataKey="actualRevenue" name={t('actualRevenue')} stroke="hsl(142 71% 35%)" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 2.5 }} />
+                        <Line type="monotone" dataKey="cost" name={t('totalCost')} stroke="hsl(var(--cost, 0 84% 60%))" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(var(--cost, 0 84% 60%))' }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Profit Trend */}
+                <div className="bg-card rounded-xl border border-border p-5">
+                  <h5 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-primary" /> {t('netProfit')} Trend
+                  </h5>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="month" fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                        <YAxis fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="profit" name={t('netProfit')} fill="hsl(var(--primary))" radius={[4,4,0,0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Cost Breakdown */}
+                <div className="bg-card rounded-xl border border-border p-5 lg:col-span-2">
+                  <h5 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <PieChart className="w-4 h-4 text-destructive" /> {t('monthlyCostBreakdown')}
+                  </h5>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={costBreakdownData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="monthLabel" fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
+                        <YAxis fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                        <Bar dataKey="Resources" name={t('resources')} stackId="a" fill="hsl(var(--primary))" />
+                        <Bar dataKey="Infrastructure" name="Infrastructure" stackId="a" fill="hsl(var(--cost, 0 84% 60%))" />
+                        <Bar dataKey="Licensing" name="Licensing" stackId="a" fill="hsl(40 96% 53%)" />
+                        <Bar dataKey="Marketing" name="Marketing" stackId="a" fill="hsl(280 67% 55%)" />
+                        <Bar dataKey="Other" name="Other" stackId="a" fill="hsl(var(--muted-foreground))" radius={[4,4,0,0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
-
-              {/* Charts */}
-              {chartData.length > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className="bg-card rounded-xl border border-border p-4">
-                    <h5 className="text-sm font-semibold text-foreground mb-3">{t('plannedVsActualRevenue')}</h5>
-                    <div className="h-56">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} barGap={2}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis dataKey="month" fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                          <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }} />
-                          <Legend />
-                          <Bar dataKey="revenue" name={t('revenue')} fill="hsl(var(--revenue, 142 71% 45%))" radius={[4,4,0,0]} />
-                          <Bar dataKey="cost" name={t('cost')} fill="hsl(var(--cost, 0 84% 60%))" radius={[4,4,0,0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                  <div className="bg-card rounded-xl border border-border p-4">
-                    <h5 className="text-sm font-semibold text-foreground mb-3">{t('monthlyCostBreakdown')}</h5>
-                    <div className="h-56">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} barGap={2}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis dataKey="month" fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                          <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }} />
-                          <Legend />
-                          <Bar dataKey="profit" name={t('netProfit')} fill="hsl(var(--profit, 217 91% 60%))" radius={[4,4,0,0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Monthly Financial Summary Table */}
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-semibold text-foreground text-lg">{t('monthlyFinancialSummary')}</h4>
-                <Button onClick={openAddModal} size="sm" className="bg-primary hover:bg-primary/90">
-                  <Plus className="w-4 h-4 me-1" />{t('addFinancialEntry')}
-                </Button>
-              </div>
-
-              {monthlyData.length > 0 ? (
-                <div className="rounded-xl border border-border overflow-hidden">
-                  {/* Table Header */}
-                  <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-0 bg-secondary/50 px-4 py-3">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase">{t('month')}</span>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase text-end">{t('revenue')}</span>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase text-end">{t('cost')}</span>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase text-end">{t('netProfit')}</span>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase text-center w-20">{t('actions')}</span>
-                  </div>
-
-                  {/* Monthly Rows */}
-                  {monthlyData.map(month => {
-                    const isExpanded = expandedMonths.includes(month.key);
-                    return (
-                      <div key={month.key} className="border-t border-border">
-                        {/* Summary Row */}
-                        <div
-                          className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-0 px-4 py-3 hover:bg-secondary/30 cursor-pointer transition-colors"
-                          onClick={() => toggleMonth(month.key)}
-                        >
-                          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                            {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                            {month.label}
-                          </div>
-                          <div className="text-sm font-semibold text-emerald-600 text-end">{formatCurrency(month.revenue, language)}</div>
-                          <div className="text-sm font-semibold text-red-500 text-end">{formatCurrency(month.cost, language)}</div>
-                          <div className={cn("text-sm font-bold text-end", month.profit >= 0 ? "text-blue-600" : "text-red-500")}>
-                            {formatCurrency(month.profit, language)}
-                          </div>
-                          <div className="w-20" />
-                        </div>
-
-                        {/* Expanded Details */}
-                        {isExpanded && (
-                          <div className="bg-secondary/10 px-6 py-4 space-y-4 border-t border-border/50">
-                            {/* Revenue Details */}
-                            {month.revenueDetails.length > 0 && (
-                              <div>
-                                <h6 className="text-xs font-semibold text-emerald-600 uppercase mb-2">{t('revenue')}</h6>
-                                <div className="rounded-lg border border-border overflow-hidden">
-                                  <div className="grid grid-cols-3 gap-0 bg-secondary/30 px-3 py-2">
-                                    <span className="text-xs font-semibold text-muted-foreground">{t('feature')}</span>
-                                    <span className="text-xs font-semibold text-muted-foreground text-end">{t('planned')}</span>
-                                    <span className="text-xs font-semibold text-muted-foreground text-end">{t('actual')}</span>
-                                  </div>
-                                  {month.revenueDetails.map((rd, idx) => (
-                                    <div key={idx} className="grid grid-cols-3 gap-0 px-3 py-2 border-t border-border/50">
-                                      <span className="text-sm text-foreground">{rd.featureName}</span>
-                                      <span className="text-sm text-end font-medium text-foreground">{formatCurrency(rd.planned, language)}</span>
-                                      <span className="text-sm text-end font-medium text-emerald-600">{formatCurrency(rd.actual, language)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Cost Details by Category */}
-                            {Object.keys(month.costDetails).length > 0 && (
-                              <div>
-                                <h6 className="text-xs font-semibold text-red-500 uppercase mb-2">{t('cost')}</h6>
-                                <div className="rounded-lg border border-border overflow-hidden">
-                                  <div className="grid grid-cols-3 gap-0 bg-secondary/30 px-3 py-2">
-                                    <span className="text-xs font-semibold text-muted-foreground">{t('costCategory')}</span>
-                                    <span className="text-xs font-semibold text-muted-foreground text-end">{t('planned')}</span>
-                                    <span className="text-xs font-semibold text-muted-foreground text-end">{t('actual')}</span>
-                                  </div>
-                                  {Object.entries(month.costDetails).map(([cat, vals]) => (
-                                    <div key={cat} className="grid grid-cols-3 gap-0 px-3 py-2 border-t border-border/50">
-                                      <span className="text-sm text-foreground">{cat}</span>
-                                      <span className="text-sm text-end font-medium text-foreground">{formatCurrency(vals.planned, language)}</span>
-                                      <span className="text-sm text-end font-medium text-red-500">{formatCurrency(vals.actual, language)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* Totals Footer */}
-                  <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-0 bg-secondary/30 px-4 py-3 border-t border-border font-bold">
-                    <span className="text-sm text-foreground ps-6">{t('total')}</span>
-                    <span className="text-sm text-emerald-600 text-end">{formatCurrency(totals.revenue, language)}</span>
-                    <span className="text-sm text-red-500 text-end">{formatCurrency(totals.cost, language)}</span>
-                    <span className={cn("text-sm text-end", totals.profit >= 0 ? "text-blue-600" : "text-red-500")}>{formatCurrency(totals.profit, language)}</span>
-                    <span className="w-20" />
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-16 bg-secondary/20 rounded-xl border-2 border-dashed border-border">
-                  <DollarSign className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
-                  <h4 className="text-base font-semibold text-foreground mb-2">{t('emptyRevenueTitle')}</h4>
-                  <p className="text-sm text-muted-foreground mb-5 max-w-md mx-auto">{t('emptyRevenueDesc')}</p>
-                  <Button onClick={openAddModal} className="bg-primary hover:bg-primary/90">
-                    <Plus className="w-4 h-4 me-2" />{t('addFinancialEntry')}
-                  </Button>
-                </div>
-              )}
             </TabsContent>
 
-            {/* ── RESOURCES TAB — Allocation Table ─────────── */}
-            <TabsContent value="resources" className="mt-0 space-y-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-foreground text-lg">{t('resourceAllocations')}</h4>
-                  <p className="text-sm text-muted-foreground mt-0.5">{t('resourceAllocationsDesc')}</p>
-                </div>
-                <Button onClick={() => { setSelectedResourceIds([]); setResourceSelectorOpen(true); }} className="bg-primary hover:bg-primary/90">
-                  <UserPlus className="w-4 h-4 me-2" />{t('selectResources')}
-                </Button>
+            {/* ── INSIGHTS TAB ─────────────────────────────── */}
+            <TabsContent value="insights" className="mt-0 space-y-5">
+              <div className="bg-card rounded-xl border border-border p-5">
+                <h4 className="text-foreground font-semibold mb-4 flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4 text-amber-500" /> Quick Insights
+                </h4>
+                {insights.length > 0 ? (
+                  <div className="space-y-3">
+                    {insights.map((insight, idx) => (
+                      <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30">
+                        <InsightIcon type={insight.icon} />
+                        <span className="text-sm text-foreground leading-snug">{insight.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    Add financial data to the planner to see automated insights.
+                  </p>
+                )}
               </div>
-
-              {resourceAllocations.length > 0 ? (
-                <div className="overflow-x-auto rounded-xl border border-border">
-                  <table className="w-full min-w-[600px]">
-                    <thead className="bg-secondary/50">
-                      <tr>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground uppercase">{t('resource')}</th>
-                        <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('monthlyCost')}</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase">{t('utilization')} %</th>
-                        <th className="px-4 py-3 text-end text-xs font-semibold text-muted-foreground uppercase">{t('allocatedCost')}</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase w-16">{t('actions')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {resourceAllocations.map(alloc => {
-                        const resource = state.resources.find(r => r.id === alloc.resourceId);
-                        if (!resource) return null;
-                        const allocatedCost = resource.costRate * (alloc.utilization / 100);
-                        return (
-                          <tr key={alloc.id} className="hover:bg-secondary/30 transition-colors">
-                            <td className="px-4 py-3">
-                              <div className="text-sm font-medium text-foreground">{resource.name}</div>
-                              <div className="text-xs text-muted-foreground">{resource.role}</div>
-                            </td>
-                            <td className="px-4 py-3 text-end text-sm text-foreground">{formatCurrency(resource.costRate, language)}</td>
-                            <td className="px-4 py-3 text-center">
-                              <Input
-                                type="number"
-                                className="h-8 text-sm text-center w-20 mx-auto"
-                                value={alloc.utilization}
-                                min={0}
-                                max={100}
-                                onChange={e => updateResourceUtilization(alloc.id, parseInt(e.target.value) || 0)}
-                              />
-                            </td>
-                            <td className="px-4 py-3 text-end text-sm font-semibold text-primary">{formatCurrency(allocatedCost, language)}</td>
-                            <td className="px-4 py-3 text-center">
-                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive/60 hover:text-destructive"
-                                onClick={() => removeResourceAllocation(alloc.id)}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot className="bg-secondary/30">
-                      <tr className="font-bold">
-                        <td className="px-4 py-3 text-sm" colSpan={3}>{t('total')}</td>
-                        <td className="px-4 py-3 text-end text-sm text-primary">
-                          {formatCurrency(
-                            resourceAllocations.reduce((sum, a) => {
-                              const r = state.resources.find(res => res.id === a.resourceId);
-                              return sum + (r ? r.costRate * (a.utilization / 100) : 0);
-                            }, 0),
-                            language
-                          )}
-                        </td>
-                        <td className="px-4 py-3" />
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-secondary/20 rounded-xl border-2 border-dashed border-border">
-                  <Users className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
-                  <p className="text-sm text-muted-foreground mb-4">{t('noResourceCosts')}</p>
-                  <Button variant="outline" onClick={() => { setSelectedResourceIds([]); setResourceSelectorOpen(true); }}>
-                    <UserPlus className="w-4 h-4 me-2" />{t('selectResources')}
-                  </Button>
-                </div>
-              )}
             </TabsContent>
 
             {/* ── FORECAST TAB ─────────────────────────────── */}
             <TabsContent value="forecast" className="mt-0">
-              <FeatureForecast
-                feature={feature}
-                revenueEntries={revenueEntries}
-                costEntries={costEntries}
-              />
+              <FeatureForecast feature={feature} revenueEntries={revenueEntries} costEntries={costEntries} />
             </TabsContent>
           </div>
         </div>
       </Tabs>
 
-      {/* ── FINANCIAL PLANNING WORKSPACE MODAL ──────────── */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <DollarSign className="w-5 h-5 text-primary" />
-              {t('addFinancialEntry')}
-            </DialogTitle>
-            <DialogDescription>{feature.name} • {t('financialPlanning')}</DialogDescription>
-          </DialogHeader>
-
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] min-h-0 max-h-[calc(90vh-140px)]">
-            {/* ── LEFT SIDE: Financial Inputs ─────────────── */}
-            <div className="p-6 space-y-5 overflow-y-auto border-e border-border">
-              {/* Feature Selection */}
-              <div className="bg-card rounded-xl border border-border p-4">
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-primary" />{t('selectFeature')}
-                </h4>
-                <Select value={String(modalFeatureId)} onValueChange={v => setModalFeatureId(parseInt(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {productFeatures.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Financial Period */}
-              <div className="bg-card rounded-xl border border-border p-4">
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  📅 {t('financialPeriod')}
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('startDate')}</label>
-                    <Input type="date" value={modalStartDate} onChange={e => setModalStartDate(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('endDate')}</label>
-                    <Input type="date" value={modalEndDate} onChange={e => setModalEndDate(e.target.value)} />
-                  </div>
-                </div>
-                {modalDuration && (
-                  <div className="mt-3 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
-                    <span className="text-xs font-medium text-primary">
-                      {t('duration')}: {modalDuration.days} {t('days')} ({modalDuration.months} {t('months')})
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Revenue Section */}
-              <div className="bg-card rounded-xl border border-border p-4">
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('revenue')}
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('planned')} (SAR)</label>
-                    <Input type="number" value={modalRevenuePlanned || ''} placeholder="0"
-                      onChange={e => setModalRevenuePlanned(parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('actual')} (SAR)</label>
-                    <Input type="number" value={modalRevenueActual || ''} placeholder="0"
-                      onChange={e => setModalRevenueActual(parseFloat(e.target.value) || 0)} />
-                  </div>
-                </div>
-                {(modalRevenuePlanned > 0 || modalRevenueActual > 0) && (
-                  <div className={cn("mt-3 px-3 py-2 rounded-lg border",
-                    revenueVariance >= 0 ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
-                  )}>
-                    <span className={cn("text-xs font-semibold",
-                      revenueVariance >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-                    )}>
-                      {t('revenueVariance')}: {revenueVariance >= 0 ? '+' : ''}{formatCurrency(revenueVariance, language)}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Cost Structure */}
-              <div className="bg-card rounded-xl border border-border p-4">
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-red-500" /> {t('costCategories')}
-                </h4>
-                <div className="space-y-3">
-                  {/* Resources Section */}
-                  <Collapsible open={expandedCostCategories.includes('Resources')} onOpenChange={() => toggleCostCategory('Resources')}>
-                    <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/30 transition-colors">
-                      <span className="text-sm font-medium text-foreground flex items-center gap-2">
-                        <Users className="w-4 h-4 text-primary" /> {t('resources')}
-                        {modalResourceAllocations.length > 0 && (
-                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{modalResourceAllocations.length}</span>
-                        )}
-                      </span>
-                      <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", expandedCostCategories.includes('Resources') && "rotate-180")} />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mt-2 space-y-2">
-                        {modalResourceAllocations.length > 0 && (
-                          <div className="overflow-x-auto rounded-lg border border-border">
-                            <table className="w-full text-sm">
-                              <thead className="bg-secondary/50">
-                                <tr>
-                                  <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('resource')}</th>
-                                  <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('monthlyCost')}</th>
-                                  <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground">{t('utilization')} %</th>
-                                  <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('allocatedCost')}</th>
-                                  <th className="px-3 py-2 w-10" />
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-border">
-                                {modalResourceAllocations.map((alloc, idx) => {
-                                  const resource = state.resources.find(r => r.id === alloc.resourceId);
-                                  if (!resource) return null;
-                                  const allocCost = resource.costRate * (alloc.utilization / 100);
-                                  return (
-                                    <tr key={idx} className="hover:bg-secondary/30">
-                                      <td className="px-3 py-2">
-                                        <div className="font-medium text-foreground">{resource.name}</div>
-                                        <div className="text-xs text-muted-foreground">{resource.role}</div>
-                                      </td>
-                                      <td className="px-3 py-2 text-end text-foreground">{formatCurrency(resource.costRate, language)}</td>
-                                      <td className="px-3 py-2 text-center">
-                                        <Input type="number" className="h-7 text-xs text-center w-16 mx-auto" value={alloc.utilization} min={0} max={100}
-                                          onChange={e => {
-                                            const val = parseInt(e.target.value) || 0;
-                                            setModalResourceAllocations(prev => prev.map((a, i) => i === idx ? { ...a, utilization: val } : a));
-                                          }} />
-                                      </td>
-                                      <td className="px-3 py-2 text-end font-semibold text-primary">{formatCurrency(allocCost, language)}</td>
-                                      <td className="px-3 py-2 text-center">
-                                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive"
-                                          onClick={() => setModalResourceAllocations(prev => prev.filter((_, i) => i !== idx))}>
-                                          <Trash2 className="w-3 h-3" />
-                                        </Button>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                        <Button size="sm" variant="outline" onClick={() => { setModalSelectedResourceIds([]); setModalResourceSelectorOpen(true); }}>
-                          <UserPlus className="w-3.5 h-3.5 me-1.5" /> {t('addResources')}
-                        </Button>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-
-                  {/* Other cost categories with item tables */}
-                  {COST_CATEGORIES.filter(c => c !== 'Resources').map(cat => (
-                    <Collapsible key={cat} open={expandedCostCategories.includes(cat)} onOpenChange={() => toggleCostCategory(cat)}>
-                      <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/30 transition-colors">
-                        <span className="text-sm font-medium text-foreground">{cat}</span>
-                        <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", expandedCostCategories.includes(cat) && "rotate-180")} />
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="mt-2 space-y-2">
-                          {(modalCostItems[cat] || []).length > 0 && (
-                            <div className="overflow-x-auto rounded-lg border border-border">
-                              <table className="w-full text-sm">
-                                <thead className="bg-secondary/50">
-                                  <tr>
-                                    <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('costName')}</th>
-                                    <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('planned')} (SAR)</th>
-                                    <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('actual')} (SAR)</th>
-                                    <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('notes')}</th>
-                                    <th className="px-3 py-2 w-10" />
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border">
-                                  {(modalCostItems[cat] || []).map((item, idx) => (
-                                    <tr key={idx} className="hover:bg-secondary/30">
-                                      <td className="px-3 py-1.5">
-                                        <Input className="h-7 text-xs" value={item.name} placeholder={t('costName')}
-                                          onChange={e => {
-                                            const items = [...(modalCostItems[cat] || [])];
-                                            items[idx] = { ...items[idx], name: e.target.value };
-                                            setModalCostItems(prev => ({ ...prev, [cat]: items }));
-                                          }} />
-                                      </td>
-                                      <td className="px-3 py-1.5">
-                                        <Input type="number" className="h-7 text-xs text-end" value={item.planned || ''} placeholder="0"
-                                          onChange={e => {
-                                            const items = [...(modalCostItems[cat] || [])];
-                                            items[idx] = { ...items[idx], planned: parseFloat(e.target.value) || 0 };
-                                            setModalCostItems(prev => ({ ...prev, [cat]: items }));
-                                          }} />
-                                      </td>
-                                      <td className="px-3 py-1.5">
-                                        <Input type="number" className="h-7 text-xs text-end" value={item.actual || ''} placeholder="0"
-                                          onChange={e => {
-                                            const items = [...(modalCostItems[cat] || [])];
-                                            items[idx] = { ...items[idx], actual: parseFloat(e.target.value) || 0 };
-                                            setModalCostItems(prev => ({ ...prev, [cat]: items }));
-                                          }} />
-                                      </td>
-                                      <td className="px-3 py-1.5">
-                                        <Input className="h-7 text-xs" value={item.notes} placeholder="..."
-                                          onChange={e => {
-                                            const items = [...(modalCostItems[cat] || [])];
-                                            items[idx] = { ...items[idx], notes: e.target.value };
-                                            setModalCostItems(prev => ({ ...prev, [cat]: items }));
-                                          }} />
-                                      </td>
-                                      <td className="px-3 py-1.5 text-center">
-                                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive"
-                                          onClick={() => {
-                                            const items = [...(modalCostItems[cat] || [])];
-                                            items.splice(idx, 1);
-                                            setModalCostItems(prev => ({ ...prev, [cat]: items }));
-                                          }}>
-                                          <Trash2 className="w-3 h-3" />
-                                        </Button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                          <Button size="sm" variant="outline"
-                            onClick={() => setModalCostItems(prev => ({
-                              ...prev,
-                              [cat]: [...(prev[cat] || []), { name: '', planned: 0, actual: 0, notes: '' }]
-                            }))}>
-                            <Plus className="w-3.5 h-3.5 me-1.5" /> {t('addCostEntry')}
-                          </Button>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* ── RIGHT SIDE: Financial Summary Panel ──────── */}
-            <div className="p-6 bg-secondary/20 space-y-4 overflow-y-auto">
-              <h4 className="text-sm font-bold text-foreground uppercase tracking-wide">{t('financialSummary')}</h4>
-
-              <div className="space-y-3">
-                <div className="bg-card rounded-xl border border-border p-4">
-                  <div className="text-xs font-medium text-muted-foreground mb-1">{t('plannedRevenue')}</div>
-                  <div className="text-xl font-bold text-emerald-600">{formatCurrency(modalSummary.revenue, language)}</div>
-                </div>
-                <div className="bg-card rounded-xl border border-border p-4">
-                  <div className="text-xs font-medium text-muted-foreground mb-1">{t('totalCost')}</div>
-                  <div className="text-xl font-bold text-red-500">{formatCurrency(modalSummary.cost, language)}</div>
-                  {modalSummary.resourceCost > 0 && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {t('resources')}: {formatCurrency(modalSummary.resourceCost, language)}
-                    </div>
-                  )}
-                </div>
-                <div className="bg-card rounded-xl border border-border p-4">
-                  <div className="text-xs font-medium text-muted-foreground mb-1">{t('netProfit')}</div>
-                  <div className={cn("text-xl font-bold", modalSummary.profit >= 0 ? "text-blue-600" : "text-red-500")}>
-                    {formatCurrency(modalSummary.profit, language)}
-                  </div>
-                </div>
-                <div className="bg-card rounded-xl border border-border p-4">
-                  <div className="text-xs font-medium text-muted-foreground mb-1">{t('profitMargin')}</div>
-                  <div className={cn("text-xl font-bold", modalSummary.margin >= 0 ? "text-blue-600" : "text-red-500")}>
-                    {modalSummary.margin.toFixed(1)}%
-                  </div>
-                </div>
-              </div>
-
-              {modalSummary.revenue > 0 && modalStartDate && (
-                <div className="bg-primary/5 rounded-xl border border-primary/20 p-4">
-                  <div className="text-xs font-medium text-primary mb-1">{t('annualImpact')}</div>
-                  <div className="text-sm font-semibold text-primary">
-                    +{formatCurrency(modalSummary.revenue, language)} {t('toAnnualRevenue')} {new Date(modalStartDate).getFullYear()}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter className="px-6 py-4 border-t border-border">
-            <Button variant="outline" onClick={() => setModalOpen(false)}>{t('cancel')}</Button>
-            <Button onClick={saveModal} className="bg-primary hover:bg-primary/90">
-              <Save className="w-4 h-4 me-2" />{t('saveEntry')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── MODAL RESOURCE SELECTOR ──────────────────────── */}
-      <Dialog open={modalResourceSelectorOpen} onOpenChange={setModalResourceSelectorOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-primary" />
-              {t('selectResources')}
-            </DialogTitle>
-            <DialogDescription>{t('selectResourcesDesc')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 max-h-[50vh] overflow-y-auto py-2">
-            {state.resources.filter(r => r.status === 'Active').map(resource => {
-              const isAlreadyAdded = modalResourceAllocations.some(a => a.resourceId === resource.id);
-              const isSelected = modalSelectedResourceIds.includes(resource.id);
-              return (
-                <label key={resource.id} className={cn(
-                  "flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
-                  isAlreadyAdded ? "border-border bg-secondary/30 opacity-60 cursor-not-allowed" :
-                  isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-secondary/30"
-                )}>
-                  <Checkbox checked={isSelected} disabled={isAlreadyAdded}
-                    onCheckedChange={(checked) => {
-                      if (isAlreadyAdded) return;
-                      setModalSelectedResourceIds(prev => checked ? [...prev, resource.id] : prev.filter(id => id !== resource.id));
-                    }} />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-foreground">{resource.name}</div>
-                    <div className="text-xs text-muted-foreground">{resource.role} • {formatCurrency(resource.costRate, language)}/mo</div>
-                  </div>
-                  {isAlreadyAdded && <span className="text-xs text-muted-foreground">{t('alreadyAdded')}</span>}
-                </label>
-              );
-            })}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalResourceSelectorOpen(false)}>{t('cancel')}</Button>
-            <Button disabled={modalSelectedResourceIds.length === 0} className="bg-primary hover:bg-primary/90"
-              onClick={() => {
-                const newAllocs = modalSelectedResourceIds
-                  .filter(rid => !modalResourceAllocations.find(a => a.resourceId === rid))
-                  .map(rid => ({ resourceId: rid, utilization: 100 }));
-                setModalResourceAllocations(prev => [...prev, ...newAllocs]);
-                setModalSelectedResourceIds([]);
-                setModalResourceSelectorOpen(false);
-              }}>
-              <Plus className="w-4 h-4 me-2" />{t('addSelected')} ({modalSelectedResourceIds.length})
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── RESOURCE SELECTOR DIALOG (Resources Tab) ─────── */}
+      {/* ── RESOURCE SELECTOR DIALOG ─────────────────────── */}
       <Dialog open={resourceSelectorOpen} onOpenChange={setResourceSelectorOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-primary" />
-              {t('selectResources')}
+              <UserPlus className="w-5 h-5 text-primary" /> {t('selectResources')}
             </DialogTitle>
             <DialogDescription>{t('selectResourcesDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-[50vh] overflow-y-auto py-2">
             {state.resources.filter(r => r.status === 'Active').map(resource => {
-              const isAlreadyAdded = resourceAllocations.some(a => a.resourceId === resource.id);
+              const isAlreadyAdded = yearData[resourceSelectorMonth]?.resources.some(a => a.resourceId === resource.id);
               const isSelected = selectedResourceIds.includes(resource.id);
               return (
                 <label key={resource.id} className={cn(
@@ -1212,23 +868,9 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setResourceSelectorOpen(false)}>{t('cancel')}</Button>
-            <Button onClick={addResourceAllocations} disabled={selectedResourceIds.length === 0} className="bg-primary hover:bg-primary/90">
+            <Button disabled={selectedResourceIds.length === 0} className="bg-primary hover:bg-primary/90" onClick={addSelectedResources}>
               <Plus className="w-4 h-4 me-2" />{t('addSelected')} ({selectedResourceIds.length})
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── DELETE CONFIRM ───────────────────────────────── */}
-      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('confirmDelete')}</DialogTitle>
-            <DialogDescription>{t('confirmDeleteItemDesc')}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>{t('cancel')}</Button>
-            <Button variant="destructive" onClick={handleDelete}>{t('delete')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
