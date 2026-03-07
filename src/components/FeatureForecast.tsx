@@ -400,7 +400,7 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
           </div>
           <DialogFooter>
             <Button size="sm" onClick={() => setShowAssumptions(false)}>
-              {t('apply')}
+              {t('applyConfig')}
             </Button>
           </DialogFooter>
         </DialogContent>
