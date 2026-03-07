@@ -273,13 +273,48 @@ const ResourcesPage = () => {
             <DialogDescription>{editingResource ? t('editResourceDesc') : t('addTeamMember')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('name')}</label>
-              <Input value={newResource.name} onChange={(e) => setNewResource({ ...newResource, name: e.target.value })} placeholder={t('enterName')} />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('employeeId')}</label>
+                <Input value={newResource.employeeId} onChange={(e) => setNewResource({ ...newResource, employeeId: e.target.value })} placeholder={t('enterEmployeeId')} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('name')}</label>
+                <Input value={newResource.name} onChange={(e) => setNewResource({ ...newResource, name: e.target.value })} placeholder={t('enterName')} />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('role')}</label>
-              <Input value={newResource.role} onChange={(e) => setNewResource({ ...newResource, role: e.target.value })} placeholder={t('enterRole')} />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('role')}</label>
+                <Input value={newResource.role} onChange={(e) => setNewResource({ ...newResource, role: e.target.value })} placeholder={t('enterRole')} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('lineManager')}</label>
+                <Input value={newResource.lineManager} onChange={(e) => setNewResource({ ...newResource, lineManager: e.target.value })} placeholder={t('enterLineManager')} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('location')}</label>
+                <Select value={newResource.location} onValueChange={(value: 'On-site' | 'Offshore') => setNewResource({ ...newResource, location: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="On-site">{t('onSite')}</SelectItem>
+                    <SelectItem value="Offshore">{t('offshore')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">{t('category')}</label>
+                <Select value={newResource.category} onValueChange={(value: 'Technical' | 'Business' | 'Operation') => setNewResource({ ...newResource, category: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Technical">{t('technical')}</SelectItem>
+                    <SelectItem value="Business">{t('business')}</SelectItem>
+                    <SelectItem value="Operation">{t('operation')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
