@@ -82,8 +82,12 @@ export interface Feature {
 
 export interface Resource {
   id: number;
+  employeeId: string;
   name: string;
   role: string;
+  location: 'On-site' | 'Offshore';
+  category: 'Technical' | 'Business' | 'Operation';
+  lineManager: string;
   costRate: number;
   capacity: number;
   status: 'Active' | 'Inactive';
