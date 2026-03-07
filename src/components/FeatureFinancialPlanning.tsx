@@ -476,8 +476,71 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                         </div>
                       </div>
 
-                      {/* Expanded Month Detail */}
+                      {/* Expanded Month Detail (read-only summary) */}
                       {isExpanded && (
+                        <div className="bg-secondary/5 border-t border-border/50 px-6 py-4 space-y-4">
+                          {yearData[ms.month].revenues.length > 0 && (
+                            <div>
+                              <h6 className="text-xs font-semibold text-emerald-600 uppercase mb-2">{t('revenue')}</h6>
+                              <div className="rounded-lg border border-border overflow-hidden">
+                                <div className="grid grid-cols-3 bg-secondary/30 px-3 py-2">
+                                  <span className="text-xs font-semibold text-muted-foreground">{t('feature')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('planned')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('actual')}</span>
+                                </div>
+                                {yearData[ms.month].revenues.map((rev, idx) => {
+                                  const feat = productFeatures.find(f => f.id === rev.featureId);
+                                  return (
+                                    <div key={idx} className="grid grid-cols-3 px-3 py-2 border-t border-border/50">
+                                      <span className="text-sm text-foreground">{feat?.name || feature.name}</span>
+                                      <span className="text-sm text-end font-medium text-foreground">{formatCurrency(rev.planned, language)}</span>
+                                      <span className="text-sm text-end font-medium text-emerald-600">{formatCurrency(rev.actual, language)}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                          {(Object.values(yearData[ms.month].costs).some(items => items.length > 0) || yearData[ms.month].resources.length > 0) && (
+                            <div>
+                              <h6 className="text-xs font-semibold text-destructive uppercase mb-2">{t('costCategories')}</h6>
+                              <div className="rounded-lg border border-border overflow-hidden">
+                                <div className="grid grid-cols-3 bg-secondary/30 px-3 py-2">
+                                  <span className="text-xs font-semibold text-muted-foreground">{t('costCategory')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('planned')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('actual')}</span>
+                                </div>
+                                {yearData[ms.month].resources.length > 0 && (
+                                  <div className="grid grid-cols-3 px-3 py-2 border-t border-border/50">
+                                    <span className="text-sm text-foreground">{t('resources')}</span>
+                                    <span className="text-sm text-end font-medium text-foreground">
+                                      {formatCurrency(yearData[ms.month].resources.reduce((s, a) => {
+                                        const r = state.resources.find(res => res.id === a.resourceId);
+                                        return s + (r ? r.costRate * (a.utilization / 100) : 0);
+                                      }, 0), language)}
+                                    </span>
+                                    <span className="text-sm text-end font-medium text-muted-foreground">—</span>
+                                  </div>
+                                )}
+                                {Object.entries(yearData[ms.month].costs).map(([cat, items]) => {
+                                  if (items.length === 0) return null;
+                                  return (
+                                    <div key={cat} className="grid grid-cols-3 px-3 py-2 border-t border-border/50">
+                                      <span className="text-sm text-foreground">{cat}</span>
+                                      <span className="text-sm text-end font-medium text-foreground">{formatCurrency(items.reduce((s, i) => s + i.planned, 0), language)}</span>
+                                      <span className="text-sm text-end font-medium text-destructive">{formatCurrency(items.reduce((s, i) => s + i.actual, 0), language)}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                          {!hasData && <p className="text-sm text-muted-foreground text-center py-4">{t('noRevenueData')}</p>}
+                          <Button size="sm" variant="outline" onClick={() => startInlineEdit(ms.month)}>
+                            <Plus className="w-3.5 h-3.5 me-1" /> {t('edit')} {ms.label}
+                          </Button>
+                        </div>
+                      )}
                         <div className="bg-secondary/5 border-t border-border/50 px-6 py-5 space-y-5">
                           {/* Revenue Section */}
                           <div className="bg-card rounded-xl border border-border p-4">
