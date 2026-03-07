@@ -399,7 +399,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                   </Button>
                 ) : (
                   <Button size="sm" variant="outline" onClick={() => setIsEditingProfile(true)} className="gap-1.5">
-                    <Edit3 className="w-4 h-4" /> {t('edit')}
+                    <Pencil className="w-4 h-4" /> {t('edit')}
                   </Button>
                 )}
               </div>
