@@ -69,7 +69,7 @@ export interface Feature {
   name: string;
   startDate: string;
   endDate: string;
-  status: 'Planned' | 'In Progress' | 'Delivered';
+  status: 'To Do' | 'In Progress' | 'Delivered';
   owner: string;
   priority: 'High' | 'Medium' | 'Low';
   description?: string;

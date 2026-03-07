@@ -36,6 +36,7 @@ export const formatShortDate = (dateString: string, locale: string = 'en'): stri
 
 export const getStatusColor = (status: string): string => {
   const colors: Record<string, string> = {
+    'To Do': 'status-planned',
     'Planned': 'status-planned',
     'In Progress': 'status-in-progress',
     'Delivered': 'status-delivered',
@@ -48,6 +49,7 @@ export const getStatusColor = (status: string): string => {
 
 export const getStatusBgColor = (status: string): string => {
   const colors: Record<string, string> = {
+    'To Do': 'bg-secondary text-secondary-foreground',
     'Planned': 'bg-secondary text-secondary-foreground',
     'In Progress': 'bg-primary/10 text-primary',
     'Delivered': 'bg-success/10 text-success',
@@ -73,6 +75,7 @@ export const getPriorityColor = (priority: string): string => {
 
 export const getGanttBarColor = (status: string): string => {
   const colors: Record<string, string> = {
+    'To Do': 'bg-muted-foreground/50',
     'Planned': 'bg-muted-foreground/50',
     'In Progress': 'bg-primary',
     'Delivered': 'bg-success',

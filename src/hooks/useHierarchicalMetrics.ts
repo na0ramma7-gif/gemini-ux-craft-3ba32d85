@@ -111,7 +111,7 @@ function computeProductMetrics(product: Product, state: AppState): ProductMetric
     totalFeatures: features.length,
     featuresInProgress: features.filter(f => f.status === 'In Progress').length,
     featuresCompleted: features.filter(f => f.status === 'Delivered').length,
-    featuresPlanned: features.filter(f => f.status === 'Planned').length,
+    featuresPlanned: features.filter(f => f.status === 'To Do').length,
     totalReleases: releases.length,
     activeReleases: releases.filter(r => r.status === 'In Progress').length,
     completedReleases: releases.filter(r => r.status === 'Released').length,

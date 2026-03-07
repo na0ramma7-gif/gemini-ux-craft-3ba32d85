@@ -60,7 +60,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
     name: '',
     startDate: '',
     endDate: '',
-    status: 'Planned' as const,
+    status: 'To Do' as const,
     owner: '',
     priority: 'Medium' as const,
     releaseId: null as number | null
@@ -165,7 +165,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
       name: '',
       startDate: '',
       endDate: '',
-      status: 'Planned',
+      status: 'To Do',
       owner: '',
       priority: 'Medium',
       releaseId: null
@@ -429,6 +429,10 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                       <span className="text-[10px] sm:text-xs text-muted-foreground">{t('planned')}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded bg-muted-foreground/50" />
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">{t('toDo')}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
                       <div className="w-3 h-3 rounded bg-primary" />
                       <span className="text-[10px] sm:text-xs text-muted-foreground">{t('inProgress')}</span>
                     </div>
@@ -677,7 +681,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Planned">{t('planned')}</SelectItem>
+                    <SelectItem value="To Do">{t('toDo')}</SelectItem>
                     <SelectItem value="In Progress">{t('inProgress')}</SelectItem>
                     <SelectItem value="Delivered">{t('delivered')}</SelectItem>
                   </SelectContent>
@@ -780,7 +784,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Planned">{t('planned')}</SelectItem>
+                      <SelectItem value="To Do">{t('toDo')}</SelectItem>
                       <SelectItem value="In Progress">{t('inProgress')}</SelectItem>
                       <SelectItem value="Delivered">{t('delivered')}</SelectItem>
                     </SelectContent>

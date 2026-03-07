@@ -155,21 +155,30 @@ export const INITIAL_STATE: AppState = {
     { id: 6, productId: 7, version: 'v1.0', name: 'Claims Core', startDate: '2024-01-20', endDate: '2024-04-20', status: 'Released' }
   ],
   features: [
+    // Product 1 - Professional License Portal: Delivered, In Progress, To Do, Delayed
     { id: 1, productId: 1, releaseId: 1, name: 'User Authentication', startDate: '2024-01-01', endDate: '2024-01-31', status: 'Delivered', owner: 'Dev Team A', priority: 'High' },
     { id: 2, productId: 1, releaseId: 1, name: 'License Application Form', startDate: '2024-02-01', endDate: '2024-02-28', status: 'Delivered', owner: 'Dev Team A', priority: 'High' },
     { id: 3, productId: 1, releaseId: 1, name: 'Payment Gateway', startDate: '2024-03-01', endDate: '2024-03-31', status: 'Delivered', owner: 'Dev Team B', priority: 'High' },
     { id: 4, productId: 1, releaseId: 2, name: 'API Integration', startDate: '2024-04-01', endDate: '2024-05-31', status: 'In Progress', owner: 'Dev Team C', priority: 'Medium' },
-    { id: 5, productId: 1, releaseId: 2, name: 'Mobile App', startDate: '2024-05-01', endDate: '2024-06-30', status: 'Planned', owner: 'Dev Team D', priority: 'High' },
+    { id: 5, productId: 1, releaseId: 2, name: 'Mobile App', startDate: '2024-05-01', endDate: '2024-06-30', status: 'To Do', owner: 'Dev Team D', priority: 'High' },
+    { id: 14, productId: 1, releaseId: 2, name: 'Notification System', startDate: '2024-03-01', endDate: '2024-04-15', status: 'In Progress', owner: 'Dev Team A', priority: 'Medium' },
+    // Product 2 - License Renewal System
     { id: 6, productId: 2, releaseId: 3, name: 'Renewal Dashboard', startDate: '2024-02-01', endDate: '2024-03-15', status: 'Delivered', owner: 'Dev Team E', priority: 'High' },
     { id: 7, productId: 2, releaseId: 3, name: 'Auto-Renewal Logic', startDate: '2024-03-15', endDate: '2024-04-30', status: 'In Progress', owner: 'Dev Team E', priority: 'High' },
+    { id: 15, productId: 2, releaseId: 3, name: 'Renewal Notifications', startDate: '2024-04-01', endDate: '2024-05-31', status: 'To Do', owner: 'Dev Team E', priority: 'Medium' },
+    // Product 3 - Supply Chain Tracker
     { id: 8, productId: 3, releaseId: 4, name: 'Real-time Tracking', startDate: '2024-01-15', endDate: '2024-03-15', status: 'In Progress', owner: 'Dev Team F', priority: 'High' },
-    { id: 9, productId: 3, releaseId: 4, name: 'Analytics Dashboard', startDate: '2024-03-15', endDate: '2024-05-15', status: 'Planned', owner: 'Dev Team F', priority: 'Medium' },
+    { id: 9, productId: 3, releaseId: 4, name: 'Analytics Dashboard', startDate: '2024-03-15', endDate: '2024-05-15', status: 'To Do', owner: 'Dev Team F', priority: 'Medium' },
+    { id: 16, productId: 3, releaseId: 4, name: 'Alert System', startDate: '2024-02-01', endDate: '2024-03-01', status: 'Delivered', owner: 'Dev Team F', priority: 'High' },
     // Portfolio 3 - Practitioner Services
     { id: 10, productId: 5, releaseId: 5, name: 'Credential Lookup', startDate: '2024-02-01', endDate: '2024-04-30', status: 'In Progress', owner: 'Dev Team G', priority: 'High' },
-    { id: 11, productId: 6, releaseId: 5, name: 'Directory Search', startDate: '2024-03-01', endDate: '2024-05-31', status: 'Planned', owner: 'Dev Team G', priority: 'Medium' },
+    { id: 11, productId: 6, releaseId: 5, name: 'Directory Search', startDate: '2024-03-01', endDate: '2024-05-31', status: 'To Do', owner: 'Dev Team G', priority: 'Medium' },
+    { id: 17, productId: 5, releaseId: 5, name: 'Automated Verification', startDate: '2024-03-01', endDate: '2024-04-15', status: 'Delivered', owner: 'Dev Team G', priority: 'High' },
     // Portfolio 4 - Insurance Services
     { id: 12, productId: 7, releaseId: 6, name: 'Claims Submission', startDate: '2024-01-20', endDate: '2024-03-31', status: 'Delivered', owner: 'Dev Team H', priority: 'High' },
     { id: 13, productId: 8, releaseId: 6, name: 'Policy Renewal Flow', startDate: '2024-03-01', endDate: '2024-05-31', status: 'In Progress', owner: 'Dev Team H', priority: 'High' },
+    { id: 18, productId: 7, releaseId: 6, name: 'Fraud Detection', startDate: '2024-04-01', endDate: '2024-06-30', status: 'To Do', owner: 'Dev Team H', priority: 'High' },
+    { id: 19, productId: 8, releaseId: 6, name: 'Customer Portal', startDate: '2024-02-15', endDate: '2024-04-30', status: 'In Progress', owner: 'Dev Team H', priority: 'Medium' },
   ],
   resources: [
     { id: 1, name: 'John Smith', role: 'Product Manager', costRate: 12000, capacity: 40, status: 'Active' },
