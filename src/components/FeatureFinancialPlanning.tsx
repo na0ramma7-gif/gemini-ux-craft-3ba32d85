@@ -27,325 +27,173 @@ import {
   ResponsiveContainer, Legend,
 } from 'recharts';
 
-// ── Data Types ──────────────────────────────────────────────
-
-interface MonthlyRevenue {
-  featureId: number;
-  planned: number;
-  actual: number;
-}
-
-interface CostItem {
-  id: string;
-  name: string;
-  planned: number;
-  actual: number;
-  notes: string;
-}
-
-interface ResourceAlloc {
-  resourceId: number;
-  utilization: number;
-}
-
-interface MonthData {
-  revenues: MonthlyRevenue[];
-  costs: Record<string, CostItem[]>; // category -> items
-  resources: ResourceAlloc[];
-}
-
-interface FeatureFinancialPlanningProps {
-  feature: Feature;
-  onClose: () => void;
-}
+interface MonthlyRevenue { featureId: number; planned: number; actual: number; }
+interface CostItem { id: string; name: string; planned: number; actual: number; notes: string; }
+interface ResourceAlloc { resourceId: number; utilization: number; }
+interface MonthData { revenues: MonthlyRevenue[]; costs: Record<string, CostItem[]>; resources: ResourceAlloc[]; }
+interface FeatureFinancialPlanningProps { feature: Feature; onClose: () => void; }
 
 const COST_CATEGORIES = ['Infrastructure', 'Licensing', 'Marketing', 'Other'];
 const MONTHS_SHORT_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'] as const;
-
 const uid = () => Math.random().toString(36).slice(2, 9);
-
-// ── Component ───────────────────────────────────────────────
 
 const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanningProps) => {
   const { state, t, language, isRTL } = useApp();
   const [tab, setTab] = useState('planner');
   const [selectedYear, setSelectedYear] = useState(2025);
 
-  // All 12 months of data keyed by month index (0-11)
   const [yearData, setYearData] = useState<Record<number, MonthData>>(() => {
     const d: Record<number, MonthData> = {};
-    for (let i = 0; i < 12; i++) {
-      d[i] = { revenues: [], costs: {}, resources: [] };
-    }
+    for (let i = 0; i < 12; i++) d[i] = { revenues: [], costs: {}, resources: [] };
     return d;
   });
 
-  // Feature Profile
   const [featureProfile, setFeatureProfile] = useState({
-    description: feature.description || '',
-    targetUser: feature.targetUser || '',
-    customerSegmentation: feature.customerSegmentation || '',
-    valueProposition: feature.valueProposition || '',
-    businessModel: feature.businessModel || '',
-    risksAndChallenges: feature.risks || '',
+    description: feature.description || '', targetUser: feature.targetUser || '',
+    customerSegmentation: feature.customerSegmentation || '', valueProposition: feature.valueProposition || '',
+    businessModel: feature.businessModel || '', risksAndChallenges: feature.risks || '',
   });
 
   const [expandedMonths, setExpandedMonths] = useState<number[]>([]);
-  const [editingMonth, setEditingMonth] = useState<number | null>(null);
-  const [expandedCostCats, setExpandedCostCats] = useState<string[]>([]);
-
-  // Resource selector
+  const [editMonthOpen, setEditMonthOpen] = useState(false);
+  const [editMonthIdx, setEditMonthIdx] = useState<number>(0);
+  const [editPlannedRev, setEditPlannedRev] = useState(0);
+  const [editActualRev, setEditActualRev] = useState(0);
+  const [editCostCatsOpen, setEditCostCatsOpen] = useState<string[]>([]);
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
   const [resourceSelectorMonth, setResourceSelectorMonth] = useState<number>(0);
   const [selectedResourceIds, setSelectedResourceIds] = useState<number[]>([]);
-
-  // Inline editing state for the month being edited
-  const [inlinePlannedRev, setInlinePlannedRev] = useState(0);
-  const [inlineActualRev, setInlineActualRev] = useState(0);
 
   const product = state.products.find(p => p.id === feature.productId);
   const productFeatures = state.features.filter(f => f.productId === feature.productId);
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
 
-  // ── Computed monthly summaries ────────────────────────────
-
-  const monthlySummaries = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => {
+  const monthlySummaries = useMemo(() =>
+    Array.from({ length: 12 }, (_, i) => {
       const md = yearData[i];
       const plannedRev = md.revenues.reduce((s, r) => s + r.planned, 0);
       const actualRev = md.revenues.reduce((s, r) => s + r.actual, 0);
-
       let plannedCost = 0;
       let actualCost = 0;
-      Object.values(md.costs).forEach(items => {
-        items.forEach(item => { plannedCost += item.planned; actualCost += item.actual; });
-      });
-
-      // Resource costs
+      Object.values(md.costs).forEach(items => items.forEach(item => { plannedCost += item.planned; actualCost += item.actual; }));
       let resourceCost = 0;
-      md.resources.forEach(a => {
-        const r = state.resources.find(res => res.id === a.resourceId);
-        if (r) resourceCost += r.costRate * (a.utilization / 100);
-      });
+      md.resources.forEach(a => { const r = state.resources.find(res => res.id === a.resourceId); if (r) resourceCost += r.costRate * (a.utilization / 100); });
       plannedCost += resourceCost;
-
-      return {
-        month: i,
-        label: `${t(MONTHS_SHORT_KEYS[i])} ${selectedYear}`,
-        plannedRev, actualRev, plannedCost, actualCost,
-        netProfit: plannedRev - plannedCost,
-        resourceCost,
-      };
-    });
-  }, [yearData, selectedYear, state.resources, t]);
+      return { month: i, label: `${t(MONTHS_SHORT_KEYS[i])} ${selectedYear}`, plannedRev, actualRev, plannedCost, actualCost, netProfit: plannedRev - plannedCost, resourceCost };
+    })
+  , [yearData, selectedYear, state.resources, t]);
 
   const totals = useMemo(() => {
-    const r = monthlySummaries.reduce((a, m) => ({
-      plannedRev: a.plannedRev + m.plannedRev,
-      actualRev: a.actualRev + m.actualRev,
-      plannedCost: a.plannedCost + m.plannedCost,
-      actualCost: a.actualCost + m.actualCost,
-    }), { plannedRev: 0, actualRev: 0, plannedCost: 0, actualCost: 0 });
+    const r = monthlySummaries.reduce((a, m) => ({ plannedRev: a.plannedRev + m.plannedRev, actualRev: a.actualRev + m.actualRev, plannedCost: a.plannedCost + m.plannedCost, actualCost: a.actualCost + m.actualCost }), { plannedRev: 0, actualRev: 0, plannedCost: 0, actualCost: 0 });
     const profit = r.plannedRev - r.plannedCost;
-    const margin = r.plannedRev > 0 ? (profit / r.plannedRev) * 100 : 0;
-    return { ...r, profit, margin };
+    return { ...r, profit, margin: r.plannedRev > 0 ? (profit / r.plannedRev) * 100 : 0 };
   }, [monthlySummaries]);
 
-  // Chart data
-  const chartData = useMemo(() =>
-    monthlySummaries.map(m => ({
-      month: t(MONTHS_SHORT_KEYS[m.month]),
-      revenue: m.plannedRev,
-      actualRevenue: m.actualRev,
-      cost: m.plannedCost,
-      profit: m.netProfit,
-    }))
-  , [monthlySummaries, t]);
+  const chartData = useMemo(() => monthlySummaries.map(m => ({ month: t(MONTHS_SHORT_KEYS[m.month]), revenue: m.plannedRev, actualRevenue: m.actualRev, cost: m.plannedCost, profit: m.netProfit })), [monthlySummaries, t]);
 
-  // Cost breakdown for stacked chart
-  const costBreakdownData = useMemo(() =>
-    monthlySummaries.map(m => {
-      const md = yearData[m.month];
-      const breakdown: Record<string, number> = { month: m.month as any };
-      breakdown.monthLabel = t(MONTHS_SHORT_KEYS[m.month]) as any;
-      COST_CATEGORIES.forEach(cat => {
-        breakdown[cat] = (md.costs[cat] || []).reduce((s, i) => s + i.planned, 0);
-      });
-      breakdown['Resources'] = m.resourceCost;
-      return breakdown;
-    })
-  , [monthlySummaries, yearData, t]);
+  const costBreakdownData = useMemo(() => monthlySummaries.map(m => {
+    const md = yearData[m.month];
+    const d: Record<string, any> = { monthLabel: t(MONTHS_SHORT_KEYS[m.month]) };
+    COST_CATEGORIES.forEach(cat => { d[cat] = (md.costs[cat] || []).reduce((s: number, i: CostItem) => s + i.planned, 0); });
+    d['Resources'] = m.resourceCost;
+    return d;
+  }), [monthlySummaries, yearData, t]);
 
-  // Quick insights
   const insights = useMemo(() => {
     const results: { text: string; icon: 'up' | 'down' | 'alert' }[] = [];
-
-    // Highest revenue month
     const topMonth = [...monthlySummaries].sort((a, b) => b.plannedRev - a.plannedRev)[0];
-    if (topMonth && topMonth.plannedRev > 0) {
-      results.push({ text: `${topMonth.label} has the highest planned revenue (${formatCurrency(topMonth.plannedRev, language)})`, icon: 'up' });
-    }
-
-    // Total margin
-    if (totals.margin > 0) {
-      results.push({ text: `Overall profit margin: ${totals.margin.toFixed(0)}%`, icon: 'up' });
-    } else if (totals.plannedRev > 0) {
-      results.push({ text: `Negative profit margin: ${totals.margin.toFixed(0)}%`, icon: 'alert' });
-    }
-
-    // Months with no data
+    if (topMonth?.plannedRev > 0) results.push({ text: `${topMonth.label} has the highest planned revenue (${formatCurrency(topMonth.plannedRev, language)})`, icon: 'up' });
+    if (totals.margin > 0) results.push({ text: `Overall profit margin: ${totals.margin.toFixed(0)}%`, icon: 'up' });
+    else if (totals.plannedRev > 0) results.push({ text: `Negative profit margin: ${totals.margin.toFixed(0)}%`, icon: 'alert' });
     const emptyMonths = monthlySummaries.filter(m => m.plannedRev === 0 && m.plannedCost === 0).length;
-    if (emptyMonths > 0 && emptyMonths < 12) {
-      results.push({ text: `${emptyMonths} month(s) have no financial data yet`, icon: 'alert' });
-    }
-
-    // Revenue vs actual variance
-    if (totals.actualRev > 0) {
-      const variance = totals.actualRev - totals.plannedRev;
-      results.push({
-        text: `Revenue variance: ${variance >= 0 ? '+' : ''}${formatCurrency(variance, language)}`,
-        icon: variance >= 0 ? 'up' : 'down',
-      });
-    }
-
-    // Resource cost contribution
-    const totalResourceCost = monthlySummaries.reduce((s, m) => s + m.resourceCost, 0);
-    if (totalResourceCost > 0 && totals.plannedCost > 0) {
-      const pct = ((totalResourceCost / totals.plannedCost) * 100).toFixed(0);
-      results.push({ text: `Resources account for ${pct}% of total costs`, icon: 'up' });
-    }
-
+    if (emptyMonths > 0 && emptyMonths < 12) results.push({ text: `${emptyMonths} month(s) have no financial data yet`, icon: 'alert' });
+    if (totals.actualRev > 0) { const v = totals.actualRev - totals.plannedRev; results.push({ text: `Revenue variance: ${v >= 0 ? '+' : ''}${formatCurrency(v, language)}`, icon: v >= 0 ? 'up' : 'down' }); }
+    const totalRC = monthlySummaries.reduce((s, m) => s + m.resourceCost, 0);
+    if (totalRC > 0 && totals.plannedCost > 0) results.push({ text: `Resources account for ${((totalRC / totals.plannedCost) * 100).toFixed(0)}% of total costs`, icon: 'up' });
     return results;
   }, [monthlySummaries, totals, language]);
 
-  // ── Helpers ───────────────────────────────────────────────
+  const editMonthSummary = useMemo(() => {
+    const md = yearData[editMonthIdx];
+    let totalCost = 0;
+    Object.values(md.costs).forEach(items => items.forEach(i => { totalCost += i.planned; }));
+    md.resources.forEach(a => { const r = state.resources.find(res => res.id === a.resourceId); if (r) totalCost += r.costRate * (a.utilization / 100); });
+    const profit = editPlannedRev - totalCost;
+    return { totalCost, profit, margin: editPlannedRev > 0 ? (profit / editPlannedRev) * 100 : 0 };
+  }, [yearData, editMonthIdx, editPlannedRev, state.resources]);
 
-  const toggleMonth = (idx: number) => {
-    setExpandedMonths(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
-  };
+  const toggleMonth = (idx: number) => setExpandedMonths(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
 
   const updateMonthData = useCallback((monthIdx: number, updater: (md: MonthData) => MonthData) => {
     setYearData(prev => ({ ...prev, [monthIdx]: updater(prev[monthIdx]) }));
   }, []);
 
-  const startInlineEdit = (monthIdx: number) => {
+  const openMonthEditor = (monthIdx: number) => {
     const md = yearData[monthIdx];
     const rev = md.revenues.find(r => r.featureId === feature.id);
-    setInlinePlannedRev(rev?.planned || 0);
-    setInlineActualRev(rev?.actual || 0);
-    setEditingMonth(monthIdx);
-    setExpandedCostCats([]);
+    setEditMonthIdx(monthIdx);
+    setEditPlannedRev(rev?.planned || 0);
+    setEditActualRev(rev?.actual || 0);
+    setEditCostCatsOpen([]);
+    setEditMonthOpen(true);
   };
 
-  const saveInlineRevenue = (monthIdx: number) => {
-    updateMonthData(monthIdx, md => {
+  const saveMonthRevenue = () => {
+    updateMonthData(editMonthIdx, md => {
       const existing = md.revenues.findIndex(r => r.featureId === feature.id);
       const newRevs = [...md.revenues];
-      if (existing >= 0) {
-        newRevs[existing] = { ...newRevs[existing], planned: inlinePlannedRev, actual: inlineActualRev };
-      } else if (inlinePlannedRev > 0 || inlineActualRev > 0) {
-        newRevs.push({ featureId: feature.id, planned: inlinePlannedRev, actual: inlineActualRev });
-      }
+      if (existing >= 0) newRevs[existing] = { ...newRevs[existing], planned: editPlannedRev, actual: editActualRev };
+      else if (editPlannedRev > 0 || editActualRev > 0) newRevs.push({ featureId: feature.id, planned: editPlannedRev, actual: editActualRev });
       return { ...md, revenues: newRevs };
     });
+    setEditMonthOpen(false);
   };
 
   const addCostItem = (monthIdx: number, category: string) => {
-    updateMonthData(monthIdx, md => ({
-      ...md,
-      costs: {
-        ...md.costs,
-        [category]: [...(md.costs[category] || []), { id: uid(), name: '', planned: 0, actual: 0, notes: '' }],
-      },
-    }));
+    updateMonthData(monthIdx, md => ({ ...md, costs: { ...md.costs, [category]: [...(md.costs[category] || []), { id: uid(), name: '', planned: 0, actual: 0, notes: '' }] } }));
   };
 
   const updateCostItem = (monthIdx: number, category: string, itemId: string, updates: Partial<CostItem>) => {
-    updateMonthData(monthIdx, md => ({
-      ...md,
-      costs: {
-        ...md.costs,
-        [category]: (md.costs[category] || []).map(i => i.id === itemId ? { ...i, ...updates } : i),
-      },
-    }));
+    updateMonthData(monthIdx, md => ({ ...md, costs: { ...md.costs, [category]: (md.costs[category] || []).map(i => i.id === itemId ? { ...i, ...updates } : i) } }));
   };
 
   const removeCostItem = (monthIdx: number, category: string, itemId: string) => {
-    updateMonthData(monthIdx, md => ({
-      ...md,
-      costs: {
-        ...md.costs,
-        [category]: (md.costs[category] || []).filter(i => i.id !== itemId),
-      },
-    }));
+    updateMonthData(monthIdx, md => ({ ...md, costs: { ...md.costs, [category]: (md.costs[category] || []).filter(i => i.id !== itemId) } }));
   };
 
   const updateResourceUtil = (monthIdx: number, resourceId: number, utilization: number) => {
-    updateMonthData(monthIdx, md => ({
-      ...md,
-      resources: md.resources.map(a => a.resourceId === resourceId ? { ...a, utilization } : a),
-    }));
+    updateMonthData(monthIdx, md => ({ ...md, resources: md.resources.map(a => a.resourceId === resourceId ? { ...a, utilization } : a) }));
   };
 
   const removeResource = (monthIdx: number, resourceId: number) => {
-    updateMonthData(monthIdx, md => ({
-      ...md,
-      resources: md.resources.filter(a => a.resourceId !== resourceId),
-    }));
+    updateMonthData(monthIdx, md => ({ ...md, resources: md.resources.filter(a => a.resourceId !== resourceId) }));
   };
 
-  const openResourceSelector = (monthIdx: number) => {
-    setResourceSelectorMonth(monthIdx);
-    setSelectedResourceIds([]);
-    setResourceSelectorOpen(true);
-  };
+  const openResourceSelector = (monthIdx: number) => { setResourceSelectorMonth(monthIdx); setSelectedResourceIds([]); setResourceSelectorOpen(true); };
 
   const addSelectedResources = () => {
-    const monthIdx = resourceSelectorMonth;
-    updateMonthData(monthIdx, md => ({
-      ...md,
-      resources: [
-        ...md.resources,
-        ...selectedResourceIds
-          .filter(rid => !md.resources.some(a => a.resourceId === rid))
-          .map(rid => ({ resourceId: rid, utilization: 100 })),
-      ],
+    updateMonthData(resourceSelectorMonth, md => ({
+      ...md, resources: [...md.resources, ...selectedResourceIds.filter(rid => !md.resources.some(a => a.resourceId === rid)).map(rid => ({ resourceId: rid, utilization: 100 }))],
     }));
     setSelectedResourceIds([]);
     setResourceSelectorOpen(false);
   };
 
-  // Convert to legacy format for FeatureForecast compatibility
   const revenueEntries = useMemo(() => {
     const entries: any[] = [];
-    Object.entries(yearData).forEach(([monthStr, md]) => {
-      md.revenues.forEach(r => {
-        entries.push({ id: Date.now() + parseInt(monthStr), featureId: r.featureId, month: parseInt(monthStr), year: selectedYear, planned: r.planned, actual: r.actual });
-      });
-    });
+    Object.entries(yearData).forEach(([ms, md]) => md.revenues.forEach(r => entries.push({ id: Date.now() + parseInt(ms), featureId: r.featureId, month: parseInt(ms), year: selectedYear, planned: r.planned, actual: r.actual })));
     return entries;
   }, [yearData, selectedYear]);
 
   const costEntries = useMemo(() => {
     const entries: any[] = [];
-    Object.entries(yearData).forEach(([monthStr, md]) => {
-      const mi = parseInt(monthStr);
-      Object.entries(md.costs).forEach(([cat, items]) => {
-        items.forEach(item => {
-          entries.push({ id: item.id, featureId: feature.id, month: mi, year: selectedYear, category: cat, planned: item.planned, actual: item.actual });
-        });
-      });
-      md.resources.forEach(a => {
-        const r = state.resources.find(res => res.id === a.resourceId);
-        if (r) {
-          entries.push({ id: `res-${mi}-${a.resourceId}`, featureId: feature.id, month: mi, year: selectedYear, category: 'Resources', planned: r.costRate * (a.utilization / 100), actual: 0, resourceId: a.resourceId, utilization: a.utilization, calculatedCost: r.costRate * (a.utilization / 100) });
-        }
-      });
+    Object.entries(yearData).forEach(([ms, md]) => {
+      const mi = parseInt(ms);
+      Object.entries(md.costs).forEach(([cat, items]) => items.forEach(item => entries.push({ id: item.id, featureId: feature.id, month: mi, year: selectedYear, category: cat, planned: item.planned, actual: item.actual })));
+      md.resources.forEach(a => { const r = state.resources.find(res => res.id === a.resourceId); if (r) entries.push({ id: `res-${mi}-${a.resourceId}`, featureId: feature.id, month: mi, year: selectedYear, category: 'Resources', planned: r.costRate * (a.utilization / 100), actual: 0 }); });
     });
     return entries;
   }, [yearData, selectedYear, feature.id, state.resources]);
-
-  // ── Insight Icon ──────────────────────────────────────────
 
   const InsightIcon = ({ type }: { type: string }) => {
     if (type === 'up') return <TrendingUp className="w-4 h-4 text-emerald-600 shrink-0" />;
@@ -353,9 +201,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     return <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />;
   };
 
-  // ── Custom Tooltip ────────────────────────────────────────
-
-  const ChartTooltipContent = ({ active, payload, label }: any) => {
+  const ChartTooltipEl = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
     return (
       <div className="bg-card border border-border rounded-xl shadow-lg p-3 text-xs space-y-1.5">
@@ -371,16 +217,12 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     );
   };
 
-  // ── Main Render ───────────────────────────────────────────
-
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg transition-colors">
-            <BackIcon className="w-5 h-5" />
-          </button>
+          <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg transition-colors"><BackIcon className="w-5 h-5" /></button>
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-foreground">{feature.name}</h2>
             <p className="text-sm text-muted-foreground">{product?.name} • {t('financialPlanning')}</p>
@@ -388,9 +230,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         </div>
         <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(parseInt(v))}>
           <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {[2024, 2025, 2026, 2027].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-          </SelectContent>
+          <SelectContent>{[2024, 2025, 2026, 2027].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
         </Select>
       </div>
 
@@ -432,10 +272,9 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
           </TabsList>
 
           <div className="p-5 sm:p-6">
-            {/* ── PLANNER TAB ──────────────────────────────── */}
+            {/* PLANNER TAB */}
             <TabsContent value="planner" className="mt-0 space-y-4">
               <div className="rounded-xl border border-border overflow-hidden">
-                {/* Table Header */}
                 <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-0 bg-secondary/50 px-4 py-3">
                   <span className="text-xs font-semibold text-muted-foreground uppercase">{t('month')}</span>
                   <span className="text-xs font-semibold text-muted-foreground uppercase text-end">{t('plannedRevenue')}</span>
@@ -446,16 +285,13 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                   <span className="text-xs font-semibold text-muted-foreground uppercase text-center w-20">{t('actions')}</span>
                 </div>
 
-                {/* Month Rows */}
                 {monthlySummaries.map(ms => {
                   const isExpanded = expandedMonths.includes(ms.month);
                   const hasData = ms.plannedRev > 0 || ms.actualRev > 0 || ms.plannedCost > 0;
                   return (
                     <div key={ms.month} className="border-t border-border">
-                      <div
-                        className={cn("grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-0 px-4 py-3 hover:bg-secondary/30 cursor-pointer transition-colors", hasData && "bg-card")}
-                        onClick={() => toggleMonth(ms.month)}
-                      >
+                      <div className={cn("grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-0 px-4 py-3 hover:bg-secondary/30 cursor-pointer transition-colors", hasData && "bg-card")}
+                        onClick={() => toggleMonth(ms.month)}>
                         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                           {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                           {ms.label}
@@ -466,17 +302,16 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                         <div className="text-sm font-medium text-destructive text-end">{ms.plannedCost > 0 ? formatCurrency(ms.plannedCost, language) : '—'}</div>
                         <div className="text-sm font-medium text-destructive/80 text-end">{ms.actualCost > 0 ? formatCurrency(ms.actualCost, language) : '—'}</div>
                         <div className={cn("text-sm font-bold text-end", ms.netProfit >= 0 ? "text-primary" : "text-destructive")}>
-                          {ms.plannedRev > 0 || ms.plannedCost > 0 ? formatCurrency(ms.netProfit, language) : '—'}
+                          {hasData ? formatCurrency(ms.netProfit, language) : '—'}
                         </div>
                         <div className="w-20 flex items-center justify-center">
                           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                            onClick={e => { e.stopPropagation(); startInlineEdit(ms.month); }}>
+                            onClick={e => { e.stopPropagation(); openMonthEditor(ms.month); }}>
                             <Plus className="w-3.5 h-3.5 me-1" />{t('edit')}
                           </Button>
                         </div>
                       </div>
 
-                      {/* Expanded Month Detail (read-only summary) */}
                       {isExpanded && (
                         <div className="bg-secondary/5 border-t border-border/50 px-6 py-4 space-y-4">
                           {yearData[ms.month].revenues.length > 0 && (
@@ -514,10 +349,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                                   <div className="grid grid-cols-3 px-3 py-2 border-t border-border/50">
                                     <span className="text-sm text-foreground">{t('resources')}</span>
                                     <span className="text-sm text-end font-medium text-foreground">
-                                      {formatCurrency(yearData[ms.month].resources.reduce((s, a) => {
-                                        const r = state.resources.find(res => res.id === a.resourceId);
-                                        return s + (r ? r.costRate * (a.utilization / 100) : 0);
-                                      }, 0), language)}
+                                      {formatCurrency(yearData[ms.month].resources.reduce((s, a) => { const r = state.resources.find(res => res.id === a.resourceId); return s + (r ? r.costRate * (a.utilization / 100) : 0); }, 0), language)}
                                     </span>
                                     <span className="text-sm text-end font-medium text-muted-foreground">—</span>
                                   </div>
@@ -536,215 +368,15 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                             </div>
                           )}
                           {!hasData && <p className="text-sm text-muted-foreground text-center py-4">{t('noRevenueData')}</p>}
-                          <Button size="sm" variant="outline" onClick={() => startInlineEdit(ms.month)}>
+                          <Button size="sm" variant="outline" onClick={() => openMonthEditor(ms.month)}>
                             <Plus className="w-3.5 h-3.5 me-1" /> {t('edit')} {ms.label}
                           </Button>
-                        </div>
-                      )}
-                              <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('planned')} (SAR)</label>
-                                    <Input type="number" value={inlinePlannedRev || ''} placeholder="0"
-                                      onChange={e => setInlinePlannedRev(parseFloat(e.target.value) || 0)} />
-                                  </div>
-                                  <div>
-                                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('actual')} (SAR)</label>
-                                    <Input type="number" value={inlineActualRev || ''} placeholder="0"
-                                      onChange={e => setInlineActualRev(parseFloat(e.target.value) || 0)} />
-                                  </div>
-                                </div>
-                                {(inlinePlannedRev > 0 || inlineActualRev > 0) && (
-                                  <div className={cn("px-3 py-2 rounded-lg border text-xs font-semibold",
-                                    inlineActualRev - inlinePlannedRev >= 0
-                                      ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
-                                      : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400"
-                                  )}>
-                                    {t('revenueVariance')}: {inlineActualRev - inlinePlannedRev >= 0 ? '+' : ''}{formatCurrency(inlineActualRev - inlinePlannedRev, language)}
-                                  </div>
-                                )}
-                                <div className="flex gap-2">
-                                  <Button size="sm" onClick={() => { saveInlineRevenue(ms.month); setEditingMonth(null); }} className="bg-primary hover:bg-primary/90">
-                                    <Save className="w-3.5 h-3.5 me-1" /> {t('save')}
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => setEditingMonth(null)}>{t('cancel')}</Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div>
-                                {yearData[ms.month].revenues.length > 0 ? (
-                                  <div className="rounded-lg border border-border overflow-hidden">
-                                    <div className="grid grid-cols-3 bg-secondary/30 px-3 py-2">
-                                      <span className="text-xs font-semibold text-muted-foreground">{t('feature')}</span>
-                                      <span className="text-xs font-semibold text-muted-foreground text-end">{t('planned')}</span>
-                                      <span className="text-xs font-semibold text-muted-foreground text-end">{t('actual')}</span>
-                                    </div>
-                                    {yearData[ms.month].revenues.map((rev, idx) => {
-                                      const feat = productFeatures.find(f => f.id === rev.featureId);
-                                      return (
-                                        <div key={idx} className="grid grid-cols-3 px-3 py-2 border-t border-border/50">
-                                          <span className="text-sm text-foreground">{feat?.name || feature.name}</span>
-                                          <span className="text-sm text-end font-medium text-foreground">{formatCurrency(rev.planned, language)}</span>
-                                          <span className="text-sm text-end font-medium text-emerald-600">{formatCurrency(rev.actual, language)}</span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-muted-foreground">{t('noRevenueData')}</p>
-                                )}
-                                <Button size="sm" variant="outline" className="mt-2" onClick={() => startInlineEdit(ms.month)}>
-                                  <Plus className="w-3.5 h-3.5 me-1" /> {t('addEntry')}
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Costs Section */}
-                          <div className="bg-card rounded-xl border border-border p-4">
-                            <h5 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                              <DollarSign className="w-4 h-4 text-destructive" /> {t('costCategories')}
-                            </h5>
-                            <div className="space-y-2">
-                              {/* Resources */}
-                              <Collapsible open={expandedCostCats.includes(`res-${ms.month}`)}
-                                onOpenChange={() => setExpandedCostCats(prev => prev.includes(`res-${ms.month}`) ? prev.filter(c => c !== `res-${ms.month}`) : [...prev, `res-${ms.month}`])}>
-                                <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/30 transition-colors">
-                                  <span className="text-sm font-medium text-foreground flex items-center gap-2">
-                                    <Users className="w-4 h-4 text-primary" /> {t('resources')}
-                                    {yearData[ms.month].resources.length > 0 && (
-                                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{yearData[ms.month].resources.length}</span>
-                                    )}
-                                  </span>
-                                  <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", expandedCostCats.includes(`res-${ms.month}`) && "rotate-180")} />
-                                </CollapsibleTrigger>
-                                <CollapsibleContent>
-                                  <div className="mt-2 space-y-2">
-                                    {yearData[ms.month].resources.length > 0 && (
-                                      <div className="overflow-x-auto rounded-lg border border-border">
-                                        <table className="w-full text-sm">
-                                          <thead className="bg-secondary/50">
-                                            <tr>
-                                              <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('resource')}</th>
-                                              <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('monthlyCost')}</th>
-                                              <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground">{t('utilization')} %</th>
-                                              <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('allocatedCost')}</th>
-                                              <th className="px-3 py-2 w-10" />
-                                            </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-border">
-                                            {yearData[ms.month].resources.map(alloc => {
-                                              const resource = state.resources.find(r => r.id === alloc.resourceId);
-                                              if (!resource) return null;
-                                              const allocCost = resource.costRate * (alloc.utilization / 100);
-                                              return (
-                                                <tr key={alloc.resourceId} className="hover:bg-secondary/30">
-                                                  <td className="px-3 py-2">
-                                                    <div className="font-medium text-foreground">{resource.name}</div>
-                                                    <div className="text-xs text-muted-foreground">{resource.role}</div>
-                                                  </td>
-                                                  <td className="px-3 py-2 text-end text-foreground">{formatCurrency(resource.costRate, language)}</td>
-                                                  <td className="px-3 py-2 text-center">
-                                                    <Input type="number" className="h-7 text-xs text-center w-16 mx-auto" value={alloc.utilization} min={0} max={100}
-                                                      onChange={e => updateResourceUtil(ms.month, alloc.resourceId, parseInt(e.target.value) || 0)} />
-                                                  </td>
-                                                  <td className="px-3 py-2 text-end font-semibold text-primary">{formatCurrency(allocCost, language)}</td>
-                                                  <td className="px-3 py-2 text-center">
-                                                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive"
-                                                      onClick={() => removeResource(ms.month, alloc.resourceId)}>
-                                                      <Trash2 className="w-3 h-3" />
-                                                    </Button>
-                                                  </td>
-                                                </tr>
-                                              );
-                                            })}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    )}
-                                    <Button size="sm" variant="outline" onClick={() => openResourceSelector(ms.month)}>
-                                      <UserPlus className="w-3.5 h-3.5 me-1.5" /> {t('addResources')}
-                                    </Button>
-                                  </div>
-                                </CollapsibleContent>
-                              </Collapsible>
-
-                              {/* Other cost categories */}
-                              {COST_CATEGORIES.map(cat => {
-                                const catKey = `${cat}-${ms.month}`;
-                                const items = yearData[ms.month].costs[cat] || [];
-                                return (
-                                  <Collapsible key={cat} open={expandedCostCats.includes(catKey)}
-                                    onOpenChange={() => setExpandedCostCats(prev => prev.includes(catKey) ? prev.filter(c => c !== catKey) : [...prev, catKey])}>
-                                    <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/30 transition-colors">
-                                      <span className="text-sm font-medium text-foreground flex items-center gap-2">
-                                        {cat}
-                                        {items.length > 0 && <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{items.length}</span>}
-                                      </span>
-                                      <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", expandedCostCats.includes(catKey) && "rotate-180")} />
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent>
-                                      <div className="mt-2 space-y-2">
-                                        {items.length > 0 && (
-                                          <div className="overflow-x-auto rounded-lg border border-border">
-                                            <table className="w-full text-sm">
-                                              <thead className="bg-secondary/50">
-                                                <tr>
-                                                  <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('costName')}</th>
-                                                  <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('planned')} (SAR)</th>
-                                                  <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('actual')} (SAR)</th>
-                                                  <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('notes')}</th>
-                                                  <th className="px-3 py-2 w-10" />
-                                                </tr>
-                                              </thead>
-                                              <tbody className="divide-y divide-border">
-                                                {items.map(item => (
-                                                  <tr key={item.id} className="hover:bg-secondary/30">
-                                                    <td className="px-3 py-1.5">
-                                                      <Input className="h-7 text-xs" value={item.name} placeholder={t('costName')}
-                                                        onChange={e => updateCostItem(ms.month, cat, item.id, { name: e.target.value })} />
-                                                    </td>
-                                                    <td className="px-3 py-1.5">
-                                                      <Input type="number" className="h-7 text-xs text-end" value={item.planned || ''} placeholder="0"
-                                                        onChange={e => updateCostItem(ms.month, cat, item.id, { planned: parseFloat(e.target.value) || 0 })} />
-                                                    </td>
-                                                    <td className="px-3 py-1.5">
-                                                      <Input type="number" className="h-7 text-xs text-end" value={item.actual || ''} placeholder="0"
-                                                        onChange={e => updateCostItem(ms.month, cat, item.id, { actual: parseFloat(e.target.value) || 0 })} />
-                                                    </td>
-                                                    <td className="px-3 py-1.5">
-                                                      <Input className="h-7 text-xs" value={item.notes} placeholder="..."
-                                                        onChange={e => updateCostItem(ms.month, cat, item.id, { notes: e.target.value })} />
-                                                    </td>
-                                                    <td className="px-3 py-1.5 text-center">
-                                                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive"
-                                                        onClick={() => removeCostItem(ms.month, cat, item.id)}>
-                                                        <Trash2 className="w-3 h-3" />
-                                                      </Button>
-                                                    </td>
-                                                  </tr>
-                                                ))}
-                                              </tbody>
-                                            </table>
-                                          </div>
-                                        )}
-                                        <Button size="sm" variant="outline" onClick={() => addCostItem(ms.month, cat)}>
-                                          <Plus className="w-3.5 h-3.5 me-1.5" /> {t('addCostEntry')}
-                                        </Button>
-                                      </div>
-                                    </CollapsibleContent>
-                                  </Collapsible>
-                                );
-                              })}
-                            </div>
-                          </div>
                         </div>
                       )}
                     </div>
                   );
                 })}
 
-                {/* Totals Footer */}
                 <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-0 bg-secondary/30 px-4 py-3 border-t-2 border-border font-bold">
                   <span className="text-sm text-foreground ps-6">{t('total')}</span>
                   <span className="text-sm text-emerald-600 text-end">{formatCurrency(totals.plannedRev, language)}</span>
@@ -757,14 +389,11 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               </div>
             </TabsContent>
 
-            {/* ── PROFILE TAB ──────────────────────────────── */}
+            {/* PROFILE TAB */}
             <TabsContent value="profile" className="mt-0 space-y-6">
               <div className="bg-card rounded-xl border border-border p-5">
-                <label className="block text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <span className="text-lg">📝</span>{t('description')}
-                </label>
-                <Textarea value={featureProfile.description} onChange={e => setFeatureProfile({ ...featureProfile, description: e.target.value })}
-                  placeholder={t('featureDescPlaceholder')} rows={3} />
+                <label className="block text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><span className="text-lg">📝</span>{t('description')}</label>
+                <Textarea value={featureProfile.description} onChange={e => setFeatureProfile({ ...featureProfile, description: e.target.value })} placeholder={t('featureDescPlaceholder')} rows={3} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
@@ -774,38 +403,29 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                   { key: 'businessModel', icon: '💰', field: 'businessModel' as const, placeholder: 'businessModelPlaceholder' },
                 ].map(f => (
                   <div key={f.key} className="rounded-xl border border-border p-5 bg-card">
-                    <label className="block text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <span className="text-lg">{f.icon}</span>{t(f.key as any)}
-                    </label>
-                    <Textarea value={featureProfile[f.field]} onChange={e => setFeatureProfile({ ...featureProfile, [f.field]: e.target.value })}
-                      placeholder={t(f.placeholder as any)} rows={3} />
+                    <label className="block text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><span className="text-lg">{f.icon}</span>{t(f.key as any)}</label>
+                    <Textarea value={featureProfile[f.field]} onChange={e => setFeatureProfile({ ...featureProfile, [f.field]: e.target.value })} placeholder={t(f.placeholder as any)} rows={3} />
                   </div>
                 ))}
               </div>
               <div className="rounded-xl border border-border p-5 bg-card">
-                <label className="block text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <span className="text-lg">⚠️</span>{t('risksAndChallenges')}
-                </label>
-                <Textarea value={featureProfile.risksAndChallenges} onChange={e => setFeatureProfile({ ...featureProfile, risksAndChallenges: e.target.value })}
-                  placeholder={t('risksPlaceholder')} rows={3} />
+                <label className="block text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><span className="text-lg">⚠️</span>{t('risksAndChallenges')}</label>
+                <Textarea value={featureProfile.risksAndChallenges} onChange={e => setFeatureProfile({ ...featureProfile, risksAndChallenges: e.target.value })} placeholder={t('risksPlaceholder')} rows={3} />
               </div>
             </TabsContent>
 
-            {/* ── CHARTS TAB ───────────────────────────────── */}
+            {/* CHARTS TAB */}
             <TabsContent value="charts" className="mt-0 space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                {/* Revenue vs Cost Trend */}
                 <div className="bg-card rounded-xl border border-border p-5">
-                  <h5 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-primary" /> {t('revenueCostTrend')}
-                  </h5>
+                  <h5 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-primary" /> {t('revenueCostTrend')}</h5>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                         <XAxis dataKey="month" fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                         <YAxis fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                        <Tooltip content={<ChartTooltipContent />} />
+                        <Tooltip content={<ChartTooltipEl />} />
                         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                         <Line type="monotone" dataKey="revenue" name={t('plannedRevenue')} stroke="hsl(var(--revenue, 142 71% 45%))" strokeWidth={2.5} dot={{ r: 3, fill: 'hsl(var(--revenue, 142 71% 45%))' }} />
                         <Line type="monotone" dataKey="actualRevenue" name={t('actualRevenue')} stroke="hsl(142 71% 35%)" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 2.5 }} />
@@ -814,37 +434,29 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                     </ResponsiveContainer>
                   </div>
                 </div>
-
-                {/* Profit Trend */}
                 <div className="bg-card rounded-xl border border-border p-5">
-                  <h5 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-primary" /> {t('netProfit')} Trend
-                  </h5>
+                  <h5 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-primary" /> {t('netProfit')} Trend</h5>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                         <XAxis dataKey="month" fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                         <YAxis fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                        <Tooltip content={<ChartTooltipContent />} />
+                        <Tooltip content={<ChartTooltipEl />} />
                         <Bar dataKey="profit" name={t('netProfit')} fill="hsl(var(--primary))" radius={[4,4,0,0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
-
-                {/* Cost Breakdown */}
                 <div className="bg-card rounded-xl border border-border p-5 lg:col-span-2">
-                  <h5 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <PieChart className="w-4 h-4 text-destructive" /> {t('monthlyCostBreakdown')}
-                  </h5>
+                  <h5 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2"><PieChart className="w-4 h-4 text-destructive" /> {t('monthlyCostBreakdown')}</h5>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={costBreakdownData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                         <XAxis dataKey="monthLabel" fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} />
                         <YAxis fontSize={11} stroke="hsl(var(--muted-foreground))" axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                        <Tooltip content={<ChartTooltipContent />} />
+                        <Tooltip content={<ChartTooltipEl />} />
                         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                         <Bar dataKey="Resources" name={t('resources')} stackId="a" fill="hsl(var(--primary))" />
                         <Bar dataKey="Infrastructure" name="Infrastructure" stackId="a" fill="hsl(var(--cost, 0 84% 60%))" />
@@ -858,12 +470,10 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               </div>
             </TabsContent>
 
-            {/* ── INSIGHTS TAB ─────────────────────────────── */}
+            {/* INSIGHTS TAB */}
             <TabsContent value="insights" className="mt-0 space-y-5">
               <div className="bg-card rounded-xl border border-border p-5">
-                <h4 className="text-foreground font-semibold mb-4 flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4 text-amber-500" /> Quick Insights
-                </h4>
+                <h4 className="text-foreground font-semibold mb-4 flex items-center gap-2"><Lightbulb className="w-4 h-4 text-amber-500" /> Quick Insights</h4>
                 {insights.length > 0 ? (
                   <div className="space-y-3">
                     {insights.map((insight, idx) => (
@@ -874,14 +484,12 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground py-8 text-center">
-                    Add financial data to the planner to see automated insights.
-                  </p>
+                  <p className="text-sm text-muted-foreground py-8 text-center">Add financial data to see automated insights.</p>
                 )}
               </div>
             </TabsContent>
 
-            {/* ── FORECAST TAB ─────────────────────────────── */}
+            {/* FORECAST TAB */}
             <TabsContent value="forecast" className="mt-0">
               <FeatureForecast feature={feature} revenueEntries={revenueEntries} costEntries={costEntries} />
             </TabsContent>
@@ -889,13 +497,199 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         </div>
       </Tabs>
 
-      {/* ── RESOURCE SELECTOR DIALOG ─────────────────────── */}
+      {/* MONTH EDIT POPUP */}
+      <Dialog open={editMonthOpen} onOpenChange={setEditMonthOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <DollarSign className="w-5 h-5 text-primary" />
+              {t(MONTHS_SHORT_KEYS[editMonthIdx])} {selectedYear} — {t('financialPlanning')}
+            </DialogTitle>
+            <DialogDescription>{feature.name}</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] min-h-0 max-h-[calc(90vh-140px)]">
+            <div className="p-6 space-y-5 overflow-y-auto border-e border-border">
+              {/* Revenue */}
+              <div className="bg-card rounded-xl border border-border p-4">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('revenue')}
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('planned')} (SAR)</label>
+                    <Input type="number" value={editPlannedRev || ''} placeholder="0" onChange={e => setEditPlannedRev(parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('actual')} (SAR)</label>
+                    <Input type="number" value={editActualRev || ''} placeholder="0" onChange={e => setEditActualRev(parseFloat(e.target.value) || 0)} />
+                  </div>
+                </div>
+                {(editPlannedRev > 0 || editActualRev > 0) && (
+                  <div className={cn("mt-3 px-3 py-2 rounded-lg border text-xs font-semibold",
+                    editActualRev - editPlannedRev >= 0
+                      ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
+                      : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400"
+                  )}>
+                    {t('revenueVariance')}: {editActualRev - editPlannedRev >= 0 ? '+' : ''}{formatCurrency(editActualRev - editPlannedRev, language)}
+                  </div>
+                )}
+              </div>
+
+              {/* Cost Categories */}
+              <div className="bg-card rounded-xl border border-border p-4">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-destructive" /> {t('costCategories')}
+                </h4>
+                <div className="space-y-2">
+                  {/* Resources */}
+                  <Collapsible open={editCostCatsOpen.includes('Resources')}
+                    onOpenChange={() => setEditCostCatsOpen(prev => prev.includes('Resources') ? prev.filter(c => c !== 'Resources') : [...prev, 'Resources'])}>
+                    <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/30 transition-colors">
+                      <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <Users className="w-4 h-4 text-primary" /> {t('resources')}
+                        {yearData[editMonthIdx].resources.length > 0 && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{yearData[editMonthIdx].resources.length}</span>}
+                      </span>
+                      <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", editCostCatsOpen.includes('Resources') && "rotate-180")} />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2 space-y-2">
+                        {yearData[editMonthIdx].resources.length > 0 && (
+                          <div className="overflow-x-auto rounded-lg border border-border">
+                            <table className="w-full text-sm">
+                              <thead className="bg-secondary/50">
+                                <tr>
+                                  <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('resource')}</th>
+                                  <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('monthlyCost')}</th>
+                                  <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground">{t('utilization')} %</th>
+                                  <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('allocatedCost')}</th>
+                                  <th className="px-3 py-2 w-10" />
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border">
+                                {yearData[editMonthIdx].resources.map(alloc => {
+                                  const resource = state.resources.find(r => r.id === alloc.resourceId);
+                                  if (!resource) return null;
+                                  return (
+                                    <tr key={alloc.resourceId} className="hover:bg-secondary/30">
+                                      <td className="px-3 py-2"><div className="font-medium text-foreground">{resource.name}</div><div className="text-xs text-muted-foreground">{resource.role}</div></td>
+                                      <td className="px-3 py-2 text-end text-foreground">{formatCurrency(resource.costRate, language)}</td>
+                                      <td className="px-3 py-2 text-center">
+                                        <Input type="number" className="h-7 text-xs text-center w-16 mx-auto" value={alloc.utilization} min={0} max={100}
+                                          onChange={e => updateResourceUtil(editMonthIdx, alloc.resourceId, parseInt(e.target.value) || 0)} />
+                                      </td>
+                                      <td className="px-3 py-2 text-end font-semibold text-primary">{formatCurrency(resource.costRate * (alloc.utilization / 100), language)}</td>
+                                      <td className="px-3 py-2 text-center">
+                                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive" onClick={() => removeResource(editMonthIdx, alloc.resourceId)}>
+                                          <Trash2 className="w-3 h-3" />
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        <Button size="sm" variant="outline" onClick={() => openResourceSelector(editMonthIdx)}>
+                          <UserPlus className="w-3.5 h-3.5 me-1.5" /> {t('addResources')}
+                        </Button>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  {COST_CATEGORIES.map(cat => {
+                    const items = yearData[editMonthIdx].costs[cat] || [];
+                    return (
+                      <Collapsible key={cat} open={editCostCatsOpen.includes(cat)}
+                        onOpenChange={() => setEditCostCatsOpen(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])}>
+                        <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/30 transition-colors">
+                          <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                            {cat}
+                            {items.length > 0 && <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{items.length}</span>}
+                          </span>
+                          <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", editCostCatsOpen.includes(cat) && "rotate-180")} />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2 space-y-2">
+                            {items.length > 0 && (
+                              <div className="overflow-x-auto rounded-lg border border-border">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-secondary/50">
+                                    <tr>
+                                      <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('costName')}</th>
+                                      <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('planned')} (SAR)</th>
+                                      <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('actual')} (SAR)</th>
+                                      <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('notes')}</th>
+                                      <th className="px-3 py-2 w-10" />
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-border">
+                                    {items.map(item => (
+                                      <tr key={item.id} className="hover:bg-secondary/30">
+                                        <td className="px-3 py-1.5"><Input className="h-7 text-xs" value={item.name} placeholder={t('costName')} onChange={e => updateCostItem(editMonthIdx, cat, item.id, { name: e.target.value })} /></td>
+                                        <td className="px-3 py-1.5"><Input type="number" className="h-7 text-xs text-end" value={item.planned || ''} placeholder="0" onChange={e => updateCostItem(editMonthIdx, cat, item.id, { planned: parseFloat(e.target.value) || 0 })} /></td>
+                                        <td className="px-3 py-1.5"><Input type="number" className="h-7 text-xs text-end" value={item.actual || ''} placeholder="0" onChange={e => updateCostItem(editMonthIdx, cat, item.id, { actual: parseFloat(e.target.value) || 0 })} /></td>
+                                        <td className="px-3 py-1.5"><Input className="h-7 text-xs" value={item.notes} placeholder="..." onChange={e => updateCostItem(editMonthIdx, cat, item.id, { notes: e.target.value })} /></td>
+                                        <td className="px-3 py-1.5 text-center">
+                                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive" onClick={() => removeCostItem(editMonthIdx, cat, item.id)}>
+                                            <Trash2 className="w-3 h-3" />
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                            <Button size="sm" variant="outline" onClick={() => addCostItem(editMonthIdx, cat)}>
+                              <Plus className="w-3.5 h-3.5 me-1.5" /> {t('addCostEntry')}
+                            </Button>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Live Summary */}
+            <div className="p-5 bg-secondary/20 space-y-3 overflow-y-auto">
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">{t('financialSummary')}</h4>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="text-xs font-medium text-muted-foreground mb-1">{t('plannedRevenue')}</div>
+                <div className="text-xl font-bold text-emerald-600">{formatCurrency(editPlannedRev, language)}</div>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="text-xs font-medium text-muted-foreground mb-1">{t('totalCost')}</div>
+                <div className="text-xl font-bold text-destructive">{formatCurrency(editMonthSummary.totalCost, language)}</div>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="text-xs font-medium text-muted-foreground mb-1">{t('netProfit')}</div>
+                <div className={cn("text-xl font-bold", editMonthSummary.profit >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(editMonthSummary.profit, language)}</div>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="text-xs font-medium text-muted-foreground mb-1">{t('profitMargin')}</div>
+                <div className={cn("text-xl font-bold", editMonthSummary.margin >= 0 ? "text-primary" : "text-destructive")}>{editMonthSummary.margin.toFixed(1)}%</div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t border-border">
+            <Button variant="outline" onClick={() => setEditMonthOpen(false)}>{t('cancel')}</Button>
+            <Button onClick={saveMonthRevenue} className="bg-primary hover:bg-primary/90">
+              <Save className="w-4 h-4 me-2" />{t('save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* RESOURCE SELECTOR DIALOG */}
       <Dialog open={resourceSelectorOpen} onOpenChange={setResourceSelectorOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-primary" /> {t('selectResources')}
-            </DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-primary" /> {t('selectResources')}</DialogTitle>
             <DialogDescription>{t('selectResourcesDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-[50vh] overflow-y-auto py-2">
@@ -903,16 +697,9 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               const isAlreadyAdded = yearData[resourceSelectorMonth]?.resources.some(a => a.resourceId === resource.id);
               const isSelected = selectedResourceIds.includes(resource.id);
               return (
-                <label key={resource.id} className={cn(
-                  "flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
-                  isAlreadyAdded ? "border-border bg-secondary/30 opacity-60 cursor-not-allowed" :
-                  isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-secondary/30"
-                )}>
-                  <Checkbox checked={isSelected} disabled={isAlreadyAdded}
-                    onCheckedChange={(checked) => {
-                      if (isAlreadyAdded) return;
-                      setSelectedResourceIds(prev => checked ? [...prev, resource.id] : prev.filter(id => id !== resource.id));
-                    }} />
+                <label key={resource.id} className={cn("flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
+                  isAlreadyAdded ? "border-border bg-secondary/30 opacity-60 cursor-not-allowed" : isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-secondary/30")}>
+                  <Checkbox checked={isSelected} disabled={isAlreadyAdded} onCheckedChange={(checked) => { if (isAlreadyAdded) return; setSelectedResourceIds(prev => checked ? [...prev, resource.id] : prev.filter(id => id !== resource.id)); }} />
                   <div className="flex-1">
                     <div className="text-sm font-medium text-foreground">{resource.name}</div>
                     <div className="text-xs text-muted-foreground">{resource.role} • {formatCurrency(resource.costRate, language)}/mo</div>
