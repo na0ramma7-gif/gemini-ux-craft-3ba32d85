@@ -241,7 +241,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         deleteFeature,
         updateProduct,
         updatePortfolio,
-        addRelease
+        addRelease,
+        updateRelease
       }}
     >
       {children}
