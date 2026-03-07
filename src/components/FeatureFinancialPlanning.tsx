@@ -117,17 +117,23 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   // Expanded months in financials tab
   const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
 
-  // Financial entry modal (simplified step-based)
+  // Financial entry modal
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalStep, setModalStep] = useState(1);
   const [modalFeatureId, setModalFeatureId] = useState(feature.id);
-  const [modalMonth, setModalMonth] = useState(new Date().getMonth());
+  const [modalStartDate, setModalStartDate] = useState('');
+  const [modalEndDate, setModalEndDate] = useState('');
   const [modalRevenuePlanned, setModalRevenuePlanned] = useState(0);
   const [modalRevenueActual, setModalRevenueActual] = useState(0);
   const [modalCostCategories, setModalCostCategories] = useState<Record<string, { planned: number; actual: number }>>({});
   const [expandedCostCategories, setExpandedCostCategories] = useState<string[]>([]);
   const [editingEntryId, setEditingEntryId] = useState<number | null>(null);
   const [editingType, setEditingType] = useState<'revenue' | 'cost' | null>(null);
+  // Non-resource cost table entries per category
+  const [modalCostItems, setModalCostItems] = useState<Record<string, { name: string; planned: number; actual: number; notes: string }[]>>({});
+  // Modal resource allocations
+  const [modalResourceAllocations, setModalResourceAllocations] = useState<{ resourceId: number; utilization: number }[]>([]);
+  const [modalResourceSelectorOpen, setModalResourceSelectorOpen] = useState(false);
+  const [modalSelectedResourceIds, setModalSelectedResourceIds] = useState<number[]>([]);
 
   // Resource selector dialog
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
@@ -241,14 +247,48 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
   // ── Modal helpers ─────────────────────────────────────────
 
+  // Compute duration from modal dates
+  const modalDuration = useMemo(() => {
+    if (!modalStartDate || !modalEndDate) return null;
+    const start = new Date(modalStartDate);
+    const end = new Date(modalEndDate);
+    if (end <= start) return null;
+    const diffMs = end.getTime() - start.getTime();
+    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const months = Math.round(days / 30.44);
+    return { days, months: months || 1 };
+  }, [modalStartDate, modalEndDate]);
+
+  // Modal live summary
+  const modalSummary = useMemo(() => {
+    const totalCostFromCategories = Object.values(modalCostCategories).reduce((s, v) => s + v.planned, 0);
+    const totalCostFromItems = Object.values(modalCostItems).reduce((s, items) => s + items.reduce((si, i) => si + i.planned, 0), 0);
+    const totalResourceCost = modalResourceAllocations.reduce((s, a) => {
+      const r = state.resources.find(res => res.id === a.resourceId);
+      return s + (r ? r.costRate * (a.utilization / 100) : 0);
+    }, 0);
+    const totalCost = totalCostFromCategories + totalCostFromItems + totalResourceCost;
+    const profit = modalRevenuePlanned - totalCost;
+    const margin = modalRevenuePlanned > 0 ? (profit / modalRevenuePlanned) * 100 : 0;
+    return { revenue: modalRevenuePlanned, cost: totalCost, profit, margin, resourceCost: totalResourceCost };
+  }, [modalRevenuePlanned, modalCostCategories, modalCostItems, modalResourceAllocations, state.resources]);
+
+  const revenueVariance = modalRevenueActual - modalRevenuePlanned;
+
   const openAddModal = () => {
-    setModalStep(1);
+    const now = new Date();
+    const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const lastDayStr = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
     setModalFeatureId(feature.id);
-    setModalMonth(new Date().getMonth());
+    setModalStartDate(firstDay);
+    setModalEndDate(lastDayStr);
     setModalRevenuePlanned(0);
     setModalRevenueActual(0);
     setModalCostCategories({});
+    setModalCostItems({});
     setExpandedCostCategories([]);
+    setModalResourceAllocations([]);
     setEditingEntryId(null);
     setEditingType(null);
     setModalOpen(true);
@@ -264,7 +304,9 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   };
 
   const saveModal = () => {
-    const year = selectedYear;
+    const startD = new Date(modalStartDate);
+    const modalMonth = startD.getMonth();
+    const year = startD.getFullYear();
 
     // Save revenue
     if (modalRevenuePlanned > 0 || modalRevenueActual > 0) {
@@ -286,7 +328,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
       }
     }
 
-    // Save costs by category
+    // Save costs by category (from category totals)
     Object.entries(modalCostCategories).forEach(([category, values], idx) => {
       if (values.planned > 0 || values.actual > 0) {
         setCostEntries(prev => [...prev, {
@@ -297,6 +339,51 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
           category,
           planned: values.planned,
           actual: values.actual,
+        }]);
+      }
+    });
+
+    // Save cost items per category
+    let itemIdx = 100;
+    Object.entries(modalCostItems).forEach(([category, items]) => {
+      items.forEach(item => {
+        if (item.planned > 0 || item.actual > 0) {
+          setCostEntries(prev => [...prev, {
+            id: Date.now() + itemIdx++,
+            featureId: modalFeatureId,
+            month: modalMonth,
+            year,
+            category,
+            planned: item.planned,
+            actual: item.actual,
+          }]);
+        }
+      });
+    });
+
+    // Save resource allocations as cost entries + to main allocations
+    modalResourceAllocations.forEach((alloc, idx) => {
+      const resource = state.resources.find(r => r.id === alloc.resourceId);
+      if (resource) {
+        const calculatedCost = resource.costRate * (alloc.utilization / 100);
+        if (!resourceAllocations.find(a => a.resourceId === alloc.resourceId)) {
+          setResourceAllocations(prev => [...prev, {
+            id: Date.now() + 200 + idx,
+            resourceId: alloc.resourceId,
+            utilization: alloc.utilization,
+          }]);
+        }
+        setCostEntries(prev => [...prev, {
+          id: Date.now() + 300 + idx,
+          featureId: modalFeatureId,
+          month: modalMonth,
+          year,
+          category: 'Resources',
+          planned: calculatedCost,
+          actual: 0,
+          resourceId: alloc.resourceId,
+          utilization: alloc.utilization,
+          calculatedCost,
         }]);
       }
     });
@@ -747,112 +834,289 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         </div>
       </Tabs>
 
-      {/* ── SIMPLIFIED FINANCIAL ENTRY MODAL (Step-Based) ──── */}
+      {/* ── FINANCIAL PLANNING WORKSPACE MODAL ──────────── */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
             <DialogTitle className="flex items-center gap-2 text-lg">
               <DollarSign className="w-5 h-5 text-primary" />
               {t('addFinancialEntry')}
             </DialogTitle>
-            <DialogDescription>{feature.name} • {selectedYear}</DialogDescription>
+            <DialogDescription>{feature.name} • {t('financialPlanning')}</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5 py-2">
-            {/* Step 1: Select Feature */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">1</span>
-                <h4 className="text-sm font-semibold text-foreground">{t('selectFeature')}</h4>
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] min-h-0 max-h-[calc(90vh-140px)]">
+            {/* ── LEFT SIDE: Financial Inputs ─────────────── */}
+            <div className="p-6 space-y-5 overflow-y-auto border-e border-border">
+              {/* Feature Selection */}
+              <div className="bg-card rounded-xl border border-border p-4">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" />{t('selectFeature')}
+                </h4>
+                <Select value={String(modalFeatureId)} onValueChange={v => setModalFeatureId(parseInt(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {productFeatures.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={String(modalFeatureId)} onValueChange={v => setModalFeatureId(parseInt(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {productFeatures.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
 
-            {/* Step 2: Select Month */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-400">2</span>
-                <h4 className="text-sm font-semibold text-foreground">{t('selectMonth')}</h4>
-              </div>
-              <Select value={String(modalMonth)} onValueChange={v => setModalMonth(parseInt(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {MONTHS_SHORT_KEYS.map((key, idx) => (
-                    <SelectItem key={idx} value={String(idx)}>{t(key)} {selectedYear}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Step 3: Enter Revenue */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center text-xs font-bold text-emerald-700 dark:text-emerald-400">3</span>
-                <h4 className="text-sm font-semibold text-foreground">{t('revenue')}</h4>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('planned')} (SAR)</label>
-                  <Input type="number" value={modalRevenuePlanned || ''} placeholder="0"
-                    onChange={e => setModalRevenuePlanned(parseFloat(e.target.value) || 0)} />
+              {/* Financial Period */}
+              <div className="bg-card rounded-xl border border-border p-4">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  📅 {t('financialPeriod')}
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('startDate')}</label>
+                    <Input type="date" value={modalStartDate} onChange={e => setModalStartDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('endDate')}</label>
+                    <Input type="date" value={modalEndDate} onChange={e => setModalEndDate(e.target.value)} />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('actual')} (SAR)</label>
-                  <Input type="number" value={modalRevenueActual || ''} placeholder="0"
-                    onChange={e => setModalRevenueActual(parseFloat(e.target.value) || 0)} />
-                </div>
+                {modalDuration && (
+                  <div className="mt-3 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
+                    <span className="text-xs font-medium text-primary">
+                      {t('duration')}: {modalDuration.days} {t('days')} ({modalDuration.months} {t('months')})
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
 
-            {/* Step 4: Add Cost Categories (expandable) */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center text-xs font-bold text-red-700 dark:text-red-400">4</span>
-                <h4 className="text-sm font-semibold text-foreground">{t('costCategories')}</h4>
+              {/* Revenue Section */}
+              <div className="bg-card rounded-xl border border-border p-4">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('revenue')}
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('planned')} (SAR)</label>
+                    <Input type="number" value={modalRevenuePlanned || ''} placeholder="0"
+                      onChange={e => setModalRevenuePlanned(parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('actual')} (SAR)</label>
+                    <Input type="number" value={modalRevenueActual || ''} placeholder="0"
+                      onChange={e => setModalRevenueActual(parseFloat(e.target.value) || 0)} />
+                  </div>
+                </div>
+                {(modalRevenuePlanned > 0 || modalRevenueActual > 0) && (
+                  <div className={cn("mt-3 px-3 py-2 rounded-lg border",
+                    revenueVariance >= 0 ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
+                  )}>
+                    <span className={cn("text-xs font-semibold",
+                      revenueVariance >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                    )}>
+                      {t('revenueVariance')}: {revenueVariance >= 0 ? '+' : ''}{formatCurrency(revenueVariance, language)}
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                {COST_CATEGORIES.filter(c => c !== 'Resources').map(cat => (
-                  <Collapsible
-                    key={cat}
-                    open={expandedCostCategories.includes(cat)}
-                    onOpenChange={() => toggleCostCategory(cat)}
-                  >
+
+              {/* Cost Structure */}
+              <div className="bg-card rounded-xl border border-border p-4">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-red-500" /> {t('costCategories')}
+                </h4>
+                <div className="space-y-3">
+                  {/* Resources Section */}
+                  <Collapsible open={expandedCostCategories.includes('Resources')} onOpenChange={() => toggleCostCategory('Resources')}>
                     <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/30 transition-colors">
-                      <span className="text-sm font-medium text-foreground">{cat}</span>
-                      <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", expandedCostCategories.includes(cat) && "rotate-180")} />
+                      <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <Users className="w-4 h-4 text-primary" /> {t('resources')}
+                        {modalResourceAllocations.length > 0 && (
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{modalResourceAllocations.length}</span>
+                        )}
+                      </span>
+                      <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", expandedCostCategories.includes('Resources') && "rotate-180")} />
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <div className="grid grid-cols-2 gap-3 px-3 py-3">
-                        <div>
-                          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('planned')} (SAR)</label>
-                          <Input type="number" value={modalCostCategories[cat]?.planned || ''} placeholder="0"
-                            onChange={e => setModalCostCategories(prev => ({
-                              ...prev,
-                              [cat]: { ...prev[cat], planned: parseFloat(e.target.value) || 0 }
-                            }))} />
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('actual')} (SAR)</label>
-                          <Input type="number" value={modalCostCategories[cat]?.actual || ''} placeholder="0"
-                            onChange={e => setModalCostCategories(prev => ({
-                              ...prev,
-                              [cat]: { ...prev[cat], actual: parseFloat(e.target.value) || 0 }
-                            }))} />
-                        </div>
+                      <div className="mt-2 space-y-2">
+                        {modalResourceAllocations.length > 0 && (
+                          <div className="overflow-x-auto rounded-lg border border-border">
+                            <table className="w-full text-sm">
+                              <thead className="bg-secondary/50">
+                                <tr>
+                                  <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('resource')}</th>
+                                  <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('monthlyCost')}</th>
+                                  <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground">{t('utilization')} %</th>
+                                  <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('allocatedCost')}</th>
+                                  <th className="px-3 py-2 w-10" />
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border">
+                                {modalResourceAllocations.map((alloc, idx) => {
+                                  const resource = state.resources.find(r => r.id === alloc.resourceId);
+                                  if (!resource) return null;
+                                  const allocCost = resource.costRate * (alloc.utilization / 100);
+                                  return (
+                                    <tr key={idx} className="hover:bg-secondary/30">
+                                      <td className="px-3 py-2">
+                                        <div className="font-medium text-foreground">{resource.name}</div>
+                                        <div className="text-xs text-muted-foreground">{resource.role}</div>
+                                      </td>
+                                      <td className="px-3 py-2 text-end text-foreground">{formatCurrency(resource.costRate, language)}</td>
+                                      <td className="px-3 py-2 text-center">
+                                        <Input type="number" className="h-7 text-xs text-center w-16 mx-auto" value={alloc.utilization} min={0} max={100}
+                                          onChange={e => {
+                                            const val = parseInt(e.target.value) || 0;
+                                            setModalResourceAllocations(prev => prev.map((a, i) => i === idx ? { ...a, utilization: val } : a));
+                                          }} />
+                                      </td>
+                                      <td className="px-3 py-2 text-end font-semibold text-primary">{formatCurrency(allocCost, language)}</td>
+                                      <td className="px-3 py-2 text-center">
+                                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive"
+                                          onClick={() => setModalResourceAllocations(prev => prev.filter((_, i) => i !== idx))}>
+                                          <Trash2 className="w-3 h-3" />
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        <Button size="sm" variant="outline" onClick={() => { setModalSelectedResourceIds([]); setModalResourceSelectorOpen(true); }}>
+                          <UserPlus className="w-3.5 h-3.5 me-1.5" /> {t('addResources')}
+                        </Button>
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
-                ))}
+
+                  {/* Other cost categories with item tables */}
+                  {COST_CATEGORIES.filter(c => c !== 'Resources').map(cat => (
+                    <Collapsible key={cat} open={expandedCostCategories.includes(cat)} onOpenChange={() => toggleCostCategory(cat)}>
+                      <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/30 transition-colors">
+                        <span className="text-sm font-medium text-foreground">{cat}</span>
+                        <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", expandedCostCategories.includes(cat) && "rotate-180")} />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2 space-y-2">
+                          {(modalCostItems[cat] || []).length > 0 && (
+                            <div className="overflow-x-auto rounded-lg border border-border">
+                              <table className="w-full text-sm">
+                                <thead className="bg-secondary/50">
+                                  <tr>
+                                    <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('costName')}</th>
+                                    <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('planned')} (SAR)</th>
+                                    <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground">{t('actual')} (SAR)</th>
+                                    <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('notes')}</th>
+                                    <th className="px-3 py-2 w-10" />
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                  {(modalCostItems[cat] || []).map((item, idx) => (
+                                    <tr key={idx} className="hover:bg-secondary/30">
+                                      <td className="px-3 py-1.5">
+                                        <Input className="h-7 text-xs" value={item.name} placeholder={t('costName')}
+                                          onChange={e => {
+                                            const items = [...(modalCostItems[cat] || [])];
+                                            items[idx] = { ...items[idx], name: e.target.value };
+                                            setModalCostItems(prev => ({ ...prev, [cat]: items }));
+                                          }} />
+                                      </td>
+                                      <td className="px-3 py-1.5">
+                                        <Input type="number" className="h-7 text-xs text-end" value={item.planned || ''} placeholder="0"
+                                          onChange={e => {
+                                            const items = [...(modalCostItems[cat] || [])];
+                                            items[idx] = { ...items[idx], planned: parseFloat(e.target.value) || 0 };
+                                            setModalCostItems(prev => ({ ...prev, [cat]: items }));
+                                          }} />
+                                      </td>
+                                      <td className="px-3 py-1.5">
+                                        <Input type="number" className="h-7 text-xs text-end" value={item.actual || ''} placeholder="0"
+                                          onChange={e => {
+                                            const items = [...(modalCostItems[cat] || [])];
+                                            items[idx] = { ...items[idx], actual: parseFloat(e.target.value) || 0 };
+                                            setModalCostItems(prev => ({ ...prev, [cat]: items }));
+                                          }} />
+                                      </td>
+                                      <td className="px-3 py-1.5">
+                                        <Input className="h-7 text-xs" value={item.notes} placeholder="..."
+                                          onChange={e => {
+                                            const items = [...(modalCostItems[cat] || [])];
+                                            items[idx] = { ...items[idx], notes: e.target.value };
+                                            setModalCostItems(prev => ({ ...prev, [cat]: items }));
+                                          }} />
+                                      </td>
+                                      <td className="px-3 py-1.5 text-center">
+                                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive"
+                                          onClick={() => {
+                                            const items = [...(modalCostItems[cat] || [])];
+                                            items.splice(idx, 1);
+                                            setModalCostItems(prev => ({ ...prev, [cat]: items }));
+                                          }}>
+                                          <Trash2 className="w-3 h-3" />
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                          <Button size="sm" variant="outline"
+                            onClick={() => setModalCostItems(prev => ({
+                              ...prev,
+                              [cat]: [...(prev[cat] || []), { name: '', planned: 0, actual: 0, notes: '' }]
+                            }))}>
+                            <Plus className="w-3.5 h-3.5 me-1.5" /> {t('addCostEntry')}
+                          </Button>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+                </div>
               </div>
+            </div>
+
+            {/* ── RIGHT SIDE: Financial Summary Panel ──────── */}
+            <div className="p-6 bg-secondary/20 space-y-4 overflow-y-auto">
+              <h4 className="text-sm font-bold text-foreground uppercase tracking-wide">{t('financialSummary')}</h4>
+
+              <div className="space-y-3">
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <div className="text-xs font-medium text-muted-foreground mb-1">{t('plannedRevenue')}</div>
+                  <div className="text-xl font-bold text-emerald-600">{formatCurrency(modalSummary.revenue, language)}</div>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <div className="text-xs font-medium text-muted-foreground mb-1">{t('totalCost')}</div>
+                  <div className="text-xl font-bold text-red-500">{formatCurrency(modalSummary.cost, language)}</div>
+                  {modalSummary.resourceCost > 0 && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {t('resources')}: {formatCurrency(modalSummary.resourceCost, language)}
+                    </div>
+                  )}
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <div className="text-xs font-medium text-muted-foreground mb-1">{t('netProfit')}</div>
+                  <div className={cn("text-xl font-bold", modalSummary.profit >= 0 ? "text-blue-600" : "text-red-500")}>
+                    {formatCurrency(modalSummary.profit, language)}
+                  </div>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <div className="text-xs font-medium text-muted-foreground mb-1">{t('profitMargin')}</div>
+                  <div className={cn("text-xl font-bold", modalSummary.margin >= 0 ? "text-blue-600" : "text-red-500")}>
+                    {modalSummary.margin.toFixed(1)}%
+                  </div>
+                </div>
+              </div>
+
+              {modalSummary.revenue > 0 && modalStartDate && (
+                <div className="bg-primary/5 rounded-xl border border-primary/20 p-4">
+                  <div className="text-xs font-medium text-primary mb-1">{t('annualImpact')}</div>
+                  <div className="text-sm font-semibold text-primary">
+                    +{formatCurrency(modalSummary.revenue, language)} {t('toAnnualRevenue')} {new Date(modalStartDate).getFullYear()}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          <DialogFooter className="pt-4 border-t border-border">
+          <DialogFooter className="px-6 py-4 border-t border-border">
             <Button variant="outline" onClick={() => setModalOpen(false)}>{t('cancel')}</Button>
             <Button onClick={saveModal} className="bg-primary hover:bg-primary/90">
               <Save className="w-4 h-4 me-2" />{t('saveEntry')}
@@ -861,7 +1125,58 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         </DialogContent>
       </Dialog>
 
-      {/* ── RESOURCE SELECTOR DIALOG ─────────────────────── */}
+      {/* ── MODAL RESOURCE SELECTOR ──────────────────────── */}
+      <Dialog open={modalResourceSelectorOpen} onOpenChange={setModalResourceSelectorOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" />
+              {t('selectResources')}
+            </DialogTitle>
+            <DialogDescription>{t('selectResourcesDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto py-2">
+            {state.resources.filter(r => r.status === 'Active').map(resource => {
+              const isAlreadyAdded = modalResourceAllocations.some(a => a.resourceId === resource.id);
+              const isSelected = modalSelectedResourceIds.includes(resource.id);
+              return (
+                <label key={resource.id} className={cn(
+                  "flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
+                  isAlreadyAdded ? "border-border bg-secondary/30 opacity-60 cursor-not-allowed" :
+                  isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-secondary/30"
+                )}>
+                  <Checkbox checked={isSelected} disabled={isAlreadyAdded}
+                    onCheckedChange={(checked) => {
+                      if (isAlreadyAdded) return;
+                      setModalSelectedResourceIds(prev => checked ? [...prev, resource.id] : prev.filter(id => id !== resource.id));
+                    }} />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-foreground">{resource.name}</div>
+                    <div className="text-xs text-muted-foreground">{resource.role} • {formatCurrency(resource.costRate, language)}/mo</div>
+                  </div>
+                  {isAlreadyAdded && <span className="text-xs text-muted-foreground">{t('alreadyAdded')}</span>}
+                </label>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalResourceSelectorOpen(false)}>{t('cancel')}</Button>
+            <Button disabled={modalSelectedResourceIds.length === 0} className="bg-primary hover:bg-primary/90"
+              onClick={() => {
+                const newAllocs = modalSelectedResourceIds
+                  .filter(rid => !modalResourceAllocations.find(a => a.resourceId === rid))
+                  .map(rid => ({ resourceId: rid, utilization: 100 }));
+                setModalResourceAllocations(prev => [...prev, ...newAllocs]);
+                setModalSelectedResourceIds([]);
+                setModalResourceSelectorOpen(false);
+              }}>
+              <Plus className="w-4 h-4 me-2" />{t('addSelected')} ({modalSelectedResourceIds.length})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── RESOURCE SELECTOR DIALOG (Resources Tab) ─────── */}
       <Dialog open={resourceSelectorOpen} onOpenChange={setResourceSelectorOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -871,42 +1186,30 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
             </DialogTitle>
             <DialogDescription>{t('selectResourcesDesc')}</DialogDescription>
           </DialogHeader>
-
           <div className="space-y-2 max-h-[50vh] overflow-y-auto py-2">
             {state.resources.filter(r => r.status === 'Active').map(resource => {
               const isAlreadyAdded = resourceAllocations.some(a => a.resourceId === resource.id);
               const isSelected = selectedResourceIds.includes(resource.id);
               return (
-                <label
-                  key={resource.id}
-                  className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
-                    isAlreadyAdded ? "border-border bg-secondary/30 opacity-60 cursor-not-allowed" :
-                    isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-secondary/30"
-                  )}
-                >
-                  <Checkbox
-                    checked={isSelected}
-                    disabled={isAlreadyAdded}
+                <label key={resource.id} className={cn(
+                  "flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
+                  isAlreadyAdded ? "border-border bg-secondary/30 opacity-60 cursor-not-allowed" :
+                  isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-secondary/30"
+                )}>
+                  <Checkbox checked={isSelected} disabled={isAlreadyAdded}
                     onCheckedChange={(checked) => {
                       if (isAlreadyAdded) return;
-                      setSelectedResourceIds(prev =>
-                        checked ? [...prev, resource.id] : prev.filter(id => id !== resource.id)
-                      );
-                    }}
-                  />
+                      setSelectedResourceIds(prev => checked ? [...prev, resource.id] : prev.filter(id => id !== resource.id));
+                    }} />
                   <div className="flex-1">
                     <div className="text-sm font-medium text-foreground">{resource.name}</div>
                     <div className="text-xs text-muted-foreground">{resource.role} • {formatCurrency(resource.costRate, language)}/mo</div>
                   </div>
-                  {isAlreadyAdded && (
-                    <span className="text-xs text-muted-foreground">{t('alreadyAdded')}</span>
-                  )}
+                  {isAlreadyAdded && <span className="text-xs text-muted-foreground">{t('alreadyAdded')}</span>}
                 </label>
               );
             })}
           </div>
-
           <DialogFooter>
             <Button variant="outline" onClick={() => setResourceSelectorOpen(false)}>{t('cancel')}</Button>
             <Button onClick={addResourceAllocations} disabled={selectedResourceIds.length === 0} className="bg-primary hover:bg-primary/90">

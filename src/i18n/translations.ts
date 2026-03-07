@@ -276,6 +276,14 @@ export const TRANSLATIONS = {
     selectMonth: 'Select Month',
     costCategories: 'Cost Categories',
     addSelected: 'Add Selected',
+    revenueVariance: 'Revenue Variance',
+    addResources: 'Add Resources',
+    costName: 'Cost Name',
+    notes: 'Notes',
+    financialSummary: 'Financial Summary',
+    profitMargin: 'Profit Margin',
+    annualImpact: 'Impact on Annual Revenue',
+    toAnnualRevenue: 'to annual revenue',
     
     // Resources page
     resourceManagementTitle: 'Resource Management',
@@ -652,6 +660,14 @@ export const TRANSLATIONS = {
     selectMonth: 'اختر الشهر',
     costCategories: 'فئات التكاليف',
     addSelected: 'إضافة المحدد',
+    revenueVariance: 'فرق الإيرادات',
+    addResources: 'إضافة موارد',
+    costName: 'اسم التكلفة',
+    notes: 'ملاحظات',
+    financialSummary: 'الملخص المالي',
+    profitMargin: 'هامش الربح',
+    annualImpact: 'التأثير على الإيرادات السنوية',
+    toAnnualRevenue: 'على الإيرادات السنوية',
     
     // Resources page
     resourceManagementTitle: 'إدارة الموارد',
