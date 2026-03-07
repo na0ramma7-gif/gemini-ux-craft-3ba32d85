@@ -376,6 +376,20 @@ const ResourcesPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Resource Confirmation */}
+      <Dialog open={!!deleteResourceConfirmId} onOpenChange={() => setDeleteResourceConfirmId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('deleteResource')}</DialogTitle>
+            <DialogDescription>{t('confirmDeleteResource')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteResourceConfirmId(null)}>{t('cancel')}</Button>
+            <Button variant="destructive" onClick={() => deleteResourceConfirmId && handleDeleteResource(deleteResourceConfirmId)}>{t('delete')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
