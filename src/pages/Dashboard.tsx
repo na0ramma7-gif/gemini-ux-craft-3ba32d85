@@ -6,7 +6,7 @@ import RevenueCostLineChart from '@/components/dashboard/RevenueCostLineChart';
 import PortfolioDonutChart from '@/components/dashboard/PortfolioDonutChart';
 import PortfolioBarChart from '@/components/dashboard/PortfolioBarChart';
 import ProductTable from '@/components/dashboard/ProductTable';
-import InvestmentReturnChart from '@/components/dashboard/InvestmentReturnChart';
+
 import InsightsPanel from '@/components/dashboard/InsightsPanel';
 import ForecastSummaryCards from '@/components/dashboard/ForecastSummaryCards';
 import RevenuePipelineChart from '@/components/dashboard/RevenuePipelineChart';
@@ -114,8 +114,6 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
       {/* 5. Product Performance Table */}
       <ProductTable onProductClick={handleProductClick} />
 
-      {/* 6. Investment vs Return */}
-      <InvestmentReturnChart />
 
       {/* 7 & 8. Revenue Pipeline Section */}
       <div className="space-y-4">
