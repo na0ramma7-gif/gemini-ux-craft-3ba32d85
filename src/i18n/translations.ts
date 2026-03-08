@@ -463,6 +463,9 @@ export const TRANSLATIONS = {
     leadsWithAchievement: 'leads with',
     targetAchievement: 'target achievement',
     other: 'Other',
+    assignFeatures: 'Assign Features',
+    noFeaturesAvailable: 'No unassigned features available',
+    selected: 'selected',
   },
   ar: {
     // Navigation
