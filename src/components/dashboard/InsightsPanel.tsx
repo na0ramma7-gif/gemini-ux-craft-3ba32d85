@@ -95,7 +95,6 @@ const InsightsPanel = () => {
     <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
       <h3 className="text-foreground mb-4 flex items-center gap-2">
         <Lightbulb className="w-4 h-4 text-warning" />
-        Quick Insights
         {t('quickInsights')}
       </h3>
       <div className="space-y-3">
