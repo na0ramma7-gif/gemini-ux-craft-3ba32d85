@@ -63,6 +63,19 @@ const PortfolioDonutChart = () => {
               paddingAngle={3}
               dataKey="value"
               stroke="none"
+              label={({ cx, cy, midAngle, outerRadius, index }) => {
+                const RADIAN = Math.PI / 180;
+                const radius = outerRadius + 18;
+                const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                const pct = total > 0 ? Math.round((data[index].value / total) * 100) : 0;
+                return (
+                  <text x={x} y={y} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="fill-foreground text-[11px] font-semibold">
+                    {pct}%
+                  </text>
+                );
+              }}
+              labelLine={false}
             >
               {data.map((_, idx) => (
                 <Cell key={idx} fill={PORTFOLIO_COLORS[idx % PORTFOLIO_COLORS.length]} />
