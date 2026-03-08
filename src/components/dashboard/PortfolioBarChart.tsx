@@ -90,7 +90,7 @@ const PortfolioBarChart = ({ onPortfolioClick }: Props) => {
                   {/* Portfolio name + percentage */}
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{d.name}</span>
-                    <span className={cn("text-sm font-bold", color.text)}>{d.pct}%</span>
+                    <span className="text-sm font-bold text-foreground">{d.pct}%</span>
                   </div>
 
                   {/* Progress bar */}
