@@ -57,6 +57,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
   const [showAddReleaseModal, setShowAddReleaseModal] = useState(false);
   const [editingRelease, setEditingRelease] = useState<Release | null>(null);
   const [newRelease, setNewRelease] = useState({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' as Release['status'] });
+  const [selectedFeatureIds, setSelectedFeatureIds] = useState<number[]>([]);
   const [selectedFeatureForFinancials, setSelectedFeatureForFinancials] = useState<Feature | null>(null);
   
   const [newFeature, setNewFeature] = useState({
