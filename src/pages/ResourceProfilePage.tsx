@@ -11,8 +11,9 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Resource } from '@/types';
-import { ArrowLeft, User, Calendar, BarChart3, Plus, Edit, Trash2, Clock, Briefcase } from 'lucide-react';
+import { Resource, ResourceSkill, SkillProficiency } from '@/types';
+import { ArrowLeft, User, Plus, Edit, Trash2, Clock, Briefcase, Star, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface ResourceProfilePageProps {
   resource: Resource;
@@ -27,6 +28,9 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
   const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteResourceConfirm, setDeleteResourceConfirm] = useState(false);
+  const [newSkillName, setNewSkillName] = useState('');
+  const [newSkillProficiency, setNewSkillProficiency] = useState<SkillProficiency>('Intermediate');
+  const [skillSearch, setSkillSearch] = useState('');
 
   const defaultResource = { name: resource.name, employeeId: resource.employeeId || '', role: resource.role, location: resource.location || 'On-site' as 'On-site' | 'Offshore', category: resource.category || 'Technical' as 'Technical' | 'Business' | 'Operation', lineManager: resource.lineManager || '', costRate: resource.costRate, capacity: resource.capacity, status: resource.status };
   const [editForm, setEditForm] = useState(defaultResource);
