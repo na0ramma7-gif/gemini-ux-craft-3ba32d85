@@ -931,6 +931,9 @@ export const TRANSLATIONS = {
     leadsWithAchievement: 'يتصدر بنسبة',
     targetAchievement: 'إنجاز المستهدف',
     other: 'أخرى',
+    assignFeatures: 'تعيين الميزات',
+    noFeaturesAvailable: 'لا توجد ميزات غير مخصصة',
+    selected: 'محدد',
   }
 };
 
