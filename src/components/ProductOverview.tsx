@@ -184,7 +184,7 @@ const ProductOverview = ({ product }: Props) => {
         <div className="flex items-start justify-between mb-4">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Package className="w-4 h-4 text-primary" />
-            Product Identity
+            {t('productIdentity')}
           </h3>
           <Button variant="outline" size="sm" onClick={openEditModal} className="gap-1.5">
             <Pencil className="w-3.5 h-3.5" /> {t('edit')}
@@ -259,7 +259,7 @@ const ProductOverview = ({ product }: Props) => {
           <div key={i} className="bg-card rounded-xl border border-border/50 p-4">
             <div className="flex items-center gap-1.5 mb-2">{card.icon}<span className="text-[11px] text-muted-foreground font-medium">{card.label}</span></div>
             <p className={cn("text-sm leading-relaxed line-clamp-3", card.value ? 'text-foreground' : 'text-muted-foreground italic')}>
-              {card.value || 'Not defined yet'}
+              {card.value || t('notDefinedYet')}
             </p>
           </div>
         ))}
@@ -270,7 +270,7 @@ const ProductOverview = ({ product }: Props) => {
         {/* Health Metrics */}
         <div className="bg-secondary/30 rounded-xl p-5">
           <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-primary" /> Product Health
+            <Activity className="w-4 h-4 text-primary" /> {t('productHealth')}
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
@@ -294,7 +294,7 @@ const ProductOverview = ({ product }: Props) => {
         {/* Maturity Radar */}
         <div className="bg-secondary/30 rounded-xl p-5">
           <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary" /> Product Maturity
+            <BarChart3 className="w-4 h-4 text-primary" /> {t('productMaturity')}
           </h4>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
@@ -313,7 +313,7 @@ const ProductOverview = ({ product }: Props) => {
       {/* Section 4: Capabilities — grouped */}
       <div className="bg-secondary/30 rounded-xl p-5">
         <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          <Zap className="w-4 h-4 text-primary" /> Capabilities
+          <Zap className="w-4 h-4 text-primary" /> {t('capabilities')}
         </h4>
         {Object.keys(groupedCapabilities).length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -329,7 +329,7 @@ const ProductOverview = ({ product }: Props) => {
             ))}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground italic">No capabilities defined. Click Edit to add.</p>
+          <p className="text-xs text-muted-foreground italic">{t('noCapabilitiesDefined')}</p>
         )}
       </div>
 
@@ -337,7 +337,7 @@ const ProductOverview = ({ product }: Props) => {
       {product.successMetrics && product.successMetrics.length > 0 && (
         <div className="bg-secondary/30 rounded-xl p-5">
           <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary" /> Success Metrics
+            <BarChart3 className="w-4 h-4 text-primary" /> {t('successMetrics')}
           </h4>
           <div className="flex flex-wrap gap-2">
             {product.successMetrics.map((metric, idx) => (
