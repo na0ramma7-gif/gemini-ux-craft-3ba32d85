@@ -615,6 +615,38 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                         </SelectContent>
                       </Select>
                     </div>
+                    {/* Feature multi-select */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-foreground">{t('assignFeatures')}</label>
+                      <div className="border border-border rounded-md max-h-40 overflow-y-auto p-2 space-y-1">
+                        {(() => {
+                          const productFeatures = state.features.filter(f => f.productId === product.id);
+                          const available = productFeatures.filter(f =>
+                            f.releaseId === null || (editingRelease && f.releaseId === editingRelease.id)
+                          );
+                          if (available.length === 0) {
+                            return <p className="text-xs text-muted-foreground py-1">{t('noFeaturesAvailable')}</p>;
+                          }
+                          return available.map(f => (
+                            <label key={f.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm">
+                              <Checkbox
+                                checked={selectedFeatureIds.includes(f.id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedFeatureIds(prev =>
+                                    checked ? [...prev, f.id] : prev.filter(id => id !== f.id)
+                                  );
+                                }}
+                              />
+                              <span className="text-foreground">{f.name}</span>
+                              <span className="text-xs text-muted-foreground ms-auto">{f.status}</span>
+                            </label>
+                          ));
+                        })()}
+                      </div>
+                      {selectedFeatureIds.length > 0 && (
+                        <p className="text-xs text-muted-foreground">{selectedFeatureIds.length} {t('features')} {t('selected')}</p>
+                      )}
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); }}>{t('cancel')}</Button>
