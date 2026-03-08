@@ -630,18 +630,22 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                             return <p className="text-xs text-muted-foreground py-1">{t('noFeaturesAvailable')}</p>;
                           }
                           return available.map(f => (
-                            <label key={f.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm">
+                            <div
+                              key={f.id}
+                              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm"
+                              onClick={() => {
+                                setSelectedFeatureIds(prev =>
+                                  prev.includes(f.id) ? prev.filter(id => id !== f.id) : [...prev, f.id]
+                                );
+                              }}
+                            >
                               <Checkbox
                                 checked={selectedFeatureIds.includes(f.id)}
-                                onCheckedChange={(checked) => {
-                                  setSelectedFeatureIds(prev =>
-                                    checked ? [...prev, f.id] : prev.filter(id => id !== f.id)
-                                  );
-                                }}
+                                onCheckedChange={() => {}}
                               />
                               <span className="text-foreground">{f.name}</span>
                               <span className="text-xs text-muted-foreground ms-auto">{f.status}</span>
-                            </label>
+                            </div>
                           ));
                         })()}
                       </div>
