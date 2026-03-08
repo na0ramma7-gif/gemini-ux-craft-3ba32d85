@@ -578,7 +578,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
               </div>
 
               {/* Add/Edit Release Modal */}
-              <Dialog open={showAddReleaseModal || !!editingRelease} onOpenChange={open => { if (!open) { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); } }}>
+              <Dialog open={showAddReleaseModal || !!editingRelease} onOpenChange={open => { if (!open) { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); setSelectedFeatureIds([]); } }}>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>{editingRelease ? t('editRelease') : t('addRelease')}</DialogTitle>
