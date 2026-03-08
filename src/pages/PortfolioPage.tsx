@@ -119,7 +119,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
   const strategicAlignment = useMemo(() => {
     const objectives: Record<string, string[]> = {};
     products.forEach(p => {
-      const obj = p.strategicObjective || 'No Objective Defined';
+      const obj = p.strategicObjective || t('noObjectiveDefined');
       const shortObj = obj.length > 50 ? obj.slice(0, 50) + '...' : obj;
       if (!objectives[shortObj]) objectives[shortObj] = [];
       objectives[shortObj].push(p.name);
@@ -190,7 +190,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
         <KPICard title={t('totalCost')} value={formatCurrency(portfolioMetrics.totalCost, language)} icon={<span className="text-lg">💸</span>} variant="red" />
         <KPICard title={t('netProfit')} value={formatCurrency(portfolioMetrics.profit, language)} subtitle={`${t('margin')}: ${portfolioMetrics.margin.toFixed(1)}%`} icon={<span className="text-lg">✅</span>} variant={portfolioMetrics.profit >= 0 ? 'green' : 'red'} />
         <KPICard title={t('products')} value={portfolioMetrics.productCount.toString()} subtitle={`${portfolioMetrics.featureCount} ${t('features')}`} icon={<span className="text-lg">📦</span>} variant="purple" />
-        <KPICard title="Active Releases" value={portfolioMetrics.activeReleases.toString()} subtitle={`${portfolioMetrics.inProgressFeatures} in progress`} icon={<span className="text-lg">🚀</span>} variant="gradient" />
+        <KPICard title={t('activeReleases')} value={portfolioMetrics.activeReleases.toString()} subtitle={`${portfolioMetrics.inProgressFeatures} ${t('inProgress').toLowerCase()}`} icon={<span className="text-lg">🚀</span>} variant="gradient" />
       </div>
 
       {/* Tabs */}
@@ -219,7 +219,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                 {/* Product Revenue Contribution — horizontal bar */}
                 <div className="bg-secondary/30 rounded-xl p-5">
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-primary" /> Product Revenue Contribution
+                    <BarChart3 className="w-4 h-4 text-primary" /> {t('productRevenueContribution')}
                   </h4>
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
@@ -237,7 +237,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                 {/* Profitability by Product — with zero baseline */}
                 <div className="bg-secondary/30 rounded-xl p-5">
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-primary" /> Profitability by Product
+                    <TrendingUp className="w-4 h-4 text-primary" /> {t('profitabilityByProduct')}
                   </h4>
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
@@ -257,8 +257,8 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                     </ResponsiveContainer>
                   </div>
                   <div className="flex items-center justify-center gap-5 mt-2 text-[11px] text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: 'hsl(142 71% 45%)' }} /> Profitable</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: 'hsl(0 84% 60%)' }} /> Loss</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: 'hsl(142 71% 45%)' }} /> {t('profitable')}</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: 'hsl(0 84% 60%)' }} /> {t('loss')}</span>
                   </div>
                 </div>
               </div>
@@ -268,7 +268,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                 {/* Lifecycle Distribution — metric cards */}
                 <div className="bg-secondary/30 rounded-xl p-5">
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Package className="w-4 h-4 text-primary" /> Products by Lifecycle
+                    <Package className="w-4 h-4 text-primary" /> {t('productsByLifecycle')}
                   </h4>
                   <div className="grid grid-cols-2 gap-3">
                     {(['Ideation', 'Development', 'Growth', 'Mature'] as const).map(stage => {
@@ -289,24 +289,24 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                 {/* Delivery Health */}
                 <div className="bg-secondary/30 rounded-xl p-5">
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-primary" /> Delivery Health
+                    <Activity className="w-4 h-4 text-primary" /> {t('deliveryHealth')}
                   </h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
                       <div className="text-2xl font-bold text-primary">{portfolioMetrics.activeReleases}</div>
-                      <div className="text-[10px] text-muted-foreground mt-1">Active Releases</div>
+                      <div className="text-[10px] text-muted-foreground mt-1">{t('activeReleases')}</div>
                     </div>
                     <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
                       <div className="text-2xl font-bold text-accent-foreground">{portfolioMetrics.inProgressFeatures}</div>
-                      <div className="text-[10px] text-muted-foreground mt-1">In Progress</div>
+                      <div className="text-[10px] text-muted-foreground mt-1">{t('inProgress')}</div>
                     </div>
                     <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
                       <div className="text-2xl font-bold text-success">{portfolioMetrics.deliveredFeatures}</div>
-                      <div className="text-[10px] text-muted-foreground mt-1">Completed</div>
+                      <div className="text-[10px] text-muted-foreground mt-1">{t('completed')}</div>
                     </div>
                     <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
                       <div className="text-2xl font-bold text-foreground">{portfolioMetrics.featureCount}</div>
-                      <div className="text-[10px] text-muted-foreground mt-1">Total Features</div>
+                      <div className="text-[10px] text-muted-foreground mt-1">{t('totalFeatures')}</div>
                     </div>
                   </div>
                 </div>
@@ -314,7 +314,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                 {/* Strategic Alignment */}
                 <div className="bg-secondary/30 rounded-xl p-5">
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Target className="w-4 h-4 text-primary" /> Strategic Alignment
+                    <Target className="w-4 h-4 text-primary" /> {t('strategicAlignment')}
                   </h4>
                   <div className="space-y-3">
                     {Object.entries(strategicAlignment).map(([objective, prods]) => (
@@ -323,7 +323,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                           <Target className="w-3 h-3 text-primary shrink-0" />
                           <span className="line-clamp-2">{objective}</span>
                         </div>
-                        <div className="text-[10px] text-muted-foreground mb-1.5">Products contributing:</div>
+                        <div className="text-[10px] text-muted-foreground mb-1.5">{t('productsContributing')}</div>
                         <div className="flex flex-wrap gap-1">
                           {prods.map(p => (
                             <Badge key={p} variant="secondary" className="text-[10px]">{p}</Badge>
@@ -339,17 +339,17 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
               {heatmapData.length > 0 && (
                 <div className="bg-secondary/30 rounded-xl p-5">
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-primary" /> Revenue Contribution Heatmap
+                    <BarChart3 className="w-4 h-4 text-primary" /> {t('revenueContributionHeatmap')}
                   </h4>
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[600px]">
                       <thead>
                         <tr>
-                          <th className="text-start text-[10px] font-medium text-muted-foreground uppercase px-3 py-2">Product</th>
+                          <th className="text-start text-[10px] font-medium text-muted-foreground uppercase px-3 py-2">{t('product')}</th>
                           {heatmapMonths.map(m => (
                             <th key={m} className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2">{m}</th>
                           ))}
-                          <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2">Total</th>
+                          <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2">{t('total')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -395,12 +395,12 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                     <thead>
                       <tr className="border-b border-border">
                         <th className="text-start text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('product')}</th>
-                        <th className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">Lifecycle</th>
+                        <th className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('lifecycle')}</th>
                         <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('revenue')}</th>
                         <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('cost')}</th>
                         <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('netProfit')}</th>
                         <th className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('features')}</th>
-                        <th className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">Releases</th>
+                        <th className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('releases')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
@@ -561,11 +561,11 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
       {/* Edit Portfolio Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Edit Portfolio Profile</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('editPortfolioProfile')}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label className="text-xs">{t('name')}</Label><Input value={editData.name || ''} onChange={e => setEditData(prev => ({ ...prev, name: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">{t('owner')}</Label><Input value={editData.owner || ''} onChange={e => setEditData(prev => ({ ...prev, owner: e.target.value }))} placeholder="Portfolio Owner" /></div>
+              <div className="space-y-1.5"><Label className="text-xs">{t('owner')}</Label><Input value={editData.owner || ''} onChange={e => setEditData(prev => ({ ...prev, owner: e.target.value }))} placeholder={t('portfolioOwner')} /></div>
             </div>
             <div className="space-y-1.5"><Label className="text-xs">{t('description')}</Label><Input value={editData.description || ''} onChange={e => setEditData(prev => ({ ...prev, description: e.target.value }))} /></div>
             <div className="space-y-1.5"><Label className="text-xs">{t('purpose')}</Label><Input value={editData.purpose || ''} onChange={e => setEditData(prev => ({ ...prev, purpose: e.target.value }))} /></div>

@@ -445,7 +445,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <div className="w-3 h-3 rounded bg-destructive" />
-                      <span className="text-[10px] sm:text-xs text-muted-foreground">Delayed</span>
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">{t('delayed')}</span>
                     </div>
                   </div>
                 </div>
@@ -515,8 +515,8 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
               {features.length === 0 && (
                 <div className="text-center py-12">
                   <Map className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">No features yet</h3>
-                  <p className="text-sm text-muted-foreground mb-4">Add your first feature to start building the roadmap</p>
+                   <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">{t('noFeaturesYet')}</h3>
+                   <p className="text-sm text-muted-foreground mb-4">{t('addFirstFeature')}</p>
                   <Button onClick={() => setShowAddModal(true)}>
                     <Plus className="w-4 h-4 me-2" />
                     {t('addFeature')}
@@ -674,11 +674,11 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-muted-foreground">{product.name}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-muted-foreground">{portfolio?.name || 'N/A'}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-center"><StatusBadge status={feature.status} /></td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-blue-600 text-xs sm:text-sm">{formatCurrency(expected, language)}</td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-emerald-600 text-xs sm:text-sm">{formatCurrency(actual, language)}</td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-orange-600 text-xs sm:text-sm">{formatCurrency(cost, language)}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-primary text-xs sm:text-sm">{formatCurrency(expected, language)}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-success text-xs sm:text-sm">{formatCurrency(actual, language)}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-warning text-xs sm:text-sm">{formatCurrency(cost, language)}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-end">
-                              <span className={cn("font-bold text-xs sm:text-sm", variance >= 0 ? 'text-emerald-600' : 'text-destructive')}>
+                              <span className={cn("font-bold text-xs sm:text-sm", variance >= 0 ? 'text-success' : 'text-destructive')}>
                                 {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
                               </span>
                             </td>

@@ -59,7 +59,7 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
         <div>
           <h1 className="text-foreground">{dept.departmentName} — {t('dashboard')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {dept.totalPortfolios} {t('portfolios')} · {dept.totalProducts} {t('products')} · {dept.totalFeatures} {t('features')} · {dept.totalReleases} Releases
+            {dept.totalPortfolios} {t('portfolios')} · {dept.totalProducts} {t('products')} · {dept.totalFeatures} {t('features')} · {dept.totalReleases} {t('releases')}
           </p>
         </div>
         <GlobalDateFilter />

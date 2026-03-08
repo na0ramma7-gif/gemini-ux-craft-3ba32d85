@@ -26,7 +26,7 @@ const InsightsPanel = () => {
     const topPortfolio = [...portfolioRevenues].sort((a, b) => b.actual - a.actual)[0];
     if (topPortfolio && totalRevenue > 0) {
       const pct = ((topPortfolio.actual / totalRevenue) * 100).toFixed(0);
-      results.push({ text: `${topPortfolio.name} contributes ${pct}% of department revenue`, icon: 'up' });
+      results.push({ text: `${topPortfolio.name} ${t('contributes')} ${pct}% ${t('ofDepartmentRevenue')}`, icon: 'up' });
     }
 
     // Highest profit margin portfolio
@@ -50,7 +50,7 @@ const InsightsPanel = () => {
 
     const highMargin = [...portfolioProfit].sort((a, b) => b.margin - a.margin)[0];
     if (highMargin) {
-      results.push({ text: `${highMargin.name} has the highest profit margin (${highMargin.margin.toFixed(0)}%)`, icon: 'up' });
+      results.push({ text: `${highMargin.name} ${t('highestProfitMargin')} (${highMargin.margin.toFixed(0)}%)`, icon: 'up' });
     }
 
     // Products with low achievement
@@ -69,17 +69,17 @@ const InsightsPanel = () => {
 
     const weakProducts = productMetrics.filter(p => p.pct < 50);
     if (weakProducts.length > 0) {
-      results.push({ text: `${weakProducts.length} product(s) below 50% target achievement`, icon: 'alert' });
+      results.push({ text: `${weakProducts.length} ${t('belowTargetAchievement')}`, icon: 'alert' });
     }
 
     // Active features count
     const inProgress = state.features.filter(f => f.status === 'In Progress').length;
-    results.push({ text: `${inProgress} features currently in progress`, icon: 'up' });
+    results.push({ text: `${inProgress} ${t('featuresInProgressCount')}`, icon: 'up' });
 
     // Top performing product
     const topProduct = [...productMetrics].sort((a, b) => b.pct - a.pct)[0];
     if (topProduct) {
-      results.push({ text: `${topProduct.name} leads with ${topProduct.pct.toFixed(0)}% target achievement`, icon: 'up' });
+      results.push({ text: `${topProduct.name} ${t('leadsWithAchievement')} ${topProduct.pct.toFixed(0)}% ${t('targetAchievement')}`, icon: 'up' });
     }
 
     return results;
@@ -95,7 +95,7 @@ const InsightsPanel = () => {
     <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
       <h3 className="text-foreground mb-4 flex items-center gap-2">
         <Lightbulb className="w-4 h-4 text-warning" />
-        Quick Insights
+        {t('quickInsights')}
       </h3>
       <div className="space-y-3">
         {insights.map((insight, idx) => (
