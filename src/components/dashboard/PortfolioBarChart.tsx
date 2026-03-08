@@ -90,7 +90,7 @@ const PortfolioBarChart = ({ onPortfolioClick }: Props) => {
                   {/* Portfolio name + percentage */}
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{d.name}</span>
-                    <span className={cn("text-sm font-bold", color.text)}>{d.pct}%</span>
+                    <span className="text-sm font-bold text-foreground">{d.pct}%</span>
                   </div>
 
                   {/* Progress bar */}
@@ -107,7 +107,7 @@ const PortfolioBarChart = ({ onPortfolioClick }: Props) => {
                   <div className="flex items-center gap-4 mt-1 text-[11px] text-muted-foreground">
                     <span>{t('achieved')}: <span className="font-semibold text-foreground">{formatCurrency(d.achieved, language)}</span></span>
                     <span>{t('targetYear')}: <span className="font-medium">{formatCurrency(d.target, language)}</span></span>
-                    <span>{t('remaining')}: <span className={cn("font-medium", d.remaining > 0 ? color.text : 'text-success')}>{formatCurrency(d.remaining, language)}</span></span>
+                    <span>{t('remaining')}: <span className="font-medium text-foreground">{formatCurrency(d.remaining, language)}</span></span>
                   </div>
                 </div>
               </TooltipTrigger>
