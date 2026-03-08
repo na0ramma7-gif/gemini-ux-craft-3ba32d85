@@ -329,6 +329,79 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
                 <div className="text-center py-8 text-sm text-muted-foreground">{t('noAssignments')}</div>
               )}
             </TabsContent>
+
+            {/* Skills */}
+            <TabsContent value="skills" className="mt-0">
+              <div className="space-y-5">
+                {/* Add Skill */}
+                <div className="border border-border rounded-xl p-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">{t('addSkill')}</h3>
+                  <div className="flex gap-2 mb-3">
+                    <Input
+                      value={newSkillName}
+                      onChange={(e) => { setNewSkillName(e.target.value); setSkillSearch(e.target.value); }}
+                      placeholder={t('searchOrAddSkill')}
+                      className="flex-1"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddSkill()}
+                    />
+                    <Select value={newSkillProficiency} onValueChange={(v: SkillProficiency) => setNewSkillProficiency(v)}>
+                      <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Beginner">{t('beginner')}</SelectItem>
+                        <SelectItem value="Intermediate">{t('intermediate')}</SelectItem>
+                        <SelectItem value="Advanced">{t('advanced')}</SelectItem>
+                        <SelectItem value="Expert">{t('expert')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" onClick={() => handleAddSkill()} disabled={!newSkillName.trim()}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {/* Suggestions */}
+                  {skillSearch && filteredSuggestions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {filteredSuggestions.slice(0, 8).map(s => (
+                        <button key={s} onClick={() => handleAddSkill(s)} className="text-xs px-2.5 py-1 rounded-full border border-border bg-secondary/50 text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors">
+                          + {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Current Skills */}
+                {currentSkills.length > 0 ? (
+                  <div className="space-y-2">
+                    {currentSkills.map(skill => (
+                      <div key={skill.name} className="flex items-center justify-between py-2.5 px-4 border border-border rounded-lg hover:bg-secondary/30">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-foreground">{skill.name}</span>
+                          <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", proficiencyColor(skill.proficiency))}>
+                            {skill.proficiency}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Select value={skill.proficiency} onValueChange={(v: SkillProficiency) => handleUpdateProficiency(skill.name, v)}>
+                            <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Beginner">{t('beginner')}</SelectItem>
+                              <SelectItem value="Intermediate">{t('intermediate')}</SelectItem>
+                              <SelectItem value="Advanced">{t('advanced')}</SelectItem>
+                              <SelectItem value="Expert">{t('expert')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveSkill(skill.name)}>
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-sm text-muted-foreground">{t('noSkills')}</div>
+                )}
+              </div>
+            </TabsContent>
           </div>
         </div>
       </Tabs>
