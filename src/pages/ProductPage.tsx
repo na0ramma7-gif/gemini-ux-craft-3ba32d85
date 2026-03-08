@@ -445,7 +445,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <div className="w-3 h-3 rounded bg-destructive" />
-                      <span className="text-[10px] sm:text-xs text-muted-foreground">Delayed</span>
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">{t('delayed')}</span>
                     </div>
                   </div>
                 </div>
@@ -515,8 +515,8 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
               {features.length === 0 && (
                 <div className="text-center py-12">
                   <Map className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">No features yet</h3>
-                  <p className="text-sm text-muted-foreground mb-4">Add your first feature to start building the roadmap</p>
+                   <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">{t('noFeaturesYet')}</h3>
+                   <p className="text-sm text-muted-foreground mb-4">{t('addFirstFeature')}</p>
                   <Button onClick={() => setShowAddModal(true)}>
                     <Plus className="w-4 h-4 me-2" />
                     {t('addFeature')}
