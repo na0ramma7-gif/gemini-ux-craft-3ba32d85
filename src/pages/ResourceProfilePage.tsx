@@ -204,10 +204,9 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="bg-card rounded-xl shadow-card overflow-hidden">
           <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto flex-nowrap">
-            {[
+             {[
               { value: 'info', icon: <User className="w-4 h-4 me-1.5" />, label: t('resourceInfo') },
               { value: 'assignments', icon: <Briefcase className="w-4 h-4 me-1.5" />, label: t('assignments') },
-              { value: 'skills', icon: <Star className="w-4 h-4 me-1.5" />, label: t('skills') },
               { value: 'timeline', icon: <Clock className="w-4 h-4 me-1.5" />, label: t('timeline') },
             ].map(tab => (
               <TabsTrigger key={tab.value} value={tab.value}
@@ -251,101 +250,39 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
                   ))}
                 </div>
               </div>
-            </TabsContent>
 
-            {/* Assignments */}
-            <TabsContent value="assignments" className="mt-0">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-semibold text-foreground">{t('assignments')} ({assignments.length})</h3>
-                <Button size="sm" onClick={() => { setEditingAssignmentId(null); setNewAssignment({ resourceId: resource.id, portfolioId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 }); setShowAssignModal(true); }}>
-                  <Plus className="w-4 h-4 me-1.5" />{t('addAssignment')}
-                </Button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px]">
-                  <thead className="bg-secondary/50">
-                    <tr>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('portfolio')}</th>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('product')}</th>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('release')}</th>
-                      <th className="px-4 py-2.5 text-end text-xs font-medium text-muted-foreground uppercase">{t('allocation')}</th>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('startDate')}</th>
-                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('endDate')}</th>
-                      <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {assignments.map(a => {
-                      const product = state.products.find(p => p.id === a.productId);
-                      const portfolio = state.portfolios.find(p => p.id === product?.portfolioId);
-                      const release = state.releases.find(r => r.id === a.releaseId);
-                      return (
-                        <tr key={a.id} className="hover:bg-secondary/30">
-                          <td className="px-4 py-2.5 text-sm">{portfolio?.name || '—'}</td>
-                          <td className="px-4 py-2.5 text-sm font-medium text-foreground">{product?.name || 'N/A'}</td>
-                          <td className="px-4 py-2.5 text-sm text-muted-foreground">{release?.version || '—'}</td>
-                          <td className="px-4 py-2.5 text-end font-semibold text-primary text-sm">{a.utilization}%</td>
-                          <td className="px-4 py-2.5 text-sm">{formatDate(a.startDate, language)}</td>
-                          <td className="px-4 py-2.5 text-sm">{formatDate(a.endDate, language)}</td>
-                          <td className="px-4 py-2.5 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => openEditAssignment(a)}>
-                                <Edit className="w-3 h-3" />
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => setDeleteConfirmId(a.id)}>
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {assignments.length === 0 && (
-                      <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">{t('noAssignments')}</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </TabsContent>
-
-            {/* Timeline */}
-            <TabsContent value="timeline" className="mt-0">
-              {timelineData.length > 0 ? (
-                <div className="space-y-2">
-                  {timelineData.map(({ month, allocations }) => (
-                    <div key={month} className="flex items-center gap-3">
-                      <div className="w-24 text-xs font-medium text-muted-foreground text-end shrink-0">{month}</div>
-                      <div className="flex-1 flex gap-1 h-8">
-                        {allocations.map((alloc, i) => (
-                          <div key={i} className={cn("h-full rounded flex items-center justify-center text-xs text-white font-medium px-2", alloc.color)} style={{ width: `${alloc.utilization}%`, minWidth: '60px' }}>
-                            {alloc.productName} ({alloc.utilization}%)
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+              {/* Skills Section */}
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">{t('skills')}</h3>
                 </div>
-              ) : (
-                <div className="text-center py-8 text-sm text-muted-foreground">{t('noAssignments')}</div>
-              )}
-            </TabsContent>
 
-            {/* Skills */}
-            <TabsContent value="skills" className="mt-0">
-              <div className="space-y-5">
-                {/* Add Skill */}
-                <div className="border border-border rounded-xl p-4">
-                  <h3 className="text-sm font-semibold text-foreground mb-3">{t('addSkill')}</h3>
-                  <div className="flex gap-2 mb-3">
+                {currentSkills.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {currentSkills.map(skill => (
+                      <div key={skill.name} className={cn("inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border font-medium", proficiencyColor(skill.proficiency))}>
+                        <span>{skill.name}</span>
+                        <span className="opacity-60">— {skill.proficiency}</span>
+                        <button onClick={() => handleRemoveSkill(skill.name)} className="ml-1 opacity-50 hover:opacity-100 transition-opacity">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="border border-border rounded-lg p-3">
+                  <div className="flex gap-2">
                     <Input
                       value={newSkillName}
                       onChange={(e) => { setNewSkillName(e.target.value); setSkillSearch(e.target.value); }}
                       placeholder={t('searchOrAddSkill')}
-                      className="flex-1"
+                      className="flex-1 h-8 text-sm"
                       onKeyDown={(e) => e.key === 'Enter' && handleAddSkill()}
                     />
                     <Select value={newSkillProficiency} onValueChange={(v: SkillProficiency) => setNewSkillProficiency(v)}>
-                      <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Beginner">{t('beginner')}</SelectItem>
                         <SelectItem value="Intermediate">{t('intermediate')}</SelectItem>
@@ -353,13 +290,12 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
                         <SelectItem value="Expert">{t('expert')}</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Button size="sm" onClick={() => handleAddSkill()} disabled={!newSkillName.trim()}>
-                      <Plus className="w-4 h-4" />
+                    <Button size="sm" className="h-8" onClick={() => handleAddSkill()} disabled={!newSkillName.trim()}>
+                      <Plus className="w-3.5 h-3.5" />
                     </Button>
                   </div>
-                  {/* Suggestions */}
                   {skillSearch && filteredSuggestions.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1.5 mt-2">
                       {filteredSuggestions.slice(0, 8).map(s => (
                         <button key={s} onClick={() => handleAddSkill(s)} className="text-xs px-2.5 py-1 rounded-full border border-border bg-secondary/50 text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors">
                           + {s}
@@ -369,36 +305,8 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
                   )}
                 </div>
 
-                {/* Current Skills */}
-                {currentSkills.length > 0 ? (
-                  <div className="space-y-2">
-                    {currentSkills.map(skill => (
-                      <div key={skill.name} className="flex items-center justify-between py-2.5 px-4 border border-border rounded-lg hover:bg-secondary/30">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-foreground">{skill.name}</span>
-                          <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", proficiencyColor(skill.proficiency))}>
-                            {skill.proficiency}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Select value={skill.proficiency} onValueChange={(v: SkillProficiency) => handleUpdateProficiency(skill.name, v)}>
-                            <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Beginner">{t('beginner')}</SelectItem>
-                              <SelectItem value="Intermediate">{t('intermediate')}</SelectItem>
-                              <SelectItem value="Advanced">{t('advanced')}</SelectItem>
-                              <SelectItem value="Expert">{t('expert')}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveSkill(skill.name)}>
-                            <X className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-sm text-muted-foreground">{t('noSkills')}</div>
+                {currentSkills.length === 0 && (
+                  <div className="text-center py-4 text-sm text-muted-foreground">{t('noSkills')}</div>
                 )}
               </div>
             </TabsContent>
