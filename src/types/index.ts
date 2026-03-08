@@ -80,6 +80,13 @@ export interface Feature {
   risks?: string;
 }
 
+export type SkillProficiency = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+
+export interface ResourceSkill {
+  name: string;
+  proficiency: SkillProficiency;
+}
+
 export interface Resource {
   id: number;
   employeeId: string;
@@ -91,6 +98,7 @@ export interface Resource {
   costRate: number;
   capacity: number;
   status: 'Active' | 'Inactive';
+  skills?: ResourceSkill[];
 }
 
 export interface Assignment {
