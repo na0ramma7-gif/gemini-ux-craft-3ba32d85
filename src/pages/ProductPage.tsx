@@ -649,18 +649,28 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); }}>{t('cancel')}</Button>
+                    <Button variant="outline" onClick={() => { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); setSelectedFeatureIds([]); }}>{t('cancel')}</Button>
                     <Button
                       disabled={!newRelease.version || !newRelease.name || !newRelease.startDate || !newRelease.endDate}
                       onClick={() => {
                         if (editingRelease) {
                           updateRelease(editingRelease.id, newRelease);
+                          // Assign selected features to this release
+                          selectedFeatureIds.forEach(fId => updateFeature(fId, { releaseId: editingRelease.id }));
+                          // Unassign features that were removed
+                          state.features
+                            .filter(f => f.releaseId === editingRelease.id && !selectedFeatureIds.includes(f.id))
+                            .forEach(f => updateFeature(f.id, { releaseId: null }));
                           setEditingRelease(null);
                         } else {
+                          // Create release first, then assign features
+                          const newId = Math.max(...state.releases.map(r => r.id), 0) + 1;
                           addRelease({ productId: product.id, ...newRelease });
+                          selectedFeatureIds.forEach(fId => updateFeature(fId, { releaseId: newId }));
                           setShowAddReleaseModal(false);
                         }
                         setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' });
+                        setSelectedFeatureIds([]);
                       }}
                     >
                       {t('save')}
