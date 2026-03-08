@@ -674,11 +674,11 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-muted-foreground">{product.name}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-muted-foreground">{portfolio?.name || 'N/A'}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-center"><StatusBadge status={feature.status} /></td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-blue-600 text-xs sm:text-sm">{formatCurrency(expected, language)}</td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-emerald-600 text-xs sm:text-sm">{formatCurrency(actual, language)}</td>
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-orange-600 text-xs sm:text-sm">{formatCurrency(cost, language)}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-primary text-xs sm:text-sm">{formatCurrency(expected, language)}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-success text-xs sm:text-sm">{formatCurrency(actual, language)}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-end font-semibold text-warning text-xs sm:text-sm">{formatCurrency(cost, language)}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-end">
-                              <span className={cn("font-bold text-xs sm:text-sm", variance >= 0 ? 'text-emerald-600' : 'text-destructive')}>
+                              <span className={cn("font-bold text-xs sm:text-sm", variance >= 0 ? 'text-success' : 'text-destructive')}>
                                 {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
                               </span>
                             </td>
