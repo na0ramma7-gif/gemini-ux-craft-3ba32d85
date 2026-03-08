@@ -207,6 +207,7 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
             {[
               { value: 'info', icon: <User className="w-4 h-4 me-1.5" />, label: t('resourceInfo') },
               { value: 'assignments', icon: <Briefcase className="w-4 h-4 me-1.5" />, label: t('assignments') },
+              { value: 'skills', icon: <Star className="w-4 h-4 me-1.5" />, label: t('skills') },
               { value: 'timeline', icon: <Clock className="w-4 h-4 me-1.5" />, label: t('timeline') },
             ].map(tab => (
               <TabsTrigger key={tab.value} value={tab.value}
