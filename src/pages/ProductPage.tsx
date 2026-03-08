@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   ArrowLeft,
   ArrowRight,
@@ -57,6 +58,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
   const [showAddReleaseModal, setShowAddReleaseModal] = useState(false);
   const [editingRelease, setEditingRelease] = useState<Release | null>(null);
   const [newRelease, setNewRelease] = useState({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' as Release['status'] });
+  const [selectedFeatureIds, setSelectedFeatureIds] = useState<number[]>([]);
   const [selectedFeatureForFinancials, setSelectedFeatureForFinancials] = useState<Feature | null>(null);
   
   const [newFeature, setNewFeature] = useState({
@@ -549,6 +551,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                             onClick={() => {
                               setEditingRelease(release);
                               setNewRelease({ version: release.version, name: release.name, startDate: release.startDate, endDate: release.endDate, status: release.status });
+                              setSelectedFeatureIds(state.features.filter(f => f.releaseId === release.id).map(f => f.id));
                             }}
                             className="p-1 rounded hover:bg-muted transition-colors"
                           >
@@ -577,7 +580,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
               </div>
 
               {/* Add/Edit Release Modal */}
-              <Dialog open={showAddReleaseModal || !!editingRelease} onOpenChange={open => { if (!open) { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); } }}>
+              <Dialog open={showAddReleaseModal || !!editingRelease} onOpenChange={open => { if (!open) { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); setSelectedFeatureIds([]); } }}>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>{editingRelease ? t('editRelease') : t('addRelease')}</DialogTitle>
@@ -614,20 +617,62 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                         </SelectContent>
                       </Select>
                     </div>
+                    {/* Feature multi-select */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-foreground">{t('assignFeatures')}</label>
+                      <div className="border border-border rounded-md max-h-40 overflow-y-auto p-2 space-y-1">
+                        {(() => {
+                          const productFeatures = state.features.filter(f => f.productId === product.id);
+                          const available = productFeatures.filter(f =>
+                            f.releaseId === null || (editingRelease && f.releaseId === editingRelease.id)
+                          );
+                          if (available.length === 0) {
+                            return <p className="text-xs text-muted-foreground py-1">{t('noFeaturesAvailable')}</p>;
+                          }
+                          return available.map(f => (
+                            <label key={f.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm">
+                              <Checkbox
+                                checked={selectedFeatureIds.includes(f.id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedFeatureIds(prev =>
+                                    checked ? [...prev, f.id] : prev.filter(id => id !== f.id)
+                                  );
+                                }}
+                              />
+                              <span className="text-foreground">{f.name}</span>
+                              <span className="text-xs text-muted-foreground ms-auto">{f.status}</span>
+                            </label>
+                          ));
+                        })()}
+                      </div>
+                      {selectedFeatureIds.length > 0 && (
+                        <p className="text-xs text-muted-foreground">{selectedFeatureIds.length} {t('features')} {t('selected')}</p>
+                      )}
+                    </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); }}>{t('cancel')}</Button>
+                    <Button variant="outline" onClick={() => { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); setSelectedFeatureIds([]); }}>{t('cancel')}</Button>
                     <Button
                       disabled={!newRelease.version || !newRelease.name || !newRelease.startDate || !newRelease.endDate}
                       onClick={() => {
                         if (editingRelease) {
                           updateRelease(editingRelease.id, newRelease);
+                          // Assign selected features to this release
+                          selectedFeatureIds.forEach(fId => updateFeature(fId, { releaseId: editingRelease.id }));
+                          // Unassign features that were removed
+                          state.features
+                            .filter(f => f.releaseId === editingRelease.id && !selectedFeatureIds.includes(f.id))
+                            .forEach(f => updateFeature(f.id, { releaseId: null }));
                           setEditingRelease(null);
                         } else {
+                          // Create release first, then assign features
+                          const newId = Math.max(...state.releases.map(r => r.id), 0) + 1;
                           addRelease({ productId: product.id, ...newRelease });
+                          selectedFeatureIds.forEach(fId => updateFeature(fId, { releaseId: newId }));
                           setShowAddReleaseModal(false);
                         }
                         setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' });
+                        setSelectedFeatureIds([]);
                       }}
                     >
                       {t('save')}

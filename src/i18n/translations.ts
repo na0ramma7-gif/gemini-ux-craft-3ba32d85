@@ -463,6 +463,9 @@ export const TRANSLATIONS = {
     leadsWithAchievement: 'leads with',
     targetAchievement: 'target achievement',
     other: 'Other',
+    assignFeatures: 'Assign Features',
+    noFeaturesAvailable: 'No unassigned features available',
+    selected: 'selected',
   },
   ar: {
     // Navigation
@@ -928,6 +931,9 @@ export const TRANSLATIONS = {
     leadsWithAchievement: 'يتصدر بنسبة',
     targetAchievement: 'إنجاز المستهدف',
     other: 'أخرى',
+    assignFeatures: 'تعيين الميزات',
+    noFeaturesAvailable: 'لا توجد ميزات غير مخصصة',
+    selected: 'محدد',
   }
 };
 
