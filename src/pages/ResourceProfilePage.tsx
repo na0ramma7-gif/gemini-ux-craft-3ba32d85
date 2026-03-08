@@ -11,8 +11,9 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Resource } from '@/types';
-import { ArrowLeft, User, Calendar, BarChart3, Plus, Edit, Trash2, Clock, Briefcase } from 'lucide-react';
+import { Resource, ResourceSkill, SkillProficiency } from '@/types';
+import { ArrowLeft, User, Plus, Edit, Trash2, Clock, Briefcase, Star, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface ResourceProfilePageProps {
   resource: Resource;
@@ -27,6 +28,9 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
   const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleteResourceConfirm, setDeleteResourceConfirm] = useState(false);
+  const [newSkillName, setNewSkillName] = useState('');
+  const [newSkillProficiency, setNewSkillProficiency] = useState<SkillProficiency>('Intermediate');
+  const [skillSearch, setSkillSearch] = useState('');
 
   const defaultResource = { name: resource.name, employeeId: resource.employeeId || '', role: resource.role, location: resource.location || 'On-site' as 'On-site' | 'Offshore', category: resource.category || 'Technical' as 'Technical' | 'Business' | 'Operation', lineManager: resource.lineManager || '', costRate: resource.costRate, capacity: resource.capacity, status: resource.status };
   const [editForm, setEditForm] = useState(defaultResource);
@@ -72,6 +76,42 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
   };
 
   const handleDeleteAssignment = (id: number) => { deleteAssignment(id); setDeleteConfirmId(null); };
+
+  // Skills management
+  const SUGGESTED_SKILLS = ['Backend Development', 'Frontend Development', 'Java', 'React', 'Node.js', 'TypeScript', 'Python', 'Cloud Architecture', 'DevOps', 'Kubernetes', 'Docker', 'System Design', 'QA Automation', 'Product Management', 'Business Analysis', 'Agile', 'Scrum', 'SQL', 'NoSQL', 'Spring Boot', 'Microservices', 'CI/CD', 'AWS', 'Azure', 'Data Analysis', 'Machine Learning', 'UI/UX Design', 'Performance Testing', 'Selenium', 'Requirements Engineering'];
+
+  const currentSkills = currentResource.skills || [];
+
+  const filteredSuggestions = SUGGESTED_SKILLS.filter(s =>
+    s.toLowerCase().includes(skillSearch.toLowerCase()) &&
+    !currentSkills.some(cs => cs.name.toLowerCase() === s.toLowerCase())
+  );
+
+  const handleAddSkill = (skillName?: string) => {
+    const name = skillName || newSkillName.trim();
+    if (!name || currentSkills.some(s => s.name.toLowerCase() === name.toLowerCase())) return;
+    const updated = [...currentSkills, { name, proficiency: newSkillProficiency }];
+    updateResource(resource.id, { skills: updated });
+    setNewSkillName('');
+    setSkillSearch('');
+  };
+
+  const handleRemoveSkill = (skillName: string) => {
+    updateResource(resource.id, { skills: currentSkills.filter(s => s.name !== skillName) });
+  };
+
+  const handleUpdateProficiency = (skillName: string, proficiency: SkillProficiency) => {
+    updateResource(resource.id, { skills: currentSkills.map(s => s.name === skillName ? { ...s, proficiency } : s) });
+  };
+
+  const proficiencyColor = (p: SkillProficiency) => {
+    switch (p) {
+      case 'Expert': return 'bg-success/15 text-success border-success/30';
+      case 'Advanced': return 'bg-primary/15 text-primary border-primary/30';
+      case 'Intermediate': return 'bg-warning/15 text-warning border-warning/30';
+      case 'Beginner': return 'bg-muted text-muted-foreground border-border';
+    }
+  };
 
   // Timeline data - group assignments by month
   const timelineData = useMemo(() => {
@@ -167,6 +207,7 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
             {[
               { value: 'info', icon: <User className="w-4 h-4 me-1.5" />, label: t('resourceInfo') },
               { value: 'assignments', icon: <Briefcase className="w-4 h-4 me-1.5" />, label: t('assignments') },
+              { value: 'skills', icon: <Star className="w-4 h-4 me-1.5" />, label: t('skills') },
               { value: 'timeline', icon: <Clock className="w-4 h-4 me-1.5" />, label: t('timeline') },
             ].map(tab => (
               <TabsTrigger key={tab.value} value={tab.value}
@@ -287,6 +328,79 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
               ) : (
                 <div className="text-center py-8 text-sm text-muted-foreground">{t('noAssignments')}</div>
               )}
+            </TabsContent>
+
+            {/* Skills */}
+            <TabsContent value="skills" className="mt-0">
+              <div className="space-y-5">
+                {/* Add Skill */}
+                <div className="border border-border rounded-xl p-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">{t('addSkill')}</h3>
+                  <div className="flex gap-2 mb-3">
+                    <Input
+                      value={newSkillName}
+                      onChange={(e) => { setNewSkillName(e.target.value); setSkillSearch(e.target.value); }}
+                      placeholder={t('searchOrAddSkill')}
+                      className="flex-1"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddSkill()}
+                    />
+                    <Select value={newSkillProficiency} onValueChange={(v: SkillProficiency) => setNewSkillProficiency(v)}>
+                      <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Beginner">{t('beginner')}</SelectItem>
+                        <SelectItem value="Intermediate">{t('intermediate')}</SelectItem>
+                        <SelectItem value="Advanced">{t('advanced')}</SelectItem>
+                        <SelectItem value="Expert">{t('expert')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" onClick={() => handleAddSkill()} disabled={!newSkillName.trim()}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {/* Suggestions */}
+                  {skillSearch && filteredSuggestions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {filteredSuggestions.slice(0, 8).map(s => (
+                        <button key={s} onClick={() => handleAddSkill(s)} className="text-xs px-2.5 py-1 rounded-full border border-border bg-secondary/50 text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors">
+                          + {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Current Skills */}
+                {currentSkills.length > 0 ? (
+                  <div className="space-y-2">
+                    {currentSkills.map(skill => (
+                      <div key={skill.name} className="flex items-center justify-between py-2.5 px-4 border border-border rounded-lg hover:bg-secondary/30">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-foreground">{skill.name}</span>
+                          <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", proficiencyColor(skill.proficiency))}>
+                            {skill.proficiency}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Select value={skill.proficiency} onValueChange={(v: SkillProficiency) => handleUpdateProficiency(skill.name, v)}>
+                            <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Beginner">{t('beginner')}</SelectItem>
+                              <SelectItem value="Intermediate">{t('intermediate')}</SelectItem>
+                              <SelectItem value="Advanced">{t('advanced')}</SelectItem>
+                              <SelectItem value="Expert">{t('expert')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveSkill(skill.name)}>
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-sm text-muted-foreground">{t('noSkills')}</div>
+                )}
+              </div>
             </TabsContent>
           </div>
         </div>
