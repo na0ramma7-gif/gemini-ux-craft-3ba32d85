@@ -77,6 +77,42 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
 
   const handleDeleteAssignment = (id: number) => { deleteAssignment(id); setDeleteConfirmId(null); };
 
+  // Skills management
+  const SUGGESTED_SKILLS = ['Backend Development', 'Frontend Development', 'Java', 'React', 'Node.js', 'TypeScript', 'Python', 'Cloud Architecture', 'DevOps', 'Kubernetes', 'Docker', 'System Design', 'QA Automation', 'Product Management', 'Business Analysis', 'Agile', 'Scrum', 'SQL', 'NoSQL', 'Spring Boot', 'Microservices', 'CI/CD', 'AWS', 'Azure', 'Data Analysis', 'Machine Learning', 'UI/UX Design', 'Performance Testing', 'Selenium', 'Requirements Engineering'];
+
+  const currentSkills = currentResource.skills || [];
+
+  const filteredSuggestions = SUGGESTED_SKILLS.filter(s =>
+    s.toLowerCase().includes(skillSearch.toLowerCase()) &&
+    !currentSkills.some(cs => cs.name.toLowerCase() === s.toLowerCase())
+  );
+
+  const handleAddSkill = (skillName?: string) => {
+    const name = skillName || newSkillName.trim();
+    if (!name || currentSkills.some(s => s.name.toLowerCase() === name.toLowerCase())) return;
+    const updated = [...currentSkills, { name, proficiency: newSkillProficiency }];
+    updateResource(resource.id, { skills: updated });
+    setNewSkillName('');
+    setSkillSearch('');
+  };
+
+  const handleRemoveSkill = (skillName: string) => {
+    updateResource(resource.id, { skills: currentSkills.filter(s => s.name !== skillName) });
+  };
+
+  const handleUpdateProficiency = (skillName: string, proficiency: SkillProficiency) => {
+    updateResource(resource.id, { skills: currentSkills.map(s => s.name === skillName ? { ...s, proficiency } : s) });
+  };
+
+  const proficiencyColor = (p: SkillProficiency) => {
+    switch (p) {
+      case 'Expert': return 'bg-success/15 text-success border-success/30';
+      case 'Advanced': return 'bg-primary/15 text-primary border-primary/30';
+      case 'Intermediate': return 'bg-warning/15 text-warning border-warning/30';
+      case 'Beginner': return 'bg-muted text-muted-foreground border-border';
+    }
+  };
+
   // Timeline data - group assignments by month
   const timelineData = useMemo(() => {
     const months: { month: string; allocations: { productName: string; utilization: number; color: string }[] }[] = [];
