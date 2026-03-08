@@ -551,6 +551,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                             onClick={() => {
                               setEditingRelease(release);
                               setNewRelease({ version: release.version, name: release.name, startDate: release.startDate, endDate: release.endDate, status: release.status });
+                              setSelectedFeatureIds(state.features.filter(f => f.releaseId === release.id).map(f => f.id));
                             }}
                             className="p-1 rounded hover:bg-muted transition-colors"
                           >
