@@ -11,6 +11,22 @@ export interface DateFilter {
   compareEndDate: Date;
 }
 
+/**
+ * Compare-mode entity selection. Empty arrays mean "All" for that
+ * dimension. Scoped per page by useCompareMetrics.
+ */
+export interface CompareSelectionState {
+  portfolioIds: number[];
+  productIds: number[];
+  featureIds: number[];
+}
+
+const EMPTY_COMPARE_SELECTION: CompareSelectionState = {
+  portfolioIds: [],
+  productIds: [],
+  featureIds: [],
+};
+
 interface AppContextType {
   state: AppState;
   setState: React.Dispatch<React.SetStateAction<AppState>>;
@@ -30,6 +46,10 @@ interface AppContextType {
   // Global Date Filter
   dateFilter: DateFilter;
   setDateFilter: React.Dispatch<React.SetStateAction<DateFilter>>;
+
+  // Compare selection (entities chosen while Compare is ON)
+  compareSelection: CompareSelectionState;
+  setCompareSelection: React.Dispatch<React.SetStateAction<CompareSelectionState>>;
   
   // Computed values
   metrics: {
