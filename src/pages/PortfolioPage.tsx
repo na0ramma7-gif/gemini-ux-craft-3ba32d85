@@ -6,6 +6,7 @@ import StatusBadge from '@/components/StatusBadge';
 import KPICard from '@/components/KPICard';
 import ProductFormDialog from '@/components/ProductFormDialog';
 import PortfolioFormDialog from '@/components/PortfolioFormDialog';
+import PortfolioStrategicAlignment from '@/components/PortfolioStrategicAlignment';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -345,28 +346,8 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                   </div>
                 </div>
 
-                {/* Strategic Alignment */}
-                <div className="bg-secondary/30 rounded-xl p-5">
-                  <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Target className="w-4 h-4 text-primary" /> {t('strategicAlignment')}
-                  </h4>
-                  <div className="space-y-3">
-                    {Object.entries(strategicAlignment).map(([objective, prods]) => (
-                      <div key={objective} className="bg-card rounded-lg p-3 border border-border/50">
-                        <div className="text-[11px] text-muted-foreground font-medium mb-2 flex items-center gap-1.5">
-                          <Target className="w-3 h-3 text-primary shrink-0" />
-                          <span className="line-clamp-2">{objective}</span>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground mb-1.5">{t('productsContributing')}</div>
-                        <div className="flex flex-wrap gap-1">
-                          {prods.map(p => (
-                            <Badge key={p} variant="secondary" className="text-[10px]">{p}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                {/* Strategic Alignment (managed) */}
+                <PortfolioStrategicAlignment portfolioId={portfolio.id} />
               </div>
 
               {/* Revenue Contribution Heatmap */}
