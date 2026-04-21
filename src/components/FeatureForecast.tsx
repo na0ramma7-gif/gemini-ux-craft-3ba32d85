@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Feature } from '@/types';
 import { formatCurrency, cn } from '@/lib/utils';
+import { parseGrowthRate, parseNumber } from '@/lib/validation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -367,36 +368,36 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t('revenueGrowthRate')}</Label>
               <div className="relative">
-                <Input type="number" step="0.5" value={assumptions.revenueGrowthRate} className="pe-8 h-9 text-sm"
-                  onChange={e => setAssumptions({ ...assumptions, revenueGrowthRate: parseFloat(e.target.value) || 0 })} />
+                <Input type="number" step="0.5" min={-100} max={100} value={assumptions.revenueGrowthRate} className="pe-8 h-9 text-sm"
+                  onChange={e => setAssumptions({ ...assumptions, revenueGrowthRate: parseGrowthRate(e.target.value) })} />
                 <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t('costGrowthRate')}</Label>
               <div className="relative">
-                <Input type="number" step="0.5" value={assumptions.costGrowthRate} className="pe-8 h-9 text-sm"
-                  onChange={e => setAssumptions({ ...assumptions, costGrowthRate: parseFloat(e.target.value) || 0 })} />
+                <Input type="number" step="0.5" min={-100} max={100} value={assumptions.costGrowthRate} className="pe-8 h-9 text-sm"
+                  onChange={e => setAssumptions({ ...assumptions, costGrowthRate: parseGrowthRate(e.target.value) })} />
                 <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t('resourceExpansion')}</Label>
               <div className="relative">
-                <Input type="number" step="0.5" value={assumptions.resourceExpansion} className="pe-8 h-9 text-sm"
-                  onChange={e => setAssumptions({ ...assumptions, resourceExpansion: parseFloat(e.target.value) || 0 })} />
+                <Input type="number" step="0.5" min={-100} max={100} value={assumptions.resourceExpansion} className="pe-8 h-9 text-sm"
+                  onChange={e => setAssumptions({ ...assumptions, resourceExpansion: parseGrowthRate(e.target.value) })} />
                 <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t('manualRevenueAdj')}</Label>
-              <Input type="number" value={assumptions.manualRevenueAdj || ''} placeholder="0" className="h-9 text-sm"
-                onChange={e => setAssumptions({ ...assumptions, manualRevenueAdj: parseFloat(e.target.value) || 0 })} />
+              <Input type="number" step="1" value={assumptions.manualRevenueAdj || ''} placeholder="0" className="h-9 text-sm"
+                onChange={e => setAssumptions({ ...assumptions, manualRevenueAdj: parseNumber(e.target.value, { min: -1e10, max: 1e10 }) })} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t('manualCostAdj')}</Label>
-              <Input type="number" value={assumptions.manualCostAdj || ''} placeholder="0" className="h-9 text-sm"
-                onChange={e => setAssumptions({ ...assumptions, manualCostAdj: parseFloat(e.target.value) || 0 })} />
+              <Input type="number" step="1" value={assumptions.manualCostAdj || ''} placeholder="0" className="h-9 text-sm"
+                onChange={e => setAssumptions({ ...assumptions, manualCostAdj: parseNumber(e.target.value, { min: -1e10, max: 1e10 }) })} />
             </div>
           </div>
           <DialogFooter>

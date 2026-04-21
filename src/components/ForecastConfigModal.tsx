@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { parseGrowthRate, parsePercent } from '@/lib/validation';
 
 export type ScenarioType = 'baseline' | 'optimistic' | 'conservative';
 export type HorizonMonths = 12 | 24 | 36;
@@ -116,8 +117,10 @@ const ForecastConfigModal = ({ open, onOpenChange, config, onApply }: Props) => 
                 <Input
                   type="number"
                   step="0.5"
+                  min={-100}
+                  max={100}
                   value={local.revenueGrowthRate}
-                  onChange={(e) => setLocal({ ...local, revenueGrowthRate: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => setLocal({ ...local, revenueGrowthRate: parseGrowthRate(e.target.value) })}
                   className="pe-8"
                 />
                 <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
@@ -129,8 +132,10 @@ const ForecastConfigModal = ({ open, onOpenChange, config, onApply }: Props) => 
                 <Input
                   type="number"
                   step="0.5"
+                  min={-100}
+                  max={100}
                   value={local.costGrowthRate}
-                  onChange={(e) => setLocal({ ...local, costGrowthRate: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => setLocal({ ...local, costGrowthRate: parseGrowthRate(e.target.value) })}
                   className="pe-8"
                 />
                 <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
@@ -145,8 +150,10 @@ const ForecastConfigModal = ({ open, onOpenChange, config, onApply }: Props) => 
               <Input
                 type="number"
                 step="1"
+                min={0}
+                max={100}
                 value={local.revenueGrowthCap}
-                onChange={(e) => setLocal({ ...local, revenueGrowthCap: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => setLocal({ ...local, revenueGrowthCap: parsePercent(e.target.value) })}
                 className="pe-8"
               />
               <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
