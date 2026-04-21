@@ -281,6 +281,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     setEditingServiceId(id);
     setEditingServiceName(s.name);
     setEditingServiceRate(s.defaultRate);
+    setShowRateChangeNote(true);
   };
   const saveEditService = () => {
     if (editingServiceId == null) return;
@@ -290,6 +291,12 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     setEditingServiceId(null);
   };
   const handleDeleteService = (id: number) => {
+    const hasHistory = state.revenueLines.some(l => l.serviceId === id);
+    if (hasHistory) {
+      setConfirmDeleteServiceId(id);
+      setConfirmDeleteTypedName('');
+      return;
+    }
     if (!window.confirm(t('deleteServiceConfirm'))) return;
     deleteRevenueService(id);
     toast.success(t('serviceDeleted'));
