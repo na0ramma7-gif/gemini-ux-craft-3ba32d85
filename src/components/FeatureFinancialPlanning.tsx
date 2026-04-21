@@ -73,8 +73,10 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   const [expandedMonths, setExpandedMonths] = useState<number[]>([]);
   const [editMonthOpen, setEditMonthOpen] = useState(false);
   const [editMonthIdx, setEditMonthIdx] = useState<number>(0);
-  const [editPlannedRev, setEditPlannedRev] = useState(0);
-  const [editActualRev, setEditActualRev] = useState(0);
+  // Revenue line drafts being edited inside the month dialog.
+  const [editLines, setEditLines] = useState<RevenueLineDraft[]>([]);
+  // Inline "+ New service" input state per draft row.
+  const [newServiceFor, setNewServiceFor] = useState<Record<string, string>>({});
   const [editCostCatsOpen, setEditCostCatsOpen] = useState<string[]>([]);
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
   const [resourceSelectorMonth, setResourceSelectorMonth] = useState<number>(0);
@@ -99,20 +101,50 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     [state.resources, productResourceIds],
   );
 
+  // ── Revenue derived from the global subscription/service lines ──
+  // monthlyRevenue[i] = { planned, actual } for month i of selectedYear.
+  const featureLines = useMemo(
+    () => state.revenueLines.filter(l => l.featureId === feature.id),
+    [state.revenueLines, feature.id],
+  );
+  const featureServices = useMemo(
+    () => state.revenueServices.filter(s => s.featureId === feature.id),
+    [state.revenueServices, feature.id],
+  );
+  const monthlyRevenue = useMemo(() => {
+    const out: { planned: number; actual: number; lineCount: number; lastUpdated?: string }[] = Array.from(
+      { length: 12 },
+      () => ({ planned: 0, actual: 0, lineCount: 0 }),
+    );
+    featureLines.forEach(l => {
+      const [y, m] = l.month.split('-').map(Number);
+      if (y !== selectedYear) return;
+      const i = m - 1;
+      if (i < 0 || i > 11) return;
+      out[i].planned += l.rate * (l.plannedTransactions || 0);
+      out[i].actual += l.rate * (l.actualTransactions || 0);
+      out[i].lineCount += 1;
+      if (!out[i].lastUpdated || l.updatedAt > (out[i].lastUpdated as string)) {
+        out[i].lastUpdated = l.updatedAt;
+      }
+    });
+    return out;
+  }, [featureLines, selectedYear]);
+
   const monthlySummaries = useMemo(() =>
     Array.from({ length: 12 }, (_, i) => {
       const md = yearData[i];
-      const plannedRev = md.revenues.reduce((s, r) => s + r.planned, 0);
-      const actualRev = md.revenues.reduce((s, r) => s + r.actual, 0);
+      const plannedRev = monthlyRevenue[i].planned;
+      const actualRev = monthlyRevenue[i].actual;
       let plannedCost = 0;
       let actualCost = 0;
       Object.values(md.costs).forEach(items => items.forEach(item => { plannedCost += item.planned; actualCost += item.actual; }));
       let resourceCost = 0;
       md.resources.forEach(a => { const r = state.resources.find(res => res.id === a.resourceId); if (r) resourceCost += r.costRate * (a.utilization / 100); });
       plannedCost += resourceCost;
-      return { month: i, label: `${t(MONTHS_SHORT_KEYS[i])} ${selectedYear}`, plannedRev, actualRev, plannedCost, actualCost, netProfit: plannedRev - plannedCost, resourceCost };
+      return { month: i, label: `${t(MONTHS_SHORT_KEYS[i])} ${selectedYear}`, plannedRev, actualRev, plannedCost, actualCost, netProfit: plannedRev - plannedCost, resourceCost, lineCount: monthlyRevenue[i].lineCount, lastUpdated: monthlyRevenue[i].lastUpdated };
     })
-  , [yearData, selectedYear, state.resources, t]);
+  , [yearData, selectedYear, state.resources, t, monthlyRevenue]);
 
   const totals = useMemo(() => {
     const r = monthlySummaries.reduce((a, m) => ({ plannedRev: a.plannedRev + m.plannedRev, actualRev: a.actualRev + m.actualRev, plannedCost: a.plannedCost + m.plannedCost, actualCost: a.actualCost + m.actualCost }), { plannedRev: 0, actualRev: 0, plannedCost: 0, actualCost: 0 });
