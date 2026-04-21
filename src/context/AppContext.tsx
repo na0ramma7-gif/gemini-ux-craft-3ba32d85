@@ -51,6 +51,8 @@ interface AppContextType {
   deleteFeature: (featureId: number) => void;
   updateProduct: (productId: number, updates: Partial<Product>) => void;
   updatePortfolio: (portfolioId: number, updates: Partial<Portfolio>) => void;
+  addPortfolio: (portfolio: Omit<Portfolio, 'id'>) => Portfolio;
+  addProduct: (product: Omit<Product, 'id'>) => Product;
   addRelease: (release: Omit<Release, 'id'>) => void;
   updateRelease: (releaseId: number, updates: Partial<Release>) => void;
 }
@@ -228,6 +230,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const addPortfolio = (portfolio: Omit<Portfolio, 'id'>): Portfolio => {
+    const newId = Math.max(...state.portfolios.map(p => p.id), 0) + 1;
+    const newPortfolio: Portfolio = { ...portfolio, id: newId };
+    setState(prev => ({ ...prev, portfolios: [...prev.portfolios, newPortfolio] }));
+    return newPortfolio;
+  };
+
+  const addProduct = (product: Omit<Product, 'id'>): Product => {
+    const newId = Math.max(...state.products.map(p => p.id), 0) + 1;
+    const newProduct: Product = { ...product, id: newId };
+    setState(prev => ({ ...prev, products: [...prev.products, newProduct] }));
+    return newProduct;
+  };
+
   const addRelease = (release: Omit<Release, 'id'>) => {
     setState(prev => ({
       ...prev,
@@ -276,6 +292,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         deleteFeature,
         updateProduct,
         updatePortfolio,
+        addPortfolio,
+        addProduct,
         addRelease,
         updateRelease
       }}
