@@ -97,6 +97,24 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
     releaseCount: releases.length,
   }), [sharedMetric, features.length, releases.length]);
 
+  // Compare-by-duration: scoped to this product (and optionally features).
+  const compare = useCompareMetrics({ scope: 'product', productId: product.id });
+
+  // Per-feature comparison metrics for the Financials revenue table.
+  const compareByFeatureId = useMemo(() => {
+    const map = new Map<number, { revenue: number; cost: number; profit: number }>();
+    if (!compare.active || !compare.comparisonWindow) return map;
+    features.forEach(f => {
+      const m = computeWindowMetrics(state, compare.comparisonWindow, {
+        portfolioIds: [],
+        productIds: [product.id],
+        featureIds: [f.id],
+      });
+      map.set(f.id, { revenue: m.revenue, cost: m.cost, profit: m.profit });
+    });
+    return map;
+  }, [compare.active, compare.comparisonWindow, features, state, product.id]);
+
   // Gantt chart calculations
   const ganttData = useMemo(() => {
     if (features.length === 0) return { months: [], minDate: new Date(), maxDate: new Date(), totalDays: 0 };
