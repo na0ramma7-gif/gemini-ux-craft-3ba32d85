@@ -162,6 +162,9 @@ export const TRANSLATIONS = {
     // Common
     targetClient: 'Target Client',
     owner: 'Owner',
+    technicalLead: 'Technical Lead',
+    businessValue: 'Business Value',
+    portfolioProfile: 'Portfolio Profile',
     status: 'Status',
     priority: 'Priority',
     period: 'Period',
@@ -958,6 +961,9 @@ export const TRANSLATIONS = {
     
     // Common
     owner: 'المالك',
+    technicalLead: 'القائد التقني',
+    businessValue: 'القيمة التجارية',
+    portfolioProfile: 'ملف المحفظة',
     status: 'الحالة',
     priority: 'الأولوية',
     period: 'الفترة',

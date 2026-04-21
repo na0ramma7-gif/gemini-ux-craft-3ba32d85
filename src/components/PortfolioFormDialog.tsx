@@ -83,6 +83,8 @@ const PortfolioFormDialog = ({ open, onOpenChange, onCreated, portfolio }: Portf
   }, [open, portfolio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onSubmit = (values: FormValues) => {
+    // eslint-disable-next-line no-console
+    console.log('[PortfolioFormDialog] submit values:', values, 'isEdit:', isEdit, 'portfolioId:', portfolio?.id);
     if (isEdit && portfolio) {
       updatePortfolio(portfolio.id, {
         ...values,
