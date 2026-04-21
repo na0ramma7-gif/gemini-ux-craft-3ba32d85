@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { initialState } from '@/data/initialData';
+import { INITIAL_STATE as initialState } from '@/data/initialData';
 import { computeServiceBreakdown, computeWindowMetrics, computeDelta, EMPTY_SELECTION } from '@/lib/compare';
 
 const allWin = { startDate: new Date('2020-01-01'), endDate: new Date('2030-12-31') };
