@@ -1,24 +1,49 @@
-// Per-feature, per-service forecast engine (Phase A — Simple mode).
+// Per-feature, per-service forecast engine.
 //
-// Each feature stores an INDEPENDENT set of scenarios in localStorage.
-// Each scenario has a Simple-mode growth rate per service.
-// Revenue projection per service per month:
-//   tx[i]   = baseTx * (1 + g/100)^(i+1)        (compound)
-//   rev[i]  = tx[i] * rate
-// Cost projection (single line):
-//   cost[i] = baseCost * (1 + cg/100)^(i+1)
-//
-// Phase A is intentionally Simple-only. The shape leaves room for
-// `mode: 'seasonal' | 'matrix'`, `pattern`, `cellOverrides` later.
+// Phase A: Simple mode (per-service compound growth).
+// Phase B: Seasonal mode (12-value multiplier presets) + Matrix mode
+//          (per-cell overrides). Each scenario stores its own mode
+//          independently. Storage key bumped to v2; v1 data migrates
+//          forward as Simple mode with no data loss.
 
 export type ForecastScenarioId = string;
-export type ForecastMode = 'simple'; // Phase A
+export type ForecastMode = 'simple' | 'seasonal' | 'matrix';
+
+/** Built-in seasonal preset ids. 'custom' uses the user-defined multipliers. */
+export type SeasonalPresetId =
+  | 'flat'
+  | 'ramadan'
+  | 'summer'
+  | 'yearEnd'
+  | 'backToSchool'
+  | 'custom';
 
 export interface ServiceAssumption {
   /** RevenueService.id this assumption maps to. */
   serviceId: number;
   /** Monthly growth rate in %. Compounds each month. */
   growthRate: number;
+  /** Seasonal preset for this service (when scenario.mode === 'seasonal'). */
+  pattern?: SeasonalPresetId;
+  /**
+   * 12 multipliers (Jan..Dec). Used when pattern === 'custom'. Defaults to all
+   * 1.0 if missing. Multiplier 1 = no change, 0.7 = 30% dip, 1.3 = 30% boost.
+   */
+  customPattern?: number[];
+}
+
+/**
+ * A single per-cell override for Matrix mode.
+ * - serviceId: row
+ * - monthIndex: 0..horizon-1 column
+ * - tx: the user-specified Tx value for that cell.
+ *   Semantics: override wins for that month; subsequent months continue
+ *   compounding growth from the override value.
+ */
+export interface MatrixOverride {
+  serviceId: number;
+  monthIndex: number;
+  tx: number;
 }
 
 export interface ForecastScenario {
@@ -33,17 +58,31 @@ export interface ForecastScenario {
   defaultGrowthRate: number;
   /** Cost growth %, compounded monthly. */
   costGrowthRate: number;
+  /** Manual per-cell overrides (Matrix mode). */
+  cellOverrides?: MatrixOverride[];
+  /**
+   * Optional manual override of which Gregorian month (0..11) Ramadan
+   * falls in for this scenario. When unset, the auto-detect lookup is used
+   * based on the forecast start year.
+   */
+  ramadanMonthOverride?: number | null;
   /** Built-in tabs cannot be deleted. Custom scenarios can. */
   builtIn?: boolean;
 }
 
 export interface FeatureForecastSettings {
+  /** Bumped to 2 with Phase B. */
+  schemaVersion: 2;
   scenarios: ForecastScenario[];
   activeScenarioId: ForecastScenarioId;
   horizon: 6 | 12 | 24;
 }
 
 export const FEATURE_FORECAST_KEY = (featureId: number) =>
+  `forecast.feature.${featureId}.v2`;
+
+/** Legacy v1 key retained for one-time migration. */
+const FEATURE_FORECAST_KEY_V1 = (featureId: number) =>
   `forecast.feature.${featureId}.v1`;
 
 export const MAX_SCENARIOS = 5;
