@@ -2,13 +2,13 @@ import { useMemo, useState, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Product } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   User, Target, TrendingUp, Activity, Zap, BarChart3, Pencil, Upload, X,
-  DollarSign, Package, Star, Lightbulb, AlertTriangle, CheckCircle2, AlertCircle,
+  Package, Lightbulb, AlertTriangle, CheckCircle2, AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
