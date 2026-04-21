@@ -5,21 +5,54 @@ import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Product } from '@/types';
 import { ChevronDown, ChevronUp, Trophy } from 'lucide-react';
+import { computeWindowMetrics, computeDelta } from '@/lib/compare';
+import DeltaChip from '@/components/compare/DeltaChip';
 
 interface Props {
   onProductClick?: (product: Product) => void;
 }
 
 const ProductTable = ({ onProductClick }: Props) => {
-  const { state, t, language, dateFilter } = useApp();
+  const { state, t, language, dateFilter, compareSelection } = useApp();
   const dept = useHierarchicalMetrics(state, dateFilter);
+  const compareEnabled = dateFilter.compareEnabled;
+  const productFilter = compareSelection.productIds;
+  const portfolioFilter = compareSelection.portfolioIds;
 
   // Use the hierarchical hook as the single source of truth.
   const products = useMemo(() => {
+    const productAllow = productFilter.length > 0 ? new Set(productFilter) : null;
+    const portfolioAllow = portfolioFilter.length > 0 ? new Set(portfolioFilter) : null;
+    const cmpWindow = compareEnabled
+      ? { startDate: dateFilter.compareStartDate, endDate: dateFilter.compareEndDate }
+      : null;
+
     return dept.portfolioMetrics
+      .filter(pm => !portfolioAllow || portfolioAllow.has(pm.portfolioId))
       .flatMap(pm =>
-        pm.productMetrics.map(prod => {
+        pm.productMetrics
+          .filter(prod => !productAllow || productAllow.has(prod.productId))
+          .map(prod => {
           const fullProduct = state.products.find(p => p.id === prod.productId);
+
+          let cmpRevenue = 0, cmpCost = 0, cmpProfit = 0;
+          let dRev = null as ReturnType<typeof computeDelta> | null;
+          let dCost = null as ReturnType<typeof computeDelta> | null;
+          let dProfit = null as ReturnType<typeof computeDelta> | null;
+          if (cmpWindow) {
+            const m = computeWindowMetrics(state, cmpWindow, {
+              portfolioIds: [],
+              productIds: [prod.productId],
+              featureIds: [],
+            });
+            cmpRevenue = m.revenue;
+            cmpCost = m.cost;
+            cmpProfit = m.profit;
+            dRev = computeDelta(prod.revenue, cmpRevenue);
+            dCost = computeDelta(prod.cost, cmpCost, { lowerIsBetter: true });
+            dProfit = computeDelta(prod.profit, cmpProfit);
+          }
+
           return {
             ...(fullProduct as Product),
             portfolioName: pm.portfolioName,
@@ -27,11 +60,13 @@ const ProductTable = ({ onProductClick }: Props) => {
             cost: prod.cost,
             profit: prod.profit,
             pct: prod.achievementPct,
+            cmpRevenue, cmpCost, cmpProfit,
+            dRev, dCost, dProfit,
           };
         }),
       )
       .sort((a, b) => b.actual - a.actual);
-  }, [dept, state.products]);
+  }, [dept, state, productFilter, portfolioFilter, compareEnabled, dateFilter.compareStartDate, dateFilter.compareEndDate]);
 
   const getColor = (pct: number) => {
     if (pct >= 80) return 'text-success';

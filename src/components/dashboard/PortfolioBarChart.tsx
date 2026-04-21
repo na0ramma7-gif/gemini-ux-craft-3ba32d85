@@ -135,6 +135,12 @@ const PortfolioBarChart = ({ onPortfolioClick }: Props) => {
                     <span>{t('achieved')}: <span className="font-semibold text-foreground">{formatCurrency(d.achieved, language)}</span></span>
                     <span>{t('targetYear')}: <span className="font-medium">{formatCurrency(d.target, language)}</span></span>
                     <span>{t('remaining')}: <span className="font-medium text-foreground">{formatCurrency(d.remaining, language)}</span></span>
+                    {compareEnabled && d.delta && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span>{t('comparison')}: <span className="font-medium text-foreground">{formatCurrency(d.cmpAchieved, language)}</span></span>
+                        <DeltaChip delta={d.delta} format="currency" />
+                      </span>
+                    )}
                   </div>
                 </div>
               </TooltipTrigger>
