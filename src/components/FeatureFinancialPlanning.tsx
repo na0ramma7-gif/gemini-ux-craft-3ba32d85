@@ -941,20 +941,42 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                     {t('addServicesFirst')}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full text-sm">
+                  <div className="rounded-lg border border-border">
+                    <table className="w-full text-sm table-fixed [font-variant-numeric:tabular-nums]">
+                      <colgroup>
+                        <col />
+                        <col style={{ width: '150px' }} />
+                        <col style={{ width: '100px' }} />
+                        <col style={{ width: '100px' }} />
+                        <col style={{ width: '130px' }} />
+                        <col style={{ width: '130px' }} />
+                      </colgroup>
                       <thead className="bg-secondary/50">
                         <tr>
-                          <th className="px-2 py-2 text-start text-xs font-semibold text-muted-foreground min-w-[180px]">{t('serviceName')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground min-w-[110px]">{t('transactionRate')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground min-w-[110px]">{t('plannedTx')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground min-w-[110px]">{t('actualTx')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 min-w-[120px]">{t('plannedRevenue')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 min-w-[120px]">{t('actualRevenue')}</th>
+                          <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('serviceName')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground">{t('transactionRate')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground">{t('plannedTx')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground">{t('actualTx')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700">{t('plannedRevenue')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700">{t('actualRevenue')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {editLines.map(line => {
+                        {(() => {
+                          const visible: typeof editLines = [];
+                          const hiddenCount = { n: 0 };
+                          editLines.forEach(line => {
+                            const inactive = (line.plannedTransactions || 0) === 0 && (line.actualTransactions || 0) === 0;
+                            if (hideInactive && inactive) hiddenCount.n += 1;
+                            else visible.push(line);
+                          });
+                          (visible as any).hiddenCount = hiddenCount.n;
+                          return null;
+                        })()}
+                        {editLines.filter(line => {
+                          if (!hideInactive) return true;
+                          return !((line.plannedTransactions || 0) === 0 && (line.actualTransactions || 0) === 0);
+                        }).map(line => {
                           const svc = featureServices.find(s => s.id === line.serviceId);
                           if (!svc) return null;
                           const plannedRev = (line.rate || 0) * (line.plannedTransactions || 0);
@@ -963,57 +985,87 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                           const rateInvalid = !Number.isFinite(line.rate) || line.rate <= 0;
                           const overflow = line.plannedTransactions > 0 && line.actualTransactions > line.plannedTransactions * 1.5;
                           return (
-                            <tr key={line.key} className="hover:bg-secondary/30 align-top transition-colors">
-                              <td className="px-2 py-2">
-                                <div className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                                  <Tag className="w-3.5 h-3.5 text-muted-foreground" /> {svc.name}
-                                </div>
-                                <div className="text-[10px] text-muted-foreground mt-0.5">
-                                  {isOverride ? t('rateOverride') : t('usingDefaultRate')}
+                            <tr key={line.key} className="hover:bg-secondary/30 align-top transition-colors min-h-[72px]">
+                              <td className="px-3 py-2.5 align-middle">
+                                <div className="text-sm font-medium text-foreground flex items-center gap-1.5" title={svc.name}>
+                                  <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                  <span className="truncate">{svc.name}</span>
                                 </div>
                               </td>
-                              <td className="px-2 py-2">
-                                <Input
-                                  type="number" min={0} step="0.01"
-                                  className={cn("h-9 text-xs text-end min-w-[90px]", rateInvalid && "border-destructive focus-visible:ring-destructive")}
-                                  value={line.rate || ''}
-                                  placeholder={String(svc.defaultRate)}
-                                  onChange={e => updateDraftLine(line.key, { rate: parseMoney(e.target.value) })}
-                                />
-                                {rateInvalid && <div className="text-[10px] text-destructive mt-0.5">{t('rateRequired')}</div>}
+                              <td className="px-2 py-2.5">
+                                <div className="flex flex-col items-end gap-1">
+                                  <Input
+                                    type="number" min={0} step="0.01"
+                                    className={cn("h-9 text-xs text-end w-full", rateInvalid && "border-destructive focus-visible:ring-destructive")}
+                                    value={line.rate || ''}
+                                    placeholder={String(svc.defaultRate)}
+                                    onChange={e => updateDraftLine(line.key, { rate: parseMoney(e.target.value) })}
+                                  />
+                                  <span
+                                    className={cn(
+                                      "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                                      isOverride
+                                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                        : "bg-muted text-muted-foreground",
+                                    )}
+                                  >
+                                    {isOverride ? t('pillOverridden') : t('pillDefault')}
+                                  </span>
+                                  {isOverride && (
+                                    <button
+                                      type="button"
+                                      className="text-[10px] text-primary hover:underline"
+                                      onClick={() => updateDraftLine(line.key, { rate: svc.defaultRate })}
+                                    >
+                                      {t('resetToDefault')}
+                                    </button>
+                                  )}
+                                  {rateInvalid && <div className="text-[10px] text-destructive">{t('rateRequired')}</div>}
+                                </div>
                               </td>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-2.5">
                                 <Input
                                   type="number" min={0} step="1"
-                                  className="h-9 text-xs text-end min-w-[90px]"
+                                  className="h-9 text-xs text-end w-full"
                                   value={line.plannedTransactions || ''}
                                   placeholder="0"
                                   onChange={e => updateDraftLine(line.key, { plannedTransactions: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                                 />
                               </td>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-2.5">
                                 <Input
                                   type="number" min={0} step="1"
-                                  className={cn("h-9 text-xs text-end min-w-[90px]", overflow && "border-amber-500 focus-visible:ring-amber-500")}
+                                  className={cn("h-9 text-xs text-end w-full", overflow && "border-amber-500 focus-visible:ring-amber-500")}
                                   value={line.actualTransactions || ''}
                                   placeholder="0"
                                   onChange={e => updateDraftLine(line.key, { actualTransactions: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                                 />
                                 {overflow && (
-                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 flex items-center gap-1">
+                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                                     <AlertTriangle className="w-3 h-3" /> {t('actualExceedsPlanned')}
                                   </div>
                                 )}
                               </td>
-                              <td className="px-2 py-2 text-end font-semibold text-foreground transition-all">
+                              <td className="px-2 py-2.5 text-end align-middle font-semibold text-foreground transition-all">
                                 {formatCurrency(plannedRev, language)}
                               </td>
-                              <td className="px-2 py-2 text-end font-semibold text-emerald-600 transition-all">
+                              <td className="px-2 py-2.5 text-end align-middle font-semibold text-emerald-600 transition-all">
                                 {formatCurrency(actualRev, language)}
                               </td>
                             </tr>
                           );
                         })}
+                        {hideInactive && editLines.some(l => (l.plannedTransactions || 0) === 0 && (l.actualTransactions || 0) === 0) && (
+                          <tr className="bg-muted/30">
+                            <td colSpan={6} className="px-3 py-2 text-xs text-muted-foreground text-center">
+                              + {editLines.filter(l => (l.plannedTransactions || 0) === 0 && (l.actualTransactions || 0) === 0).length} {t('inactiveCollapsedMany')}
+                              {' '}
+                              <button type="button" className="text-primary hover:underline" onClick={() => setHideInactive(false)}>
+                                ({t('show')})
+                              </button>
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                       <tfoot className="bg-secondary/40 border-t-2 border-border">
                         <tr>
