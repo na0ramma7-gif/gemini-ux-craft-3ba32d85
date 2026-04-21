@@ -47,14 +47,28 @@ const MainLayout = () => {
     setView('resources');
   };
 
+  // Always resolve the current entity from state (by id) so edits made
+  // via updateProduct / updatePortfolio / updateResource reflect immediately.
+  // Without this, child pages would render the stale snapshot stored in
+  // `selected.*` and look like "save did nothing".
+  const livePortfolio = selected.portfolio
+    ? state.portfolios.find(p => p.id === selected.portfolio!.id) ?? selected.portfolio
+    : null;
+  const liveProduct = selected.product
+    ? state.products.find(p => p.id === selected.product!.id) ?? selected.product
+    : null;
+  const liveResource = selected.resource
+    ? state.resources.find(r => r.id === selected.resource!.id) ?? selected.resource
+    : null;
+
   const renderView = () => {
     switch (view) {
       case 'dashboard':
         return <Dashboard onPortfolioClick={handlePortfolioClick} />;
       case 'portfolio':
-        return selected.portfolio ? (
+        return livePortfolio ? (
           <PortfolioPage
-            portfolio={selected.portfolio}
+            portfolio={livePortfolio}
             onBack={handleBackToDashboard}
             onProductClick={handleProductClick}
           />
@@ -62,16 +76,16 @@ const MainLayout = () => {
           <Dashboard onPortfolioClick={handlePortfolioClick} />
         );
       case 'product':
-        return selected.product ? (
-          <ProductPage product={selected.product} onBack={handleBackToPortfolio} />
+        return liveProduct ? (
+          <ProductPage product={liveProduct} onBack={handleBackToPortfolio} />
         ) : (
           <Dashboard onPortfolioClick={handlePortfolioClick} />
         );
       case 'resources':
         return <ResourcesPage onResourceClick={handleResourceClick} />;
       case 'resourceProfile':
-        return selected.resource ? (
-          <ResourceProfilePage resource={selected.resource} onBack={handleBackToResources} />
+        return liveResource ? (
+          <ResourceProfilePage resource={liveResource} onBack={handleBackToResources} />
         ) : (
           <ResourcesPage onResourceClick={handleResourceClick} />
         );
