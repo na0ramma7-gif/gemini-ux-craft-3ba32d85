@@ -1,4 +1,4 @@
-import { AppState } from '@/types';
+import { AppState, RevenueService, RevenueLine } from '@/types';
 
 export const INITIAL_STATE: AppState = {
   department: { 
