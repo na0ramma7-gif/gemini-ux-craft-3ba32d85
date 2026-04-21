@@ -778,21 +778,124 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] min-h-0 max-h-[calc(90vh-140px)]">
             <div className="p-6 space-y-5 overflow-y-auto border-e border-border">
-              {/* Revenue Lines (subscription / service × rate × transactions) */}
+              {/* STEP 1 — Services / Subscriptions (catalog) */}
               <div className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('revenueLines')}
-                  </h4>
-                  <Button size="sm" variant="outline" onClick={addDraftLine}>
-                    <Plus className="w-3.5 h-3.5 me-1.5" /> {t('addRevenueLine')}
+                <div className="flex items-start justify-between gap-2 flex-wrap mb-1">
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-primary" /> {t('servicesSubscriptions')}
+                      <span className="text-[11px] font-normal text-muted-foreground">· Step 1</span>
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t('servicesSubscriptionsDesc')}</p>
+                  </div>
+                </div>
+
+                {/* Services list */}
+                {featureServices.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-5 border border-dashed border-border rounded-lg mt-3">
+                    {t('noServicesYet')}
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-lg border border-border mt-3">
+                    <table className="w-full text-sm">
+                      <thead className="bg-secondary/50">
+                        <tr>
+                          <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('serviceName')}</th>
+                          <th className="px-3 py-2 text-end text-xs font-semibold text-muted-foreground w-40">{t('defaultRate')}</th>
+                          <th className="px-3 py-2 w-28" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {featureServices.map(s => {
+                          const isEditing = editingServiceId === s.id;
+                          return (
+                            <tr key={s.id} className="hover:bg-secondary/30">
+                              <td className="px-3 py-2">
+                                {isEditing ? (
+                                  <Input className="h-8 text-xs min-w-[180px]" value={editingServiceName}
+                                    onChange={e => setEditingServiceName(e.target.value)} />
+                                ) : (
+                                  <span className="text-sm font-medium text-foreground">{s.name}</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-end">
+                                {isEditing ? (
+                                  <Input type="number" min={0} step="0.01" className="h-8 text-xs text-end min-w-[110px] ms-auto"
+                                    value={editingServiceRate || ''} placeholder="0"
+                                    onChange={e => setEditingServiceRate(parseMoney(e.target.value))} />
+                                ) : (
+                                  <span className="text-sm text-foreground">{formatCurrency(s.defaultRate, language)}</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  {isEditing ? (
+                                    <>
+                                      <Button size="sm" className="h-7 px-2 text-xs" onClick={saveEditService}>
+                                        {t('save')}
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                                        onClick={() => setEditingServiceId(null)}>
+                                        {t('cancel')}
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
+                                        onClick={() => startEditService(s.id)} aria-label={t('edit')}>
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive/70 hover:text-destructive"
+                                        onClick={() => handleDeleteService(s.id)} aria-label={t('delete') || 'Delete'}>
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Add new service inline form */}
+                <div className="mt-3 flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
+                  <div className="flex-1">
+                    <label className="block text-[11px] font-medium text-muted-foreground mb-1">{t('serviceName')}</label>
+                    <Input className="h-9 text-sm min-w-[180px]" placeholder={t('serviceName')}
+                      value={newServiceName}
+                      onChange={e => setNewServiceName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddService(); } }} />
+                  </div>
+                  <div className="w-full sm:w-40">
+                    <label className="block text-[11px] font-medium text-muted-foreground mb-1">{t('defaultRate')} (SAR)</label>
+                    <Input type="number" min={0} step="0.01" className="h-9 text-sm text-end min-w-[110px]"
+                      placeholder="0" value={newServiceRate || ''}
+                      onChange={e => setNewServiceRate(parseMoney(e.target.value))}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddService(); } }} />
+                  </div>
+                  <Button size="sm" onClick={handleAddService} className="h-9" disabled={!newServiceName.trim()}>
+                    <Plus className="w-4 h-4 me-1.5" /> {t('addService')}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">{t('revenueLinesDesc')}</p>
+              </div>
+
+              {/* STEP 2 — Monthly Transactions per service */}
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="mb-2">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('monthlyTransactions')}
+                    <span className="text-[11px] font-normal text-muted-foreground">· Step 2</span>
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('monthlyTransactionsDesc')}</p>
+                </div>
 
                 {editLines.length === 0 ? (
                   <div className="text-sm text-muted-foreground text-center py-6 border border-dashed border-border rounded-lg">
-                    {t('noRevenueLinesYet')}
+                    {t('addServicesFirst')}
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border border-border">
@@ -800,136 +903,86 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                       <thead className="bg-secondary/50">
                         <tr>
                           <th className="px-2 py-2 text-start text-xs font-semibold text-muted-foreground min-w-[180px]">{t('serviceName')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground w-28">{t('transactionRate')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground w-24">{t('plannedTx')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground w-24">{t('actualTx')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 w-28">{t('plannedRevenue')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 w-28">{t('actualRevenue')}</th>
-                          <th className="px-2 py-2 w-10" />
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground min-w-[110px]">{t('transactionRate')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground min-w-[110px]">{t('plannedTx')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground min-w-[110px]">{t('actualTx')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 min-w-[120px]">{t('plannedRevenue')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 min-w-[120px]">{t('actualRevenue')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {editLines.map(line => {
-                          const newName = newServiceFor[line.key];
-                          const isCreating = newName !== undefined;
+                          const svc = featureServices.find(s => s.id === line.serviceId);
+                          if (!svc) return null;
                           const plannedRev = (line.rate || 0) * (line.plannedTransactions || 0);
                           const actualRev = (line.rate || 0) * (line.actualTransactions || 0);
+                          const isOverride = Math.abs((line.rate || 0) - svc.defaultRate) > 0.0001;
+                          const rateInvalid = !Number.isFinite(line.rate) || line.rate <= 0;
+                          const overflow = line.plannedTransactions > 0 && line.actualTransactions > line.plannedTransactions * 1.5;
                           return (
-                            <tr key={line.key} className="hover:bg-secondary/30 align-top">
-                              <td className="px-2 py-1.5">
-                                {isCreating ? (
-                                  <div className="flex gap-1.5 items-center">
-                                    <Input
-                                      autoFocus
-                                      className="h-8 text-xs"
-                                      placeholder={t('serviceName')}
-                                      value={newName}
-                                      onChange={e => setNewServiceFor(prev => ({ ...prev, [line.key]: e.target.value }))}
-                                      onKeyDown={e => {
-                                        if (e.key === 'Enter') { e.preventDefault(); createServiceInline(line.key, newName, line.rate); }
-                                        if (e.key === 'Escape') setNewServiceFor(prev => { const n = { ...prev }; delete n[line.key]; return n; });
-                                      }}
-                                    />
-                                    <Button size="sm" variant="default" className="h-8 px-2 text-xs"
-                                      onClick={() => createServiceInline(line.key, newName, line.rate)}>
-                                      {t('save')}
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <Select
-                                    value={line.serviceId != null ? String(line.serviceId) : ''}
-                                    onValueChange={v => {
-                                      if (v === '__new__') {
-                                        setNewServiceFor(prev => ({ ...prev, [line.key]: '' }));
-                                      } else {
-                                        pickService(line.key, parseInt(v, 10));
-                                      }
-                                    }}
-                                  >
-                                    <SelectTrigger className="h-8 text-xs">
-                                      <SelectValue placeholder={t('selectService')} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {featureServices.length === 0 && (
-                                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                                          {t('serviceCatalog')} —
-                                        </div>
-                                      )}
-                                      {featureServices.map(s => (
-                                        <SelectItem key={s.id} value={String(s.id)}>
-                                          <span className="flex items-center gap-1.5">
-                                            <Tag className="w-3 h-3 text-muted-foreground" />
-                                            {s.name}
-                                            <span className="text-[10px] text-muted-foreground">
-                                              · {formatCurrency(s.defaultRate, language)}
-                                            </span>
-                                          </span>
-                                        </SelectItem>
-                                      ))}
-                                      <SelectItem value="__new__">
-                                        <span className="flex items-center gap-1.5 text-primary">
-                                          <Plus className="w-3 h-3" /> {t('newService')}
-                                        </span>
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                )}
+                            <tr key={line.key} className="hover:bg-secondary/30 align-top transition-colors">
+                              <td className="px-2 py-2">
+                                <div className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                                  <Tag className="w-3.5 h-3.5 text-muted-foreground" /> {svc.name}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground mt-0.5">
+                                  {isOverride ? t('rateOverride') : t('usingDefaultRate')}
+                                </div>
                               </td>
-                              <td className="px-2 py-1.5">
+                              <td className="px-2 py-2">
                                 <Input
                                   type="number" min={0} step="0.01"
-                                  className="h-8 text-xs text-end"
+                                  className={cn("h-9 text-xs text-end min-w-[90px]", rateInvalid && "border-destructive focus-visible:ring-destructive")}
                                   value={line.rate || ''}
-                                  placeholder="0"
+                                  placeholder={String(svc.defaultRate)}
                                   onChange={e => updateDraftLine(line.key, { rate: parseMoney(e.target.value) })}
                                 />
+                                {rateInvalid && <div className="text-[10px] text-destructive mt-0.5">{t('rateRequired')}</div>}
                               </td>
-                              <td className="px-2 py-1.5">
+                              <td className="px-2 py-2">
                                 <Input
                                   type="number" min={0} step="1"
-                                  className="h-8 text-xs text-end"
+                                  className="h-9 text-xs text-end min-w-[90px]"
                                   value={line.plannedTransactions || ''}
                                   placeholder="0"
                                   onChange={e => updateDraftLine(line.key, { plannedTransactions: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                                 />
                               </td>
-                              <td className="px-2 py-1.5">
+                              <td className="px-2 py-2">
                                 <Input
                                   type="number" min={0} step="1"
-                                  className="h-8 text-xs text-end"
+                                  className={cn("h-9 text-xs text-end min-w-[90px]", overflow && "border-amber-500 focus-visible:ring-amber-500")}
                                   value={line.actualTransactions || ''}
                                   placeholder="0"
                                   onChange={e => updateDraftLine(line.key, { actualTransactions: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                                 />
+                                {overflow && (
+                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 flex items-center gap-1">
+                                    <AlertTriangle className="w-3 h-3" /> {t('actualExceedsPlanned')}
+                                  </div>
+                                )}
                               </td>
-                              <td className="px-2 py-1.5 text-end font-semibold text-foreground">
+                              <td className="px-2 py-2 text-end font-semibold text-foreground transition-all">
                                 {formatCurrency(plannedRev, language)}
                               </td>
-                              <td className="px-2 py-1.5 text-end font-semibold text-emerald-600">
+                              <td className="px-2 py-2 text-end font-semibold text-emerald-600 transition-all">
                                 {formatCurrency(actualRev, language)}
-                              </td>
-                              <td className="px-2 py-1.5 text-center">
-                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive/60 hover:text-destructive"
-                                  onClick={() => removeDraftLine(line.key)}>
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
                               </td>
                             </tr>
                           );
                         })}
                       </tbody>
-                      <tfoot className="bg-secondary/30">
+                      <tfoot className="bg-secondary/40 border-t-2 border-border">
                         <tr>
-                          <td className="px-2 py-2 text-xs font-semibold text-muted-foreground" colSpan={4}>
+                          <td className="px-2 py-2.5 text-xs font-bold text-foreground uppercase" colSpan={4}>
                             {t('total')}
                           </td>
-                          <td className="px-2 py-2 text-end text-xs font-bold text-foreground">
+                          <td className="px-2 py-2.5 text-end text-sm font-bold text-foreground">
                             {formatCurrency(editMonthSummary.editPlannedRev, language)}
                           </td>
-                          <td className="px-2 py-2 text-end text-xs font-bold text-emerald-600">
+                          <td className="px-2 py-2.5 text-end text-sm font-bold text-emerald-600">
                             {formatCurrency(editMonthSummary.editActualRev, language)}
                           </td>
-                          <td />
                         </tr>
                       </tfoot>
                     </table>
