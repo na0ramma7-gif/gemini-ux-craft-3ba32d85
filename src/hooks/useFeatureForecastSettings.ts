@@ -1,23 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   CUSTOM_TONE_CYCLE,
+  CellEntry,
   FeatureForecastSettings,
   ForecastScenario,
   ForecastScenarioId,
   MAX_SCENARIOS,
-  ForecastMode,
-  MatrixOverride,
-  SeasonalPresetId,
-  ServiceAssumption,
+  ScenarioData,
   buildDefaultSettings,
+  clearCell,
   loadFeatureForecastSettings,
   saveFeatureForecastSettings,
+  setCellRate,
+  setCellTx,
+  setCellsBulk,
+  truncateScenarioToHorizon,
 } from '@/lib/featureForecast';
 
 /**
- * Per-feature forecast settings hook. Persists to localStorage
- * keyed by featureId. The assumptions panel maintains its own DRAFT
- * (not in this hook) so edits don't update the live forecast until Apply.
+ * Per-feature forecast settings hook. Persists to localStorage keyed by featureId.
+ * The assumptions panel maintains its own DRAFT (not in this hook) so edits don't
+ * update the live forecast until Apply.
  */
 export const useFeatureForecastSettings = (featureId: number) => {
   const [settings, setSettings] = useState<FeatureForecastSettings>(() =>
@@ -47,14 +50,22 @@ export const useFeatureForecastSettings = (featureId: number) => {
   }, []);
 
   const applyDraft = useCallback((draft: FeatureForecastSettings) => {
-    setSettings(draft);
+    // Strip transient flag once committed.
+    const { migratedFromLegacy: _ignored, ...rest } = draft;
+    setSettings(rest as FeatureForecastSettings);
   }, []);
 
   const resetAll = useCallback(() => {
     setSettings(buildDefaultSettings());
   }, []);
 
-  return { settings, setActiveScenario, setHorizon, applyDraft, resetAll };
+  /** Replace the whole settings object — used after legacy materialisation. */
+  const replaceSettings = useCallback((next: FeatureForecastSettings) => {
+    const { migratedFromLegacy: _ignored, ...rest } = next;
+    setSettings(rest as FeatureForecastSettings);
+  }, []);
+
+  return { settings, setActiveScenario, setHorizon, applyDraft, resetAll, replaceSettings };
 };
 
 // ── Pure helpers for editing a DRAFT FeatureForecastSettings ──
@@ -68,169 +79,70 @@ export const updateScenario = (
   scenarios: draft.scenarios.map(s => (s.id === scenarioId ? { ...s, ...patch } : s)),
 });
 
-// ── Mode switching ─────────────────────────────────────────────
-
-/**
- * Switch a scenario's mode. Caller is responsible for confirming with the
- * user when overrides will be discarded (see `scenarioHasOverrides`).
- * Switching to a different mode clears mode-specific data that no longer
- * applies, to keep the model consistent.
- */
-export const setScenarioMode = (
+export const setScenarioCellTx = (
   draft: FeatureForecastSettings,
   scenarioId: ForecastScenarioId,
-  nextMode: ForecastMode,
+  serviceId: number,
+  monthIndex: number,
+  transactions: number,
 ): FeatureForecastSettings => {
   const sc = draft.scenarios.find(s => s.id === scenarioId);
-  if (!sc || sc.mode === nextMode) return draft;
-  let services = sc.services;
-  let cellOverrides = sc.cellOverrides ?? [];
-  if (nextMode === 'simple') {
-    services = services.map(s => ({ serviceId: s.serviceId, growthRate: s.growthRate }));
-    cellOverrides = [];
-  } else if (nextMode === 'seasonal') {
-    services = services.map(s => ({
-      ...s,
-      pattern: s.pattern ?? 'flat',
-    }));
-    cellOverrides = [];
+  if (!sc) return draft;
+  return updateScenario(draft, scenarioId, setCellTx(sc, serviceId, monthIndex, transactions));
+};
+
+export const setScenarioCellRate = (
+  draft: FeatureForecastSettings,
+  scenarioId: ForecastScenarioId,
+  serviceId: number,
+  monthIndex: number,
+  rate: number | null,
+): FeatureForecastSettings => {
+  const sc = draft.scenarios.find(s => s.id === scenarioId);
+  if (!sc) return draft;
+  return updateScenario(draft, scenarioId, setCellRate(sc, serviceId, monthIndex, rate));
+};
+
+export const clearScenarioCell = (
+  draft: FeatureForecastSettings,
+  scenarioId: ForecastScenarioId,
+  serviceId: number,
+  monthIndex: number,
+): FeatureForecastSettings => {
+  const sc = draft.scenarios.find(s => s.id === scenarioId);
+  if (!sc) return draft;
+  return updateScenario(draft, scenarioId, clearCell(sc, serviceId, monthIndex));
+};
+
+export const setScenarioCellsBulk = (
+  draft: FeatureForecastSettings,
+  scenarioId: ForecastScenarioId,
+  cells: Array<{ serviceId: number; monthIndex: number; transactions: number; rate?: number }>,
+): FeatureForecastSettings => {
+  const sc = draft.scenarios.find(s => s.id === scenarioId);
+  if (!sc) return draft;
+  return updateScenario(draft, scenarioId, setCellsBulk(sc, cells));
+};
+
+export const setScenarioCostGrowth = (
+  draft: FeatureForecastSettings,
+  scenarioId: ForecastScenarioId,
+  costGrowthRate: number,
+): FeatureForecastSettings => updateScenario(draft, scenarioId, { costGrowthRate });
+
+export const setHorizonOnDraft = (
+  draft: FeatureForecastSettings,
+  newHorizon: 6 | 12 | 24,
+  truncateScenarios: boolean,
+): FeatureForecastSettings => {
+  if (!truncateScenarios || newHorizon >= draft.horizon) {
+    return { ...draft, horizon: newHorizon };
   }
-  // Matrix mode keeps existing services (with patterns) and starts with no
-  // overrides; cells will autopopulate from the prior mode's projection.
-  return updateScenario(draft, scenarioId, { mode: nextMode, services, cellOverrides });
-};
-
-export const scenarioHasOverrides = (
-  draft: FeatureForecastSettings,
-  scenarioId: ForecastScenarioId,
-): boolean => {
-  const sc = draft.scenarios.find(s => s.id === scenarioId);
-  return !!sc && Array.isArray(sc.cellOverrides) && sc.cellOverrides.length > 0;
-};
-
-// ── Seasonal helpers ───────────────────────────────────────────
-
-export const setServicePattern = (
-  draft: FeatureForecastSettings,
-  scenarioId: ForecastScenarioId,
-  serviceId: number,
-  pattern: SeasonalPresetId,
-): FeatureForecastSettings => {
-  const sc = draft.scenarios.find(s => s.id === scenarioId);
-  if (!sc) return draft;
-  const exists = sc.services.some(s => s.serviceId === serviceId);
-  const services: ServiceAssumption[] = exists
-    ? sc.services.map(s => (s.serviceId === serviceId ? { ...s, pattern } : s))
-    : [...sc.services, { serviceId, growthRate: sc.defaultGrowthRate, pattern }];
-  return updateScenario(draft, scenarioId, { services });
-};
-
-export const setServiceCustomPattern = (
-  draft: FeatureForecastSettings,
-  scenarioId: ForecastScenarioId,
-  serviceId: number,
-  customPattern: number[],
-): FeatureForecastSettings => {
-  const sc = draft.scenarios.find(s => s.id === scenarioId);
-  if (!sc) return draft;
-  const safe = customPattern.slice(0, 12);
-  while (safe.length < 12) safe.push(1);
-  const exists = sc.services.some(s => s.serviceId === serviceId);
-  const services: ServiceAssumption[] = exists
-    ? sc.services.map(s =>
-        s.serviceId === serviceId ? { ...s, pattern: 'custom', customPattern: safe } : s,
-      )
-    : [
-        ...sc.services,
-        { serviceId, growthRate: sc.defaultGrowthRate, pattern: 'custom', customPattern: safe },
-      ];
-  return updateScenario(draft, scenarioId, { services });
-};
-
-export const setRamadanMonthOverride = (
-  draft: FeatureForecastSettings,
-  scenarioId: ForecastScenarioId,
-  monthIdx: number | null,
-): FeatureForecastSettings =>
-  updateScenario(draft, scenarioId, { ramadanMonthOverride: monthIdx });
-
-// ── Matrix helpers ─────────────────────────────────────────────
-
-const dedupeOverrides = (list: MatrixOverride[]): MatrixOverride[] => {
-  const map = new Map<string, MatrixOverride>();
-  list.forEach(o => map.set(`${o.serviceId}:${o.monthIndex}`, o));
-  return Array.from(map.values());
-};
-
-export const setCellOverride = (
-  draft: FeatureForecastSettings,
-  scenarioId: ForecastScenarioId,
-  serviceId: number,
-  monthIndex: number,
-  tx: number,
-): FeatureForecastSettings => {
-  const sc = draft.scenarios.find(s => s.id === scenarioId);
-  if (!sc) return draft;
-  const existing = sc.cellOverrides ?? [];
-  const next = dedupeOverrides([...existing, { serviceId, monthIndex, tx: Math.max(0, tx) }]);
-  return updateScenario(draft, scenarioId, { cellOverrides: next });
-};
-
-export const clearCellOverride = (
-  draft: FeatureForecastSettings,
-  scenarioId: ForecastScenarioId,
-  serviceId: number,
-  monthIndex: number,
-): FeatureForecastSettings => {
-  const sc = draft.scenarios.find(s => s.id === scenarioId);
-  if (!sc) return draft;
-  const next = (sc.cellOverrides ?? []).filter(
-    o => !(o.serviceId === serviceId && o.monthIndex === monthIndex),
-  );
-  return updateScenario(draft, scenarioId, { cellOverrides: next });
-};
-
-export const setCellOverridesBulk = (
-  draft: FeatureForecastSettings,
-  scenarioId: ForecastScenarioId,
-  cells: MatrixOverride[],
-): FeatureForecastSettings => {
-  const sc = draft.scenarios.find(s => s.id === scenarioId);
-  if (!sc) return draft;
-  const next = dedupeOverrides([...(sc.cellOverrides ?? []), ...cells.map(c => ({ ...c, tx: Math.max(0, c.tx) }))]);
-  return updateScenario(draft, scenarioId, { cellOverrides: next });
-};
-
-export const clearAllCellOverrides = (
-  draft: FeatureForecastSettings,
-  scenarioId: ForecastScenarioId,
-): FeatureForecastSettings => updateScenario(draft, scenarioId, { cellOverrides: [] });
-
-export const setServiceGrowth = (
-  draft: FeatureForecastSettings,
-  scenarioId: ForecastScenarioId,
-  serviceId: number,
-  growthRate: number,
-): FeatureForecastSettings => {
-  const sc = draft.scenarios.find(s => s.id === scenarioId);
-  if (!sc) return draft;
-  const exists = sc.services.some(s => s.serviceId === serviceId);
-  const services: ServiceAssumption[] = exists
-    ? sc.services.map(s => (s.serviceId === serviceId ? { ...s, growthRate } : s))
-    : [...sc.services, { serviceId, growthRate }];
-  return updateScenario(draft, scenarioId, { services });
-};
-
-export const resetServiceGrowth = (
-  draft: FeatureForecastSettings,
-  scenarioId: ForecastScenarioId,
-  serviceId: number,
-): FeatureForecastSettings => {
-  const sc = draft.scenarios.find(s => s.id === scenarioId);
-  if (!sc) return draft;
-  return updateScenario(draft, scenarioId, {
-    services: sc.services.filter(s => s.serviceId !== serviceId),
-  });
+  return {
+    ...draft,
+    horizon: newHorizon,
+    scenarios: draft.scenarios.map(s => truncateScenarioToHorizon(s, newHorizon)),
+  };
 };
 
 export const renameScenario = (
@@ -250,19 +162,21 @@ export const duplicateScenario = (
   if (!src) return draft;
   const tone = CUSTOM_TONE_CYCLE[draft.scenarios.length % CUSTOM_TONE_CYCLE.length];
   const id = `custom-${Date.now()}`;
+  // Deep copy data
+  const data: ScenarioData = {};
+  for (const sIdStr of Object.keys(src.data ?? {})) {
+    const sId = Number(sIdStr);
+    data[sId] = { ...src.data[sId] };
+  }
   const copy: ForecastScenario = {
-    ...src,
     id,
     name: newName.trim().slice(0, 40) || `${src.name} (copy)`,
     tone,
+    data,
+    costGrowthRate: src.costGrowthRate,
     builtIn: false,
-    services: src.services.map(s => ({ ...s })),
   };
-  return {
-    ...draft,
-    scenarios: [...draft.scenarios, copy],
-    activeScenarioId: id,
-  };
+  return { ...draft, scenarios: [...draft.scenarios, copy], activeScenarioId: id };
 };
 
 export const deleteScenario = (
@@ -285,16 +199,50 @@ export const resetScenarioToDefaults = (
   scenarioId: ForecastScenarioId,
 ): FeatureForecastSettings => {
   const defaults = buildDefaultSettings().scenarios.find(s => s.id === scenarioId);
-  if (!defaults) {
-    return updateScenario(draft, scenarioId, {
-      services: [],
-      defaultGrowthRate: 5,
-      costGrowthRate: 2,
-    });
-  }
   return updateScenario(draft, scenarioId, {
-    services: [],
-    defaultGrowthRate: defaults.defaultGrowthRate,
-    costGrowthRate: defaults.costGrowthRate,
+    data: {},
+    costGrowthRate: defaults?.costGrowthRate ?? 2,
   });
+};
+
+// ── Quick-fill helpers ─────────────────────────────────────────
+
+export type QuickFillMode = 'fixed' | 'growth' | 'copyForward';
+
+export const buildQuickFillCells = (
+  serviceIds: number[],
+  startMonth: number,
+  endMonth: number,
+  mode: QuickFillMode,
+  scenario: ForecastScenario,
+  options: { value?: number; growthPct?: number },
+): Array<{ serviceId: number; monthIndex: number; transactions: number }> => {
+  const cells: Array<{ serviceId: number; monthIndex: number; transactions: number }> = [];
+  for (const sId of serviceIds) {
+    if (mode === 'fixed') {
+      const v = Math.max(0, options.value ?? 0);
+      for (let m = startMonth; m <= endMonth; m++) {
+        cells.push({ serviceId: sId, monthIndex: m, transactions: v });
+      }
+    } else if (mode === 'growth') {
+      const start = Math.max(0, options.value ?? 0);
+      const g = (options.growthPct ?? 0) / 100;
+      let cur = start;
+      for (let m = startMonth; m <= endMonth; m++) {
+        cells.push({ serviceId: sId, monthIndex: m, transactions: Math.round(cur) });
+        cur = cur * (1 + g);
+      }
+    } else if (mode === 'copyForward') {
+      // Find the last filled month strictly before startMonth
+      let seed = 0;
+      const row = scenario.data?.[sId] ?? {};
+      for (let m = startMonth - 1; m >= 0; m--) {
+        if (row[m]) { seed = row[m].transactions; break; }
+      }
+      for (let m = startMonth; m <= endMonth; m++) {
+        cells.push({ serviceId: sId, monthIndex: m, transactions: seed });
+      }
+    }
+  }
+  return cells;
 };
