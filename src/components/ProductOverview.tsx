@@ -297,7 +297,105 @@ const ProductOverview = ({ product }: Props) => {
         </div>
       </div>
 
-      {/* Section 4: Capabilities — grouped */}
+      {/* Section 4: Product Usage / User Behavior — user-defined */}
+      {(() => {
+        const usage = product.usage;
+        const hasUsage = !!usage && (
+          [usage.numberOfUsers, usage.yearlyTransactions, usage.activeUsersPct, usage.repeatUsagePct]
+            .some(v => typeof v === 'number') || !!usage.engagementLevel || !!usage.usageTrend
+        );
+        const fmtInt = (n?: number) =>
+          typeof n === 'number'
+            ? new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US').format(n)
+            : '—';
+        const trendIcon = (t?: string) =>
+          t === 'Increasing' ? <ArrowUpRight className="w-3.5 h-3.5 text-success" /> :
+          t === 'Declining' ? <ArrowDownRight className="w-3.5 h-3.5 text-destructive" /> :
+          t === 'Stable' ? <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" /> : null;
+        const engagementCls = (lvl?: string) =>
+          lvl === 'High' ? 'bg-success/10 text-success border-success/30' :
+          lvl === 'Medium' ? 'bg-warning/10 text-warning border-warning/30' :
+          lvl === 'Low' ? 'bg-destructive/10 text-destructive border-destructive/30' :
+          'bg-muted text-muted-foreground border-border';
+        return (
+          <div className="bg-secondary/30 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" /> {t('sectionProductUsage')}
+              </h4>
+              {usage?.updatedAt && (
+                <span className="text-[10px] text-muted-foreground">
+                  {t('lastUpdated')}: {formatDate(usage.updatedAt, language)}
+                </span>
+              )}
+            </div>
+            {!hasUsage ? (
+              <p className="text-xs text-muted-foreground italic">{t('usageNotSet')}</p>
+            ) : (
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="bg-card rounded-lg p-3 border border-border/50">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Users className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[11px] text-muted-foreground font-medium">{t('numberOfUsers')}</span>
+                  </div>
+                  <div className="text-lg font-bold text-foreground tabular-nums">{fmtInt(usage?.numberOfUsers)}</div>
+                </div>
+                <div className="bg-card rounded-lg p-3 border border-border/50">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Repeat className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[11px] text-muted-foreground font-medium">{t('yearlyTransactions')}</span>
+                  </div>
+                  <div className="text-lg font-bold text-foreground tabular-nums">{fmtInt(usage?.yearlyTransactions)}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">{t('yearlyHint')}</div>
+                </div>
+                <div className="bg-card rounded-lg p-3 border border-border/50">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Activity className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[11px] text-muted-foreground font-medium">{t('activeUsersPct')}</span>
+                  </div>
+                  <div className="text-lg font-bold text-foreground tabular-nums">
+                    {typeof usage?.activeUsersPct === 'number' ? `${usage.activeUsersPct}%` : '—'}
+                  </div>
+                </div>
+                <div className="bg-card rounded-lg p-3 border border-border/50">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Repeat className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[11px] text-muted-foreground font-medium">{t('repeatUsagePct')}</span>
+                  </div>
+                  <div className="text-lg font-bold text-foreground tabular-nums">
+                    {typeof usage?.repeatUsagePct === 'number' ? `${usage.repeatUsagePct}%` : '—'}
+                  </div>
+                </div>
+                <div className="bg-card rounded-lg p-3 border border-border/50">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Gauge className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[11px] text-muted-foreground font-medium">{t('engagementLevel')}</span>
+                  </div>
+                  {usage?.engagementLevel ? (
+                    <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border', engagementCls(usage.engagementLevel))}>
+                      {t(`engagement${usage.engagementLevel}` as any)}
+                    </span>
+                  ) : <span className="text-sm text-muted-foreground">—</span>}
+                </div>
+                <div className="bg-card rounded-lg p-3 border border-border/50">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <TrendingUp className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[11px] text-muted-foreground font-medium">{t('usageTrend')}</span>
+                  </div>
+                  {usage?.usageTrend ? (
+                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-foreground">
+                      {trendIcon(usage.usageTrend)}
+                      {t(`trend${usage.usageTrend}` as any)}
+                    </span>
+                  ) : <span className="text-sm text-muted-foreground">—</span>}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Section 5: Capabilities — grouped */}
       <div className="bg-secondary/30 rounded-xl p-5">
         <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
           <Zap className="w-4 h-4 text-primary" /> {t('capabilities')}
