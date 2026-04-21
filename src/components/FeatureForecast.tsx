@@ -488,6 +488,12 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
         serviceBaselines={serviceBaselines}
         costBaseline={costBaseline}
         onApply={applyDraft}
+        forecastStartDate={(() => {
+          const last = historicalChart[historicalChart.length - 1];
+          if (!last) return new Date();
+          const [y, m] = last.month.split('-').map(Number);
+          return new Date(y, m, 1);
+        })()}
       />
     </div>
   );

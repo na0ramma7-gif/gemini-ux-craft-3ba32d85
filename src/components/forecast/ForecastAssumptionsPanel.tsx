@@ -575,6 +575,24 @@ const ForecastAssumptionsPanel = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!pendingModeSwitch} onOpenChange={v => !v && setPendingModeSwitch(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('confirmModeSwitchTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('confirmModeSwitchDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('keep')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmModeSwitch}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('discardAndSwitch')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
