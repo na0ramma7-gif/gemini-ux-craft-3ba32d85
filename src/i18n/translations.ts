@@ -383,6 +383,9 @@ export const TRANSLATIONS = {
     month: 'Month',
     addEntry: 'Add Entry',
     alreadyAdded: 'already added',
+    noProductResources: 'No resources are currently assigned to this product',
+    noProductResourcesDesc: 'Assign resources to this product first to use them in feature cost planning.',
+    invalidResourceAssignment: 'This resource is no longer assigned to the current product',
     
     // Global date filter
     primaryPeriod: 'Period',
