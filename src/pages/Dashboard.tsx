@@ -10,19 +10,20 @@ import ProductTable from '@/components/dashboard/ProductTable';
 import ForecastSummaryCards from '@/components/dashboard/ForecastSummaryCards';
 import RevenuePipelineChart from '@/components/dashboard/RevenuePipelineChart';
 import UpcomingRevenueDrivers from '@/components/dashboard/UpcomingRevenueDrivers';
+import ScenarioConfigModal from '@/components/dashboard/ScenarioConfigModal';
 import { formatCurrency } from '@/lib/utils';
 import { Portfolio, Product } from '@/types';
-import { ScenarioType } from '@/components/ForecastConfigModal';
+import { ScenarioType, HorizonMonths } from '@/lib/forecastEngine';
+import { useForecastSettings } from '@/hooks/useForecastSettings';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { TrendingUp, TrendingDown, Target, Package, DollarSign, Receipt, BarChart3, Settings2, Layers, Activity, Plus } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import CompareControls from '@/components/compare/CompareControls';
 import CompareEmptyState from '@/components/compare/CompareEmptyState';
 import KPIDelta from '@/components/compare/KPIDelta';
 import { useCompareMetrics } from '@/hooks/useCompareMetrics';
 
-export type PipelineHorizon = 6 | 9 | 12;
+export type PipelineHorizon = HorizonMonths;
 
 interface DashboardProps {
   onPortfolioClick: (portfolio: Portfolio) => void;
@@ -33,8 +34,10 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
   const dept = useHierarchicalMetrics(state, dateFilter);
   const compare = useCompareMetrics({ scope: 'dashboard' });
   const [scenario, setScenario] = useState<ScenarioType>('baseline');
-  const [horizon, setHorizon] = useState<PipelineHorizon>(9);
+  const [horizon, setHorizon] = useState<HorizonMonths>(12);
   const [showPortfolioForm, setShowPortfolioForm] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+  const { configs, setConfigs } = useForecastSettings();
 
   // Single source of truth: target & achievement come from the hook.
   const trend = useMemo(() => ({ achievePct: dept.achievementPct }), [dept.achievementPct]);
@@ -49,12 +52,6 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
   };
 
   const scenarioKeys: ScenarioType[] = ['baseline', 'optimistic', 'conservative'];
-
-  const horizons: { value: PipelineHorizon; label: string }[] = [
-    { value: 6, label: `6 ${t('months')}` },
-    { value: 9, label: `9 ${t('months')}` },
-    { value: 12, label: `12 ${t('months')}` },
-  ];
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -201,45 +198,37 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
               ))}
             </div>
 
-            {/* Configure Forecast — horizon picker */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                  <Settings2 className="w-3.5 h-3.5" />
-                  {t('configureForecast')}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-2" align="end">
-                <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">{t('forecastHorizon')}</p>
-                {horizons.map(h => (
-                  <button
-                    key={h.value}
-                    onClick={() => setHorizon(h.value)}
-                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                      horizon === h.value
-                        ? 'bg-primary/10 text-primary font-medium'
-                        : 'text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {h.label}
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setShowConfig(true)}>
+              <Settings2 className="w-3.5 h-3.5" />
+              {t('configureForecast')}
+            </Button>
           </div>
         </div>
 
-        <ForecastSummaryCards scenario={scenario} horizon={horizon} />
-        <RevenuePipelineChart scenario={scenario} horizon={horizon} />
+        <ForecastSummaryCards scenario={scenario} horizon={horizon} config={configs[scenario]} />
+        <RevenuePipelineChart scenario={scenario} horizon={horizon} config={configs[scenario]} />
       </div>
 
       {/* 6. Upcoming Revenue Drivers */}
-      <UpcomingRevenueDrivers scenario={scenario} horizon={horizon} onProductClick={handleProductClick} />
+      <UpcomingRevenueDrivers scenario={scenario} horizon={horizon} config={configs[scenario]} onProductClick={handleProductClick} />
 
       <PortfolioFormDialog
         open={showPortfolioForm}
         onOpenChange={setShowPortfolioForm}
         onCreated={onPortfolioClick}
+      />
+
+      <ScenarioConfigModal
+        open={showConfig}
+        onOpenChange={setShowConfig}
+        configs={configs}
+        activeScenario={scenario}
+        horizon={horizon}
+        onApply={({ configs: nextConfigs, horizon: nextHorizon, scenario: nextScenario }) => {
+          setConfigs(nextConfigs);
+          setHorizon(nextHorizon);
+          setScenario(nextScenario);
+        }}
       />
     </div>
   );
