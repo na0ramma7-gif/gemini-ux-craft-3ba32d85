@@ -23,22 +23,57 @@ interface AssignmentFormDialogProps {
   onOpenChange: (open: boolean) => void;
   resourceId: number;
   assignment?: Assignment | null;
+  /** When set, the portfolio is fixed and cannot be changed by the user. */
+  lockedPortfolioId?: number;
+  /** When set, the product is fixed (implies portfolio is also fixed) and cannot be changed. */
+  lockedProductId?: number;
 }
 
-const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: AssignmentFormDialogProps) => {
+const AssignmentFormDialog = ({
+  open, onOpenChange, resourceId, assignment,
+  lockedPortfolioId, lockedProductId,
+}: AssignmentFormDialogProps) => {
   const { state, addAssignment, updateAssignment, t } = useApp();
   const isEdit = !!assignment;
+
+  // Effective lock: if a product is locked, its portfolio is implicitly locked too.
+  const lockedProduct = lockedProductId
+    ? state.products.find(p => p.id === lockedProductId)
+    : undefined;
+  const effectivePortfolioLockId =
+    lockedProductId ? lockedProduct?.portfolioId : lockedPortfolioId;
+  const portfolioLocked = !!effectivePortfolioLockId;
+  const productLocked = !!lockedProductId;
 
   const schema = z
     .object({
       portfolioId: z
         .string()
         .min(1, M.required('Portfolio'))
-        .refine(v => v !== '0', { message: M.required('Portfolio') }),
+        .refine(v => v !== '0', { message: M.required('Portfolio') })
+        .refine(
+          v => !effectivePortfolioLockId || v === String(effectivePortfolioLockId),
+          { message: 'You can only assign this resource to products within the current portfolio' },
+        ),
       productId: z
         .string()
         .min(1, M.required('Product'))
-        .refine(v => v !== '0', { message: M.required('Product') }),
+        .refine(v => v !== '0', { message: M.required('Product') })
+        .refine(
+          v => {
+            if (lockedProductId) return v === String(lockedProductId);
+            if (effectivePortfolioLockId) {
+              const prod = state.products.find(p => String(p.id) === v);
+              return prod?.portfolioId === effectivePortfolioLockId;
+            }
+            return true;
+          },
+          {
+            message: lockedProductId
+              ? 'You can only assign this resource to releases within the current product'
+              : 'You can only assign this resource to products within the current portfolio',
+          },
+        ),
       releaseId: z
         .string()
         .min(1, M.required('Release'))
@@ -55,7 +90,9 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
     resolver: zodResolver(schema),
     mode: 'onBlur',
     defaultValues: {
-      portfolioId: '', productId: '', releaseId: '0',
+      portfolioId: effectivePortfolioLockId ? String(effectivePortfolioLockId) : '',
+      productId: lockedProductId ? String(lockedProductId) : '',
+      releaseId: '0',
       startDate: '', endDate: '', utilization: 50,
     },
   });
@@ -65,17 +102,22 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
     if (assignment) {
       const product = state.products.find(p => p.id === assignment.productId);
       form.reset({
-        portfolioId: String(product?.portfolioId ?? ''),
-        productId: String(assignment.productId ?? ''),
+        portfolioId: String(effectivePortfolioLockId ?? product?.portfolioId ?? ''),
+        productId: String(lockedProductId ?? assignment.productId ?? ''),
         releaseId: String(assignment.releaseId ?? '0'),
         startDate: assignment.startDate || '',
         endDate: assignment.endDate || '',
         utilization: assignment.utilization,
       });
     } else {
-      form.reset();
+      form.reset({
+        portfolioId: effectivePortfolioLockId ? String(effectivePortfolioLockId) : '',
+        productId: lockedProductId ? String(lockedProductId) : '',
+        releaseId: '0',
+        startDate: '', endDate: '', utilization: 50,
+      });
     }
-  }, [open, assignment]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, assignment, effectivePortfolioLockId, lockedProductId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const portfolioId = form.watch('portfolioId');
   const productId = form.watch('productId');
