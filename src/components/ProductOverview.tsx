@@ -3,6 +3,7 @@ import { useApp } from '@/context/AppContext';
 import { Product, LifecycleStage } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -58,7 +59,12 @@ const CAPABILITY_CATEGORIES: Record<string, string[]> = {
 };
 
 const ProductOverview = ({ product }: Props) => {
-  const { state, updateProduct, t, language } = useApp();
+  const { state, updateProduct, t, language, dateFilter } = useApp();
+  const dept = useHierarchicalMetrics(state, dateFilter);
+  const productMetric = useMemo(
+    () => dept.portfolioMetrics.flatMap(pm => pm.productMetrics).find(p => p.productId === product.id),
+    [dept, product.id],
+  );
   const [showEditModal, setShowEditModal] = useState(false);
   const [editData, setEditData] = useState<Partial<Product>>({});
   const [newCapability, setNewCapability] = useState('');
@@ -69,26 +75,17 @@ const ProductOverview = ({ product }: Props) => {
   const releases = useMemo(() => state.releases.filter(r => r.productId === product.id), [state.releases, product.id]);
   const features = useMemo(() => state.features.filter(f => f.productId === product.id), [state.features, product.id]);
 
-  const health = useMemo(() => {
-    let revenue = 0, cost = 0, planned = 0;
-    features.forEach(f => {
-      state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { revenue += r.actual; });
-      state.revenuePlan.filter(r => r.featureId === f.id).forEach(r => { planned += r.expected; });
-    });
-    state.costs.filter(c => c.productId === product.id).forEach(c => {
-      if (c.type === 'CAPEX' && c.total && c.amortization) cost += (c.total / c.amortization) * 6;
-      else if (c.monthly) cost += c.monthly * 6;
-    });
-    const target = planned * 1.35;
-    const achievement = target > 0 ? Math.round((revenue / target) * 100) : 0;
-    return {
-      revenue, cost, profit: revenue - cost, achievement,
-      deliveredFeatures: features.filter(f => f.status === 'Delivered').length,
-      inProgressFeatures: features.filter(f => f.status === 'In Progress').length,
-      featureCount: features.length,
-      releaseCount: releases.length,
-    };
-  }, [state, features, releases, product.id]);
+  // Single source of truth: useHierarchicalMetrics
+  const health = useMemo(() => ({
+    revenue: productMetric?.revenue ?? 0,
+    cost: productMetric?.cost ?? 0,
+    profit: productMetric?.profit ?? 0,
+    achievement: productMetric?.achievementPct ?? 0,
+    deliveredFeatures: features.filter(f => f.status === 'Delivered').length,
+    inProgressFeatures: features.filter(f => f.status === 'In Progress').length,
+    featureCount: features.length,
+    releaseCount: releases.length,
+  }), [productMetric, features, releases]);
 
   // Maturity radar data
   const radarData = useMemo(() => {

@@ -235,7 +235,8 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
         />
         <KPICard
           title={t('targetVsAchieved')}
-          value="74%"
+          value={`${productMetrics.achievementPct}%`}
+          subtitle={`${t('targetYear')}: ${formatCurrency(productMetrics.target, language)}`}
           icon={<span className="text-lg sm:text-2xl">🎯</span>}
           variant="gradient"
         />
