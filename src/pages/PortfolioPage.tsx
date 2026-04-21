@@ -140,17 +140,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
     });
   }, [products, state]);
 
-  // Strategic alignment
-  const strategicAlignment = useMemo(() => {
-    const objectives: Record<string, string[]> = {};
-    products.forEach(p => {
-      const obj = p.strategicObjective || t('noObjectiveDefined');
-      const shortObj = obj.length > 50 ? obj.slice(0, 50) + '...' : obj;
-      if (!objectives[shortObj]) objectives[shortObj] = [];
-      objectives[shortObj].push(p.name);
-    });
-    return objectives;
-  }, [products]);
+  // Strategic alignment is now managed via PortfolioStrategicAlignment component.
 
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
 
