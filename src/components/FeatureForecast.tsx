@@ -117,6 +117,35 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
     return new Date();
   }, []);
 
+  // Compute the actual first forecast month from history (used for both
+  // projection start date and legacy migration materialisation).
+  const computedForecastStartDate = useMemo(() => {
+    const months = new Set<string>();
+    revenueEntries.forEach(e => months.add(`${e.year}-${String(e.month + 1).padStart(2, '0')}`));
+    costEntries.forEach(e => months.add(`${e.year}-${String(e.month + 1).padStart(2, '0')}`));
+    state.revenueActual.filter(r => r.featureId === feature.id).forEach(r => months.add(r.month));
+    const sorted = Array.from(months).sort();
+    if (sorted.length === 0) return new Date();
+    const [y, m] = sorted[sorted.length - 1].split('-').map(Number);
+    return new Date(y, m, 1); // month after last historical
+  }, [revenueEntries, costEntries, state.revenueActual, feature.id]);
+
+  // One-shot legacy materialisation: when the loader signals migratedFromLegacy,
+  // replay the legacy assumptions into explicit per-month transactions.
+  useEffect(() => {
+    if (!settings.migratedFromLegacy) return;
+    if (serviceBaselines.length === 0) return; // wait for baselines to be ready
+    const next = {
+      ...settings,
+      scenarios: settings.scenarios.map(s =>
+        materialiseLegacyScenario(s, serviceBaselines, settings.horizon, computedForecastStartDate),
+      ),
+    };
+    delete (next as any).migratedFromLegacy;
+    replaceSettings(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.migratedFromLegacy, serviceBaselines.length]);
+
   // ── Live projection for the active scenario ───────────────────
   const projection = useMemo(
     () => projectForecast(serviceBaselines, costBaseline, activeScenario, settings.horizon, forecastStartDate),
