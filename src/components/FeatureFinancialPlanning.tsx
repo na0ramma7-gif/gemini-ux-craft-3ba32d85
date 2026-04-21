@@ -14,6 +14,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
@@ -37,6 +40,8 @@ interface FeatureFinancialPlanningProps { feature: Feature; onClose: () => void;
 
 const COST_CATEGORIES = ['Infrastructure', 'Licensing', 'Marketing', 'Other'];
 const MONTHS_SHORT_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'] as const;
+const MONTHS_FULL_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'] as const;
+const MONTHS_FULL_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'] as const;
 const uid = () => Math.random().toString(36).slice(2, 9);
 const monthKeyOf = (year: number, monthIdx: number) =>
   `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
@@ -86,6 +91,13 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
   const [resourceSelectorMonth, setResourceSelectorMonth] = useState<number>(0);
   const [selectedResourceIds, setSelectedResourceIds] = useState<number[]>([]);
+  // v2: hide-inactive toggle for Step 2.
+  const [hideInactive, setHideInactive] = useState(false);
+  // v2: delete-service confirmation when service has any history.
+  const [confirmDeleteServiceId, setConfirmDeleteServiceId] = useState<number | null>(null);
+  const [confirmDeleteTypedName, setConfirmDeleteTypedName] = useState('');
+  // v2: per-service rate-edit info note (one-shot per session).
+  const [showRateChangeNote, setShowRateChangeNote] = useState(false);
 
   const product = state.products.find(p => p.id === feature.productId);
   const productFeatures = state.features.filter(f => f.productId === feature.productId);
@@ -272,6 +284,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     setEditingServiceId(id);
     setEditingServiceName(s.name);
     setEditingServiceRate(s.defaultRate);
+    setShowRateChangeNote(true);
   };
   const saveEditService = () => {
     if (editingServiceId == null) return;
@@ -281,6 +294,12 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     setEditingServiceId(null);
   };
   const handleDeleteService = (id: number) => {
+    const hasHistory = state.revenueLines.some(l => l.serviceId === id);
+    if (hasHistory) {
+      setConfirmDeleteServiceId(id);
+      setConfirmDeleteTypedName('');
+      return;
+    }
     if (!window.confirm(t('deleteServiceConfirm'))) return;
     deleteRevenueService(id);
     toast.success(t('serviceDeleted'));
@@ -770,17 +789,22 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
       {/* MONTH EDIT POPUP */}
       <Dialog open={editMonthOpen} onOpenChange={setEditMonthOpen}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
-            <DialogTitle className="flex items-center gap-2 text-lg">
+        <DialogContent
+          className="p-0 overflow-hidden flex flex-col gap-0 w-[95vw] max-w-[1400px] h-[90vh] max-h-[900px] sm:rounded-xl"
+        >
+          {/* Sticky header */}
+          <DialogHeader className="px-6 pt-5 pb-4 border-b border-border bg-card shrink-0 text-start">
+            <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
               <DollarSign className="w-5 h-5 text-primary" />
-              {t(MONTHS_SHORT_KEYS[editMonthIdx])} {selectedYear} — {t('financialPlanning')}
+              {(language === 'ar' ? MONTHS_FULL_AR : MONTHS_FULL_EN)[editMonthIdx]} {selectedYear} — {t('monthlyFinancialPlanning')}
             </DialogTitle>
-            <DialogDescription>{feature.name}</DialogDescription>
+            <DialogDescription className="text-sm text-muted-foreground">
+              {t('planMonthSubtitle')}
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] min-h-0 max-h-[calc(90vh-140px)]">
-            <div className="p-6 space-y-5 overflow-y-auto border-e border-border">
+          <div className="grid grid-cols-1 min-[1100px]:grid-cols-[minmax(720px,1fr)_340px] gap-6 px-6 py-5 flex-1 min-h-0 overflow-y-auto bg-[hsl(var(--muted)/0.3)]">
+            <div className="space-y-5 min-w-0">
               {/* STEP 1 — Services / Subscriptions (catalog) */}
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="flex items-start justify-between gap-2 flex-wrap mb-1">
@@ -884,16 +908,35 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                     <Plus className="w-4 h-4 me-1.5" /> {t('addService')}
                   </Button>
                 </div>
+                {showRateChangeNote && (
+                  <div className="mt-3 flex items-start gap-2 text-[11px] text-muted-foreground bg-muted/40 border border-border rounded-md px-3 py-2">
+                    <Lightbulb className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                    <span>{t('rateChangeNote')}</span>
+                  </div>
+                )}
               </div>
 
               {/* STEP 2 — Monthly Transactions per service */}
               <div className="bg-card rounded-xl border border-border p-4">
-                <div className="mb-2">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('monthlyTransactions')}
-                    <span className="text-[11px] font-normal text-muted-foreground">· Step 2</span>
-                  </h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">{t('monthlyTransactionsDesc')}</p>
+                <div className="mb-2 flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('monthlyTransactions')}
+                      <span className="text-[11px] font-normal text-muted-foreground">· {t('step2')}</span>
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t('monthlyTransactionsDesc')}</p>
+                  </div>
+                  {editLines.length > 0 && (
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 accent-primary"
+                        checked={hideInactive}
+                        onChange={e => setHideInactive(e.target.checked)}
+                      />
+                      {t('hideInactive')}
+                    </label>
+                  )}
                 </div>
 
                 {editLines.length === 0 ? (
@@ -901,20 +944,42 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                     {t('addServicesFirst')}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full text-sm">
+                  <div className="rounded-lg border border-border">
+                    <table className="w-full text-sm table-fixed [font-variant-numeric:tabular-nums]">
+                      <colgroup>
+                        <col />
+                        <col style={{ width: '150px' }} />
+                        <col style={{ width: '100px' }} />
+                        <col style={{ width: '100px' }} />
+                        <col style={{ width: '130px' }} />
+                        <col style={{ width: '130px' }} />
+                      </colgroup>
                       <thead className="bg-secondary/50">
                         <tr>
-                          <th className="px-2 py-2 text-start text-xs font-semibold text-muted-foreground min-w-[180px]">{t('serviceName')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground min-w-[110px]">{t('transactionRate')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground min-w-[110px]">{t('plannedTx')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground min-w-[110px]">{t('actualTx')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 min-w-[120px]">{t('plannedRevenue')}</th>
-                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 min-w-[120px]">{t('actualRevenue')}</th>
+                          <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('serviceName')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground">{t('transactionRate')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground">{t('plannedTx')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground">{t('actualTx')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700">{t('plannedRevenue')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700">{t('actualRevenue')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {editLines.map(line => {
+                        {(() => {
+                          const visible: typeof editLines = [];
+                          const hiddenCount = { n: 0 };
+                          editLines.forEach(line => {
+                            const inactive = (line.plannedTransactions || 0) === 0 && (line.actualTransactions || 0) === 0;
+                            if (hideInactive && inactive) hiddenCount.n += 1;
+                            else visible.push(line);
+                          });
+                          (visible as any).hiddenCount = hiddenCount.n;
+                          return null;
+                        })()}
+                        {editLines.filter(line => {
+                          if (!hideInactive) return true;
+                          return !((line.plannedTransactions || 0) === 0 && (line.actualTransactions || 0) === 0);
+                        }).map(line => {
                           const svc = featureServices.find(s => s.id === line.serviceId);
                           if (!svc) return null;
                           const plannedRev = (line.rate || 0) * (line.plannedTransactions || 0);
@@ -923,57 +988,87 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                           const rateInvalid = !Number.isFinite(line.rate) || line.rate <= 0;
                           const overflow = line.plannedTransactions > 0 && line.actualTransactions > line.plannedTransactions * 1.5;
                           return (
-                            <tr key={line.key} className="hover:bg-secondary/30 align-top transition-colors">
-                              <td className="px-2 py-2">
-                                <div className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                                  <Tag className="w-3.5 h-3.5 text-muted-foreground" /> {svc.name}
-                                </div>
-                                <div className="text-[10px] text-muted-foreground mt-0.5">
-                                  {isOverride ? t('rateOverride') : t('usingDefaultRate')}
+                            <tr key={line.key} className="hover:bg-secondary/30 align-top transition-colors min-h-[72px]">
+                              <td className="px-3 py-2.5 align-middle">
+                                <div className="text-sm font-medium text-foreground flex items-center gap-1.5" title={svc.name}>
+                                  <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                  <span className="truncate">{svc.name}</span>
                                 </div>
                               </td>
-                              <td className="px-2 py-2">
-                                <Input
-                                  type="number" min={0} step="0.01"
-                                  className={cn("h-9 text-xs text-end min-w-[90px]", rateInvalid && "border-destructive focus-visible:ring-destructive")}
-                                  value={line.rate || ''}
-                                  placeholder={String(svc.defaultRate)}
-                                  onChange={e => updateDraftLine(line.key, { rate: parseMoney(e.target.value) })}
-                                />
-                                {rateInvalid && <div className="text-[10px] text-destructive mt-0.5">{t('rateRequired')}</div>}
+                              <td className="px-2 py-2.5">
+                                <div className="flex flex-col items-end gap-1">
+                                  <Input
+                                    type="number" min={0} step="0.01"
+                                    className={cn("h-9 text-xs text-end w-full", rateInvalid && "border-destructive focus-visible:ring-destructive")}
+                                    value={line.rate || ''}
+                                    placeholder={String(svc.defaultRate)}
+                                    onChange={e => updateDraftLine(line.key, { rate: parseMoney(e.target.value) })}
+                                  />
+                                  <span
+                                    className={cn(
+                                      "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                                      isOverride
+                                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                        : "bg-muted text-muted-foreground",
+                                    )}
+                                  >
+                                    {isOverride ? t('pillOverridden') : t('pillDefault')}
+                                  </span>
+                                  {isOverride && (
+                                    <button
+                                      type="button"
+                                      className="text-[10px] text-primary hover:underline"
+                                      onClick={() => updateDraftLine(line.key, { rate: svc.defaultRate })}
+                                    >
+                                      {t('resetToDefault')}
+                                    </button>
+                                  )}
+                                  {rateInvalid && <div className="text-[10px] text-destructive">{t('rateRequired')}</div>}
+                                </div>
                               </td>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-2.5">
                                 <Input
                                   type="number" min={0} step="1"
-                                  className="h-9 text-xs text-end min-w-[90px]"
+                                  className="h-9 text-xs text-end w-full"
                                   value={line.plannedTransactions || ''}
                                   placeholder="0"
                                   onChange={e => updateDraftLine(line.key, { plannedTransactions: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                                 />
                               </td>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-2.5">
                                 <Input
                                   type="number" min={0} step="1"
-                                  className={cn("h-9 text-xs text-end min-w-[90px]", overflow && "border-amber-500 focus-visible:ring-amber-500")}
+                                  className={cn("h-9 text-xs text-end w-full", overflow && "border-amber-500 focus-visible:ring-amber-500")}
                                   value={line.actualTransactions || ''}
                                   placeholder="0"
                                   onChange={e => updateDraftLine(line.key, { actualTransactions: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                                 />
                                 {overflow && (
-                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 flex items-center gap-1">
+                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                                     <AlertTriangle className="w-3 h-3" /> {t('actualExceedsPlanned')}
                                   </div>
                                 )}
                               </td>
-                              <td className="px-2 py-2 text-end font-semibold text-foreground transition-all">
+                              <td className="px-2 py-2.5 text-end align-middle font-semibold text-foreground transition-all">
                                 {formatCurrency(plannedRev, language)}
                               </td>
-                              <td className="px-2 py-2 text-end font-semibold text-emerald-600 transition-all">
+                              <td className="px-2 py-2.5 text-end align-middle font-semibold text-emerald-600 transition-all">
                                 {formatCurrency(actualRev, language)}
                               </td>
                             </tr>
                           );
                         })}
+                        {hideInactive && editLines.some(l => (l.plannedTransactions || 0) === 0 && (l.actualTransactions || 0) === 0) && (
+                          <tr className="bg-muted/30">
+                            <td colSpan={6} className="px-3 py-2 text-xs text-muted-foreground text-center">
+                              + {editLines.filter(l => (l.plannedTransactions || 0) === 0 && (l.actualTransactions || 0) === 0).length} {t('inactiveCollapsedMany')}
+                              {' '}
+                              <button type="button" className="text-primary hover:underline" onClick={() => setHideInactive(false)}>
+                                ({t('show')})
+                              </button>
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                       <tfoot className="bg-secondary/40 border-t-2 border-border">
                         <tr>
@@ -1121,29 +1216,146 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               </div>
             </div>
 
-            {/* Right: Live Summary */}
-            <div className="p-5 bg-secondary/20 space-y-3 overflow-y-auto">
+            {/* Right: Live Summary + Insights (sticky on desktop) */}
+            <aside className="space-y-3 min-[1100px]:sticky min-[1100px]:top-0 self-start">
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">{t('financialSummary')}</h4>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="text-xs font-medium text-muted-foreground mb-1">{t('plannedRevenue')}</div>
-                <div className="text-xl font-bold text-emerald-600">{formatCurrency(editMonthSummary.editPlannedRev, language)}</div>
+
+              {/* Revenue card with variance */}
+              <div className="bg-card rounded-xl border border-border p-4 [font-variant-numeric:tabular-nums]">
+                <div className="text-[11px] font-medium text-muted-foreground uppercase">{t('plannedRevenue')}</div>
+                <div className="text-lg font-bold text-emerald-600">{formatCurrency(editMonthSummary.editPlannedRev, language)}</div>
+                <div className="mt-2 text-[11px] text-muted-foreground uppercase">{t('actualRevenue')}</div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className="text-base font-semibold text-emerald-700">{formatCurrency(editMonthSummary.editActualRev, language)}</div>
+                  {editMonthSummary.editPlannedRev > 0 && (() => {
+                    const v = ((editMonthSummary.editActualRev - editMonthSummary.editPlannedRev) / editMonthSummary.editPlannedRev) * 100;
+                    const positive = v >= 0;
+                    return (
+                      <span className={cn("text-[11px] font-semibold flex items-center gap-0.5",
+                        positive ? "text-emerald-600" : "text-destructive")}>
+                        {positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        {positive ? '+' : ''}{v.toFixed(1)}%
+                      </span>
+                    );
+                  })()}
+                </div>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="text-xs font-medium text-muted-foreground mb-1">{t('totalCost')}</div>
-                <div className="text-xl font-bold text-destructive">{formatCurrency(editMonthSummary.totalCost, language)}</div>
+
+              {/* Cost card */}
+              <div className="bg-card rounded-xl border border-border p-4 [font-variant-numeric:tabular-nums]">
+                <div className="text-[11px] font-medium text-muted-foreground uppercase">{t('totalCost')}</div>
+                <div className="text-lg font-bold text-destructive">{formatCurrency(editMonthSummary.totalCost, language)}</div>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="text-xs font-medium text-muted-foreground mb-1">{t('netProfit')}</div>
-                <div className={cn("text-xl font-bold", editMonthSummary.profit >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(editMonthSummary.profit, language)}</div>
+
+              {/* Profit + margin combined */}
+              <div className="bg-card rounded-xl border border-border p-4 [font-variant-numeric:tabular-nums]">
+                <div className="text-[11px] font-medium text-muted-foreground uppercase">{t('netProfit')}</div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className={cn("text-lg font-bold", editMonthSummary.profit >= 0 ? "text-primary" : "text-destructive")}>
+                    {formatCurrency(editMonthSummary.profit, language)}
+                  </div>
+                  <div className={cn("text-sm font-semibold", editMonthSummary.margin >= 0 ? "text-primary" : "text-destructive")}>
+                    {editMonthSummary.margin.toFixed(1)}%
+                  </div>
+                </div>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="text-xs font-medium text-muted-foreground mb-1">{t('profitMargin')}</div>
-                <div className={cn("text-xl font-bold", editMonthSummary.margin >= 0 ? "text-primary" : "text-destructive")}>{editMonthSummary.margin.toFixed(1)}%</div>
-              </div>
-            </div>
+
+              {/* Cost-zero warning */}
+              {editMonthSummary.totalCost === 0 && (
+                <div className="flex items-start gap-2 text-[11px] bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-md px-3 py-2">
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{t('noCostsWarning')}</span>
+                </div>
+              )}
+
+              {/* Insights */}
+              {(() => {
+                const monthIdx = editMonthIdx;
+                const year = selectedYear;
+                const sumMonth = (y: number, mi: number) => {
+                  const mk = `${y}-${String(mi + 1).padStart(2, '0')}`;
+                  let rev = 0;
+                  state.revenueLines.filter(l => l.featureId === feature.id && l.month === mk).forEach(l => {
+                    rev += (l.rate || 0) * (l.actualTransactions || 0);
+                  });
+                  return rev;
+                };
+                // Prior month
+                const prevMi = monthIdx === 0 ? 11 : monthIdx - 1;
+                const prevYear = monthIdx === 0 ? year - 1 : year;
+                const prevRev = sumMonth(prevYear, prevMi);
+                const currRev = editMonthSummary.editActualRev;
+                const yoyRev = sumMonth(year - 1, monthIdx);
+                const yoyExists = state.revenueLines.some(l => l.featureId === feature.id && l.month === `${year - 1}-${String(monthIdx + 1).padStart(2, '0')}`);
+                const prevExists = state.revenueLines.some(l => l.featureId === feature.id && l.month === `${prevYear}-${String(prevMi + 1).padStart(2, '0')}`);
+                const monthLabel = (y: number, mi: number) => `${(language === 'ar' ? MONTHS_FULL_AR : MONTHS_FULL_EN)[mi]} ${y}`;
+                // Top cost category (current month draft)
+                const md = yearData[monthIdx];
+                const catTotals: { cat: string; amount: number }[] = [];
+                let resourceCost = 0;
+                md.resources.forEach(a => { const r = state.resources.find(res => res.id === a.resourceId); if (r) resourceCost += r.costRate * (a.utilization / 100); });
+                if (resourceCost > 0) catTotals.push({ cat: t('resources'), amount: resourceCost });
+                Object.entries(md.costs).forEach(([cat, items]) => {
+                  const sum = (items as CostItem[]).reduce((s, i) => s + (i.planned || 0), 0);
+                  if (sum > 0) catTotals.push({ cat, amount: sum });
+                });
+                catTotals.sort((a, b) => b.amount - a.amount);
+                const topCat = catTotals[0];
+
+                const renderDelta = (curr: number, prev: number, exists: boolean, label: string, prevLabel: string) => {
+                  if (!exists || prev === 0) {
+                    return (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
+                        <span className="flex-1">{label}</span>
+                        <span className="italic">{t('noPriorData')}</span>
+                      </div>
+                    );
+                  }
+                  const pct = ((curr - prev) / prev) * 100;
+                  const up = pct >= 0;
+                  return (
+                    <div className="flex items-center gap-2 text-xs">
+                      {up ? <TrendingUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <TrendingDown className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                      <span className="text-muted-foreground flex-1 truncate">{label}</span>
+                      <span className={cn("font-semibold tabular-nums", up ? "text-emerald-600" : "text-destructive")}>
+                        {up ? '+' : ''}{pct.toFixed(0)}%
+                      </span>
+                    </div>
+                  );
+                };
+
+                const prevProfit = prevRev; // simplistic; cost data per past month not loaded here
+                return (
+                  <div className="bg-card rounded-xl border border-border p-4 space-y-2.5">
+                    <h5 className="text-[11px] font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <Lightbulb className="w-3.5 h-3.5 text-primary" /> {t('insightsTitle')}
+                    </h5>
+                    {renderDelta(currRev, prevRev, prevExists, `${t('revenueVsLastMonth')} (${monthLabel(prevYear, prevMi)})`, monthLabel(prevYear, prevMi))}
+                    {renderDelta(editMonthSummary.profit, prevProfit, prevExists, t('profitVsLastMonth'), monthLabel(prevYear, prevMi))}
+                    {renderDelta(currRev, yoyRev, yoyExists, `${t('revenueVsLastYear')} (${monthLabel(year - 1, monthIdx)})`, monthLabel(year - 1, monthIdx))}
+                    {topCat ? (
+                      <div className="flex items-center gap-2 text-xs">
+                        <Receipt className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span className="text-muted-foreground flex-1 truncate">{t('topCostCategory')}: {topCat.cat}</span>
+                        <span className="font-semibold text-foreground">
+                          {currRev > 0 ? `${((topCat.amount / currRev) * 100).toFixed(0)}%` : formatCurrency(topCat.amount, language)}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
+                        <span className="flex-1">{t('topCostCategory')}</span>
+                        <span className="italic">{t('noPriorData')}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </aside>
           </div>
 
-          <DialogFooter className="px-6 py-4 border-t border-border">
+          <DialogFooter className="px-6 py-3 border-t border-border bg-card shrink-0 gap-2">
             <Button variant="outline" onClick={() => setEditMonthOpen(false)}>{t('cancel')}</Button>
             <Button onClick={saveMonthRevenue} className="bg-primary hover:bg-primary/90">
               <Save className="w-4 h-4 me-2" />{t('save')}
@@ -1152,7 +1364,55 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         </DialogContent>
       </Dialog>
 
-      {/* RESOURCE SELECTOR DIALOG */}
+      {/* Delete-service confirmation (when service has historical lines) */}
+      <AlertDialog open={confirmDeleteServiceId != null} onOpenChange={(open) => { if (!open) setConfirmDeleteServiceId(null); }}>
+        <AlertDialogContent>
+          {(() => {
+            const svc = state.revenueServices.find(s => s.id === confirmDeleteServiceId);
+            if (!svc) return null;
+            const monthsWithData = new Set(state.revenueLines.filter(l => l.serviceId === svc.id).map(l => l.month)).size;
+            const typedOk = confirmDeleteTypedName.trim() === svc.name;
+            return (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5" />
+                    {t('deleteServiceWithHistoryTitle')} ({monthsWithData})
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t('deleteServiceWithHistoryBody')}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {t('typeNameToConfirm')}: <span className="font-semibold text-foreground">{svc.name}</span>
+                  </label>
+                  <Input
+                    value={confirmDeleteTypedName}
+                    onChange={e => setConfirmDeleteTypedName(e.target.value)}
+                    placeholder={svc.name}
+                  />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel autoFocus>{t('cancel')}</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={!typedOk}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+                    onClick={() => {
+                      deleteRevenueService(svc.id);
+                      toast.success(t('serviceDeleted'));
+                      setConfirmDeleteServiceId(null);
+                      setConfirmDeleteTypedName('');
+                    }}
+                  >
+                    {t('delete') || 'Delete'} {svc.name}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </>
+            );
+          })()}
+        </AlertDialogContent>
+      </AlertDialog>
       <Dialog open={resourceSelectorOpen} onOpenChange={setResourceSelectorOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
