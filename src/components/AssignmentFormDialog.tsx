@@ -39,10 +39,13 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
         .string()
         .min(1, M.required('Product'))
         .refine(v => v !== '0', { message: M.required('Product') }),
-      releaseId: z.string(), // optional → '0' allowed
+      releaseId: z
+        .string()
+        .min(1, M.required('Release'))
+        .refine(v => v !== '0' && v !== '', { message: M.required('Release') }),
       startDate: dateField('Start date', true),
       endDate: dateField('End date', true),
-      utilization: percentField('Allocation'),
+      utilization: percentField('Allocation').refine(v => v > 0, { message: 'Allocation must be greater than 0' }),
     })
     .superRefine(dateRangeRefine());
 
@@ -90,7 +93,7 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
     const payload: Omit<Assignment, 'id'> = {
       resourceId,
       productId: parseInt(values.productId, 10),
-      releaseId: values.releaseId === '0' ? 0 : parseInt(values.releaseId, 10),
+      releaseId: parseInt(values.releaseId, 10),
       startDate: values.startDate!,
       endDate: values.endDate!,
       utilization: values.utilization,
@@ -154,11 +157,10 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
             )} />
             <FormField control={form.control} name="releaseId" render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('release')}</FormLabel>
+                <FormLabel>{t('release')} *</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl><SelectTrigger><SelectValue placeholder={t('selectReleasePlaceholder')} /></SelectTrigger></FormControl>
                   <SelectContent>
-                    <SelectItem value="0">—</SelectItem>
                     {filteredReleases.map(r => (
                       <SelectItem key={r.id} value={String(r.id)}>{r.version} - {r.name}</SelectItem>
                     ))}

@@ -12,6 +12,7 @@ import {
 import { Resource, ResourceSkill, SkillProficiency } from '@/types';
 import { ArrowLeft, User, Plus, Edit, Trash2, Clock, Briefcase, Star, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import ResourceFormDialog from '@/components/ResourceFormDialog';
 import AssignmentFormDialog from '@/components/AssignmentFormDialog';
 
@@ -283,6 +284,109 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
                   <div className="text-center py-4 text-sm text-muted-foreground">{t('noSkills')}</div>
                 )}
               </div>
+            </TabsContent>
+
+            {/* Assignments Tab */}
+            <TabsContent value="assignments" className="mt-0 space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">{t('assignments')}</h3>
+                <Button size="sm" onClick={() => { setEditingAssignmentId(null); setShowAssignModal(true); }}>
+                  <Plus className="w-4 h-4 me-1.5" />{t('addAssignment')}
+                </Button>
+              </div>
+
+              {assignments.length === 0 ? (
+                <div className="text-center py-10 text-sm text-muted-foreground border border-dashed border-border rounded-lg">
+                  {t('noAssignments')}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {assignments.map(a => {
+                    const product = state.products.find(p => p.id === a.productId);
+                    const release = state.releases.find(r => r.id === a.releaseId);
+                    return (
+                      <div key={a.id} className="flex items-center justify-between gap-3 p-3 border border-border rounded-lg bg-card hover:bg-secondary/30 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-foreground truncate">{product?.name || '—'}</span>
+                            {release && (
+                              <Badge variant="outline" className="text-xs">{release.version}</Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {a.startDate ? formatDate(a.startDate, language) : '—'} — {a.endDate ? formatDate(a.endDate, language) : '—'}
+                          </div>
+                        </div>
+                        <div className="text-sm font-bold text-primary whitespace-nowrap">{a.utilization}%</div>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEditAssignment(a)} aria-label={t('edit')}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(a.id)} aria-label={t('delete')}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Allocation by Product */}
+              {allocationByProduct.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                    {(t as any)('allocationByProduct') || 'Allocation by Product'}
+                  </h3>
+                  <div className="space-y-3">
+                    {allocationByProduct.map(([name, pct]) => (
+                      <div key={name} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-foreground font-medium truncate">{name}</span>
+                          <span className="text-muted-foreground">{pct}%</span>
+                        </div>
+                        <Progress value={Math.min(100, pct)} className="h-2" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Timeline Tab */}
+            <TabsContent value="timeline" className="mt-0">
+              {timelineData.length === 0 ? (
+                <div className="text-center py-10 text-sm text-muted-foreground border border-dashed border-border rounded-lg">
+                  {t('noAssignments')}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {timelineData.map(m => {
+                    const monthTotal = m.allocations.reduce((s, x) => s + x.utilization, 0);
+                    return (
+                      <div key={m.month} className="border border-border rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold text-foreground">{m.month}</span>
+                          <span className={cn("text-xs font-medium", monthTotal > 100 ? 'text-destructive' : 'text-muted-foreground')}>{monthTotal}%</span>
+                        </div>
+                        <div className="flex h-2 rounded-full overflow-hidden bg-secondary">
+                          {m.allocations.map((al, i) => (
+                            <div key={i} className={cn("h-full", al.color)} style={{ width: `${Math.min(100, al.utilization)}%` }} title={`${al.productName}: ${al.utilization}%`} />
+                          ))}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {m.allocations.map((al, i) => (
+                            <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <span className={cn("w-2 h-2 rounded-full", al.color)} />
+                              <span>{al.productName} · {al.utilization}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </TabsContent>
           </div>
         </div>
