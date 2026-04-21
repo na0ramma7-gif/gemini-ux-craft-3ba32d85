@@ -7,6 +7,7 @@ import KPICard from '@/components/KPICard';
 import ProductFormDialog from '@/components/ProductFormDialog';
 import PortfolioFormDialog from '@/components/PortfolioFormDialog';
 import PortfolioStrategicAlignment from '@/components/PortfolioStrategicAlignment';
+import AssignmentFormDialog from '@/components/AssignmentFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +22,7 @@ import { useCompareMetrics } from '@/hooks/useCompareMetrics';
 import { computeWindowMetrics, computeDelta } from '@/lib/compare';
 import {
   ArrowLeft, ArrowRight, LayoutGrid, Package, Users, DollarSign, Target,
-  Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3, Plus,
+  Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3, Plus, Edit, Trash2,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -62,10 +63,13 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 };
 
 const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps) => {
-  const { state, updatePortfolio, t, language, isRTL, dateFilter, compareSelection } = useApp();
+  const { state, updatePortfolio, deleteAssignment, t, language, isRTL, dateFilter, compareSelection } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignResourceId, setAssignResourceId] = useState<number | null>(null);
+  const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const products = useMemo(() => state.products.filter(p => p.portfolioId === portfolio.id), [state.products, portfolio.id]);
@@ -533,9 +537,23 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
 
             {/* RESOURCES TAB */}
             <TabsContent value="resources" className="mt-0">
-              <h3 className="text-foreground mb-4">{t('assignments')}</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-foreground">{t('assignments')}</h3>
+                {state.resources.length > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setEditingAssignmentId(null);
+                      setAssignResourceId(0);
+                      setAssignDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 me-1.5" />{t('addAssignment')}
+                  </Button>
+                )}
+              </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px]">
+                <table className="w-full min-w-[700px]">
                   <thead className="bg-secondary/50">
                     <tr>
                       <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('name')}</th>
@@ -543,6 +561,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                       <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('product')}</th>
                       <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('period')}</th>
                       <th className="px-4 py-2.5 text-end text-xs font-medium text-muted-foreground uppercase">{t('utilization')}</th>
+                      <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -556,12 +575,48 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                           <td className="px-4 py-2.5 text-sm">{prod?.name}</td>
                           <td className="px-4 py-2.5 text-sm">{formatDate(assignment.startDate, language)} → {formatDate(assignment.endDate, language)}</td>
                           <td className="px-4 py-2.5 text-end font-semibold text-primary text-sm">{assignment.utilization}%</td>
+                          <td className="px-4 py-2.5 text-center">
+                            <div className="flex justify-center gap-1">
+                              <Button
+                                size="sm" variant="ghost" className="h-8 w-8 p-0"
+                                onClick={() => {
+                                  setEditingAssignmentId(assignment.id);
+                                  setAssignResourceId(assignment.resourceId);
+                                  setAssignDialogOpen(true);
+                                }}
+                                aria-label={t('edit')}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm" variant="ghost"
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                onClick={() => deleteAssignment(assignment.id)}
+                                aria-label={t('delete')}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
+              {assignDialogOpen && (
+                <AssignmentFormDialog
+                  open={assignDialogOpen}
+                  onOpenChange={(o) => {
+                    setAssignDialogOpen(o);
+                    if (!o) { setEditingAssignmentId(null); setAssignResourceId(null); }
+                  }}
+                  resourceId={assignResourceId && assignResourceId > 0 ? assignResourceId : undefined}
+                  assignment={editingAssignmentId ? state.assignments.find(a => a.id === editingAssignmentId) ?? null : null}
+                  lockedPortfolioId={portfolio.id}
+                  allowResourceSelection
+                />
+              )}
             </TabsContent>
 
             {/* FINANCIALS TAB */}

@@ -21,24 +21,66 @@ import { dateField, dateRangeRefine, percentField, M } from '@/lib/validation';
 interface AssignmentFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  resourceId: number;
+  /** Pre-selected resource. If not provided (and allowResourceSelection is true), user picks one. */
+  resourceId?: number;
   assignment?: Assignment | null;
+  /** When set, the portfolio is fixed and cannot be changed by the user. */
+  lockedPortfolioId?: number;
+  /** When set, the product is fixed (implies portfolio is also fixed) and cannot be changed. */
+  lockedProductId?: number;
+  /** Show a resource picker inside the dialog (used when opening from a portfolio/product context). */
+  allowResourceSelection?: boolean;
 }
 
-const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: AssignmentFormDialogProps) => {
+const AssignmentFormDialog = ({
+  open, onOpenChange, resourceId, assignment,
+  lockedPortfolioId, lockedProductId, allowResourceSelection,
+}: AssignmentFormDialogProps) => {
   const { state, addAssignment, updateAssignment, t } = useApp();
   const isEdit = !!assignment;
 
+  // Effective lock: if a product is locked, its portfolio is implicitly locked too.
+  const lockedProduct = lockedProductId
+    ? state.products.find(p => p.id === lockedProductId)
+    : undefined;
+  const effectivePortfolioLockId =
+    lockedProductId ? lockedProduct?.portfolioId : lockedPortfolioId;
+  const portfolioLocked = !!effectivePortfolioLockId;
+  const productLocked = !!lockedProductId;
+
   const schema = z
     .object({
+      resourceId: z
+        .string()
+        .min(1, M.required('Resource'))
+        .refine(v => v !== '0' && v !== '', { message: M.required('Resource') }),
       portfolioId: z
         .string()
         .min(1, M.required('Portfolio'))
-        .refine(v => v !== '0', { message: M.required('Portfolio') }),
+        .refine(v => v !== '0', { message: M.required('Portfolio') })
+        .refine(
+          v => !effectivePortfolioLockId || v === String(effectivePortfolioLockId),
+          { message: 'You can only assign this resource to products within the current portfolio' },
+        ),
       productId: z
         .string()
         .min(1, M.required('Product'))
-        .refine(v => v !== '0', { message: M.required('Product') }),
+        .refine(v => v !== '0', { message: M.required('Product') })
+        .refine(
+          v => {
+            if (lockedProductId) return v === String(lockedProductId);
+            if (effectivePortfolioLockId) {
+              const prod = state.products.find(p => String(p.id) === v);
+              return prod?.portfolioId === effectivePortfolioLockId;
+            }
+            return true;
+          },
+          {
+            message: lockedProductId
+              ? 'You can only assign this resource to releases within the current product'
+              : 'You can only assign this resource to products within the current portfolio',
+          },
+        ),
       releaseId: z
         .string()
         .min(1, M.required('Release'))
@@ -55,7 +97,10 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
     resolver: zodResolver(schema),
     mode: 'onBlur',
     defaultValues: {
-      portfolioId: '', productId: '', releaseId: '0',
+      resourceId: resourceId ? String(resourceId) : '',
+      portfolioId: effectivePortfolioLockId ? String(effectivePortfolioLockId) : '',
+      productId: lockedProductId ? String(lockedProductId) : '',
+      releaseId: '0',
       startDate: '', endDate: '', utilization: 50,
     },
   });
@@ -65,17 +110,24 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
     if (assignment) {
       const product = state.products.find(p => p.id === assignment.productId);
       form.reset({
-        portfolioId: String(product?.portfolioId ?? ''),
-        productId: String(assignment.productId ?? ''),
+        resourceId: String(resourceId ?? assignment.resourceId ?? ''),
+        portfolioId: String(effectivePortfolioLockId ?? product?.portfolioId ?? ''),
+        productId: String(lockedProductId ?? assignment.productId ?? ''),
         releaseId: String(assignment.releaseId ?? '0'),
         startDate: assignment.startDate || '',
         endDate: assignment.endDate || '',
         utilization: assignment.utilization,
       });
     } else {
-      form.reset();
+      form.reset({
+        resourceId: resourceId ? String(resourceId) : '',
+        portfolioId: effectivePortfolioLockId ? String(effectivePortfolioLockId) : '',
+        productId: lockedProductId ? String(lockedProductId) : '',
+        releaseId: '0',
+        startDate: '', endDate: '', utilization: 50,
+      });
     }
-  }, [open, assignment]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, assignment, effectivePortfolioLockId, lockedProductId, resourceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const portfolioId = form.watch('portfolioId');
   const productId = form.watch('productId');
@@ -91,7 +143,7 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
 
   const onSubmit = (values: FormValues) => {
     const payload: Omit<Assignment, 'id'> = {
-      resourceId,
+      resourceId: parseInt(values.resourceId, 10),
       productId: parseInt(values.productId, 10),
       releaseId: parseInt(values.releaseId, 10),
       startDate: values.startDate!,
@@ -117,6 +169,23 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2" noValidate>
+            {allowResourceSelection && !resourceId && (
+              <FormField control={form.control} name="resourceId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('resource') || 'Resource'} *</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl><SelectTrigger><SelectValue placeholder={t('selectResource') || 'Select resource'} /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {state.resources.map(r => (
+                        <SelectItem key={r.id} value={String(r.id)}>{r.name} — {r.role}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
+            {!portfolioLocked && (
             <FormField control={form.control} name="portfolioId" render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('portfolio')} *</FormLabel>
@@ -138,6 +207,8 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
                 <FormMessage />
               </FormItem>
             )} />
+            )}
+            {!productLocked && (
             <FormField control={form.control} name="productId" render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('product')} *</FormLabel>
@@ -155,6 +226,7 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
                 <FormMessage />
               </FormItem>
             )} />
+            )}
             <FormField control={form.control} name="releaseId" render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('release')} *</FormLabel>
