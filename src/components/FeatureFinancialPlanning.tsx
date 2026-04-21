@@ -53,7 +53,7 @@ interface RevenueLineDraft {
 }
 
 const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanningProps) => {
-  const { state, t, language, isRTL, addRevenueService, upsertRevenueLines } = useApp();
+  const { state, t, language, isRTL, addRevenueService, updateRevenueService, deleteRevenueService, upsertRevenueLines } = useApp();
   const [tab, setTab] = useState('profile');
   const [selectedYear, setSelectedYear] = useState(2025);
 
@@ -75,8 +75,13 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   const [editMonthIdx, setEditMonthIdx] = useState<number>(0);
   // Revenue line drafts being edited inside the month dialog.
   const [editLines, setEditLines] = useState<RevenueLineDraft[]>([]);
-  // Inline "+ New service" input state per draft row.
-  const [newServiceFor, setNewServiceFor] = useState<Record<string, string>>({});
+  // Add-service inline form (Step 1) state.
+  const [newServiceName, setNewServiceName] = useState('');
+  const [newServiceRate, setNewServiceRate] = useState<number>(0);
+  // In-row edit state for an existing service (Step 1 list).
+  const [editingServiceId, setEditingServiceId] = useState<number | null>(null);
+  const [editingServiceName, setEditingServiceName] = useState('');
+  const [editingServiceRate, setEditingServiceRate] = useState<number>(0);
   const [editCostCatsOpen, setEditCostCatsOpen] = useState<string[]>([]);
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
   const [resourceSelectorMonth, setResourceSelectorMonth] = useState<number>(0);
