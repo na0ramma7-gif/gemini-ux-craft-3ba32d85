@@ -56,7 +56,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 };
 
 const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps) => {
-  const { state, updatePortfolio, t, language, isRTL } = useApp();
+  const { state, updatePortfolio, t, language, isRTL, dateFilter } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [showEditModal, setShowEditModal] = useState(false);
   const [editData, setEditData] = useState<Partial<Portfolio>>({});
@@ -64,7 +64,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
 
   const products = useMemo(() => state.products.filter(p => p.portfolioId === portfolio.id), [state.products, portfolio.id]);
 
-  const deptMetrics = useHierarchicalMetrics(state);
+  const deptMetrics = useHierarchicalMetrics(state, dateFilter);
   const portMetrics = deptMetrics.portfolioMetrics.find(p => p.portfolioId === portfolio.id);
 
   // Backwards-compatible shape for charts
@@ -522,16 +522,11 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                     </thead>
                     <tbody className="divide-y divide-border">
                       {products.map(prod => {
-                        const prodFeatures = state.features.filter(f => f.productId === prod.id);
-                        let expected = 0, actual = 0, cost = 0;
-                        prodFeatures.forEach(f => {
-                          state.revenuePlan.filter(r => r.featureId === f.id).forEach(r => { expected += r.expected; });
-                          state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { actual += r.actual; });
-                        });
-                        state.costs.filter(c => c.productId === prod.id).forEach(c => {
-                          if (c.type === 'CAPEX' && c.total && c.amortization) cost += (c.total / c.amortization) * 6;
-                          else if (c.monthly) cost += c.monthly * 6;
-                        });
+                        // Single source of truth: pull from the hierarchical metrics
+                        const prodMetric = portMetrics?.productMetrics.find(p => p.productId === prod.id);
+                        const expected = prodMetric?.planned ?? 0;
+                        const actual = prodMetric?.revenue ?? 0;
+                        const cost = prodMetric?.cost ?? 0;
                         const variance = actual - expected;
                         return (
                           <tr key={prod.id} className="hover:bg-secondary/50">

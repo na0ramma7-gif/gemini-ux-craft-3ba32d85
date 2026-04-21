@@ -49,7 +49,7 @@ interface ProductPageProps {
 }
 
 const ProductPage = ({ product, onBack }: ProductPageProps) => {
-  const { state, addFeature, updateFeature, deleteFeature, addRelease, updateRelease, t, language, isRTL } = useApp();
+  const { state, addFeature, updateFeature, deleteFeature, addRelease, updateRelease, t, language, isRTL, dateFilter } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('list');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -81,38 +81,24 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
     [state.features, product.id]
   );
 
-  const productMetrics = useMemo(() => {
-    let totalRevenue = 0;
-    let totalCost = 0;
-
-    features.forEach(feature => {
-      state.revenuePlan
-        .filter(r => r.featureId === feature.id)
-        .forEach(r => { totalRevenue += r.expected; });
-    });
-
-    state.costs
-      .filter(c => c.productId === product.id)
-      .forEach(c => {
-        if (c.type === 'CAPEX' && c.total && c.amortization) {
-          totalCost += (c.total / c.amortization) * 6;
-        } else if (c.monthly) {
-          totalCost += c.monthly * 6;
-        }
-      });
-
-    const profit = totalRevenue - totalCost;
-    const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
-
-    return {
-      totalRevenue,
-      totalCost,
-      profit,
-      margin,
-      featureCount: features.length,
-      releaseCount: releases.length
-    };
-  }, [features, state, product.id, releases.length]);
+  // Single source of truth: useHierarchicalMetrics
+  const dept = useHierarchicalMetrics(state, dateFilter);
+  const sharedMetric = useMemo(
+    () => dept.portfolioMetrics
+      .flatMap(pm => pm.productMetrics)
+      .find(p => p.productId === product.id),
+    [dept, product.id],
+  );
+  const productMetrics = useMemo(() => ({
+    totalRevenue: sharedMetric?.revenue ?? 0,
+    totalCost: sharedMetric?.cost ?? 0,
+    profit: sharedMetric?.profit ?? 0,
+    margin: sharedMetric?.margin ?? 0,
+    achievementPct: sharedMetric?.achievementPct ?? 0,
+    target: sharedMetric?.target ?? 0,
+    featureCount: features.length,
+    releaseCount: releases.length,
+  }), [sharedMetric, features.length, releases.length]);
 
   // Gantt chart calculations
   const ganttData = useMemo(() => {
