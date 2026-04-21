@@ -481,7 +481,7 @@ const QuickFillButton = ({ open, onOpenChange, baselines, horizon, scenario, onA
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               {Array.from({ length: horizon }, (_, i) => (
-                <SelectItem key={i} value={String(i)}>{t('monthN', { n: i + 1 } as any) || `Month ${i + 1}`}</SelectItem>
+                <SelectItem key={i} value={String(i)}>{`${t('month')} ${i + 1}`}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -513,7 +513,7 @@ const QuickFillButton = ({ open, onOpenChange, baselines, horizon, scenario, onA
         )}
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="outline" size="sm" className="h-8" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
-          <Button size="sm" className="h-8" onClick={apply}>{t('apply') || 'Apply'}</Button>
+          <Button size="sm" className="h-8" onClick={apply}>{t('apply')}</Button>
         </div>
       </PopoverContent>
     </Popover>

@@ -330,7 +330,7 @@ const ForecastDirectEntryGrid = ({
                           <PopoverContent className="w-56 p-3" onClick={e => e.stopPropagation()}>
                             <Label className="text-xs">{t('cellRateOverride')}</Label>
                             <p className="text-[10px] text-muted-foreground mb-2">
-                              {t('cellRateOverrideHelp', { rate: formatCurrency(svc.defaultRate, language) } as any) || `Default: ${formatCurrency(svc.defaultRate, language)}`}
+                              {t('defaultRateLabel')}: {formatCurrency(svc.defaultRate, language)}
                             </p>
                             <Input
                               type="number"
@@ -367,7 +367,7 @@ const ForecastDirectEntryGrid = ({
                                   setRatePopoverFor(null);
                                 }}
                               >
-                                {t('apply') || 'Apply'}
+                                {t('apply')}
                               </Button>
                             </div>
                           </PopoverContent>
@@ -429,7 +429,7 @@ const ForecastDirectEntryGrid = ({
               <Button size="sm" onClick={() => {
                 const inp = (document.activeElement as HTMLInputElement);
                 submitBulk(inp?.value ?? bulkPrompt);
-              }}>{t('apply') || 'Apply'}</Button>
+              }}>{t('apply')}</Button>
             </div>
           </div>
         </div>
