@@ -1,32 +1,24 @@
 import { useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatCurrency } from '@/lib/utils';
+import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis } from 'recharts';
 
 const InvestmentReturnChart = () => {
-  const { state, t, language } = useApp();
+  const { state, t, language, dateFilter } = useApp();
+  const dept = useHierarchicalMetrics(state, dateFilter);
 
   const data = useMemo(() => {
-    return state.products.map(product => {
-      const features = state.features.filter(f => f.productId === product.id);
-      let actual = 0;
-      features.forEach(f => {
-        state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { actual += r.actual; });
-      });
-
-      let cost = 0;
-      state.costs.filter(c => c.productId === product.id).forEach(c => {
-        if (c.type === 'CAPEX' && c.total && c.amortization) {
-          cost += (c.total / c.amortization) * 6;
-        } else if (c.monthly) {
-          cost += c.monthly * 6;
-        }
-      });
-
-      const profit = Math.max(actual - cost, 1000);
-      return { name: product.name, cost, revenue: actual, profit, z: profit };
-    });
-  }, [state]);
+    return dept.portfolioMetrics.flatMap(pm =>
+      pm.productMetrics.map(p => ({
+        name: p.productName,
+        cost: p.cost,
+        revenue: p.revenue,
+        profit: Math.max(p.profit, 1000),
+        z: Math.max(p.profit, 1000),
+      })),
+    );
+  }, [dept]);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;

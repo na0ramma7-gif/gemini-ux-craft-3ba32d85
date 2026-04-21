@@ -24,16 +24,13 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
-  const { state, t, language, setView, setSelected } = useApp();
-  const dept = useHierarchicalMetrics(state);
+  const { state, t, language, setView, setSelected, dateFilter } = useApp();
+  const dept = useHierarchicalMetrics(state, dateFilter);
   const [scenario, setScenario] = useState<ScenarioType>('baseline');
   const [horizon, setHorizon] = useState<PipelineHorizon>(9);
 
-  const trend = useMemo(() => {
-    const target = dept.planned * 1.35;
-    const achievePct = target > 0 ? Math.round((dept.revenue / target) * 100) : 0;
-    return { achievePct };
-  }, [dept]);
+  // Single source of truth: target & achievement come from the hook.
+  const trend = useMemo(() => ({ achievePct: dept.achievementPct }), [dept.achievementPct]);
 
   const handleProductClick = (product: Product) => {
     setSelected(prev => ({
@@ -75,10 +72,10 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
           variant="green"
           progress={{
             label: t('targetYear'),
-            target: formatCurrency(dept.planned * 1.35, language),
+            target: formatCurrency(dept.target, language),
             percent: trend.achievePct,
             status: trend.achievePct >= 70 ? 'positive' : 'negative',
-            remaining: formatCurrency(dept.planned * 0.35, language)
+            remaining: formatCurrency(Math.max(0, dept.target - dept.revenue), language)
           }}
         />
         <KPICard

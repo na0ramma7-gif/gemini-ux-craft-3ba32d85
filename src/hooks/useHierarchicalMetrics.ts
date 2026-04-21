@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { AppState, Product, Portfolio } from '@/types';
+import { DateWindow, monthsInDateRange, computeCostForMonths } from '@/lib/utils';
 
 // ── Feature-level metrics ──
 export interface FeatureMetrics {
@@ -23,6 +24,12 @@ export interface ProductMetrics {
   cost: number;
   profit: number;
   margin: number;
+  /** Full-year planned revenue (used for fixed annual target — ignores window) */
+  annualPlanned: number;
+  /** Target = annualPlanned * 1.35 */
+  target: number;
+  /** revenue / target * 100 */
+  achievementPct: number;
   totalFeatures: number;
   featuresInProgress: number;
   featuresCompleted: number;
@@ -43,6 +50,9 @@ export interface PortfolioMetrics {
   cost: number;
   profit: number;
   margin: number;
+  annualPlanned: number;
+  target: number;
+  achievementPct: number;
   productCount: number;
   totalFeatures: number;
   featuresInProgress: number;
@@ -62,6 +72,9 @@ export interface DepartmentMetrics {
   cost: number;
   profit: number;
   margin: number;
+  annualPlanned: number;
+  target: number;
+  achievementPct: number;
   totalPortfolios: number;
   totalProducts: number;
   totalFeatures: number;
@@ -75,26 +88,43 @@ export interface DepartmentMetrics {
 }
 
 // ── Compute product-level metrics ──
-function computeProductMetrics(product: Product, state: AppState): ProductMetrics {
+// `monthKeys` = months in the active date window (for revenue + cost).
+// `annualMonthKeys` = full-year month keys (for fixed annual target/planned).
+function computeProductMetrics(
+  product: Product,
+  state: AppState,
+  monthKeys: string[],
+  annualMonthKeys: string[],
+): ProductMetrics {
   const features = state.features.filter(f => f.productId === product.id);
   const releases = state.releases.filter(r => r.productId === product.id);
+  const featureIds = new Set(features.map(f => f.id));
 
-  let revenue = 0, planned = 0, cost = 0;
-
-  features.forEach(f => {
-    state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { revenue += r.actual; });
-    state.revenuePlan.filter(r => r.featureId === f.id).forEach(r => { planned += r.expected; });
+  // Filtered (window) revenue + planned
+  const monthSet = new Set(monthKeys);
+  let revenue = 0;
+  let planned = 0;
+  state.revenueActual.forEach(r => {
+    if (featureIds.has(r.featureId) && monthSet.has(r.month)) revenue += r.actual;
+  });
+  state.revenuePlan.forEach(r => {
+    if (featureIds.has(r.featureId) && monthSet.has(r.month)) planned += r.expected;
   });
 
-  state.costs.filter(c => c.productId === product.id).forEach(c => {
-    if (c.type === 'CAPEX' && c.total && c.amortization) {
-      cost += (c.total / c.amortization) * 6;
-    } else if (c.monthly) {
-      cost += c.monthly * 6;
-    }
+  // Full-year planned for fixed annual target
+  const annualSet = new Set(annualMonthKeys);
+  let annualPlanned = 0;
+  state.revenuePlan.forEach(r => {
+    if (featureIds.has(r.featureId) && annualSet.has(r.month)) annualPlanned += r.expected;
   });
+
+  // Cost over the active window (uses shared helper)
+  const productCosts = state.costs.filter(c => c.productId === product.id);
+  const cost = computeCostForMonths(productCosts, monthKeys);
 
   const profit = revenue - cost;
+  const target = annualPlanned * 1.35;
+  const achievementPct = target > 0 ? Math.round((revenue / target) * 100) : 0;
 
   return {
     productId: product.id,
@@ -108,6 +138,9 @@ function computeProductMetrics(product: Product, state: AppState): ProductMetric
     cost,
     profit,
     margin: revenue > 0 ? (profit / revenue) * 100 : 0,
+    annualPlanned,
+    target,
+    achievementPct,
     totalFeatures: features.length,
     featuresInProgress: features.filter(f => f.status === 'In Progress').length,
     featuresCompleted: features.filter(f => f.status === 'Delivered').length,
@@ -125,7 +158,10 @@ function computePortfolioMetrics(portfolio: Portfolio, productMetrics: ProductMe
   const revenue = pm.reduce((s, p) => s + p.revenue, 0);
   const planned = pm.reduce((s, p) => s + p.planned, 0);
   const cost = pm.reduce((s, p) => s + p.cost, 0);
+  const annualPlanned = pm.reduce((s, p) => s + p.annualPlanned, 0);
   const profit = revenue - cost;
+  const target = annualPlanned * 1.35;
+  const achievementPct = target > 0 ? Math.round((revenue / target) * 100) : 0;
 
   return {
     portfolioId: portfolio.id,
@@ -137,6 +173,9 @@ function computePortfolioMetrics(portfolio: Portfolio, productMetrics: ProductMe
     cost,
     profit,
     margin: revenue > 0 ? (profit / revenue) * 100 : 0,
+    annualPlanned,
+    target,
+    achievementPct,
     productCount: pm.length,
     totalFeatures: pm.reduce((s, p) => s + p.totalFeatures, 0),
     featuresInProgress: pm.reduce((s, p) => s + p.featuresInProgress, 0),
@@ -150,19 +189,46 @@ function computePortfolioMetrics(portfolio: Portfolio, productMetrics: ProductMe
 }
 
 // ── Main hook: computes full hierarchy ──
-export function useHierarchicalMetrics(state: AppState): DepartmentMetrics {
+// Pass `dateFilter` to honor the global date window. Without it, defaults
+// to the current calendar year so behaviour is deterministic.
+export function useHierarchicalMetrics(
+  state: AppState,
+  dateFilter?: DateWindow | null,
+): DepartmentMetrics {
   return useMemo(() => {
-    // Level 1: Product metrics (from features + costs)
-    const allProductMetrics = state.products.map(p => computeProductMetrics(p, state));
+    // Resolve active window (default: current calendar year)
+    const now = new Date();
+    const window: DateWindow = dateFilter ?? {
+      startDate: new Date(now.getFullYear(), 0, 1),
+      endDate: new Date(now.getFullYear(), 11, 31),
+    };
+    const monthKeys = monthsInDateRange(window);
 
-    // Level 2: Portfolio metrics (from products)
-    const allPortfolioMetrics = state.portfolios.map(port => computePortfolioMetrics(port, allProductMetrics));
+    // Annual window for fixed target = full calendar year of the filter's start date
+    const annualWindow: DateWindow = {
+      startDate: new Date(window.startDate.getFullYear(), 0, 1),
+      endDate: new Date(window.startDate.getFullYear(), 11, 31),
+    };
+    const annualMonthKeys = monthsInDateRange(annualWindow);
 
-    // Level 3: Department metrics (from portfolios)
+    // Level 1: Product metrics
+    const allProductMetrics = state.products.map(p =>
+      computeProductMetrics(p, state, monthKeys, annualMonthKeys),
+    );
+
+    // Level 2: Portfolio metrics
+    const allPortfolioMetrics = state.portfolios.map(port =>
+      computePortfolioMetrics(port, allProductMetrics),
+    );
+
+    // Level 3: Department metrics
     const revenue = allPortfolioMetrics.reduce((s, p) => s + p.revenue, 0);
     const planned = allPortfolioMetrics.reduce((s, p) => s + p.planned, 0);
     const cost = allPortfolioMetrics.reduce((s, p) => s + p.cost, 0);
+    const annualPlanned = allPortfolioMetrics.reduce((s, p) => s + p.annualPlanned, 0);
     const profit = revenue - cost;
+    const target = annualPlanned * 1.35;
+    const achievementPct = target > 0 ? Math.round((revenue / target) * 100) : 0;
 
     return {
       departmentName: state.department.name,
@@ -171,6 +237,9 @@ export function useHierarchicalMetrics(state: AppState): DepartmentMetrics {
       cost,
       profit,
       margin: revenue > 0 ? (profit / revenue) * 100 : 0,
+      annualPlanned,
+      target,
+      achievementPct,
       totalPortfolios: state.portfolios.length,
       totalProducts: state.products.length,
       totalFeatures: allPortfolioMetrics.reduce((s, p) => s + p.totalFeatures, 0),
@@ -182,17 +251,25 @@ export function useHierarchicalMetrics(state: AppState): DepartmentMetrics {
       completedReleases: allPortfolioMetrics.reduce((s, p) => s + p.completedReleases, 0),
       portfolioMetrics: allPortfolioMetrics,
     };
-  }, [state]);
+  }, [state, dateFilter]);
 }
 
 // ── Convenience hooks for specific levels ──
-export function usePortfolioMetrics(state: AppState, portfolioId: number): PortfolioMetrics | undefined {
-  const dept = useHierarchicalMetrics(state);
+export function usePortfolioMetrics(
+  state: AppState,
+  portfolioId: number,
+  dateFilter?: DateWindow | null,
+): PortfolioMetrics | undefined {
+  const dept = useHierarchicalMetrics(state, dateFilter);
   return dept.portfolioMetrics.find(p => p.portfolioId === portfolioId);
 }
 
-export function useProductMetrics(state: AppState, productId: number): ProductMetrics | undefined {
-  const dept = useHierarchicalMetrics(state);
+export function useProductMetrics(
+  state: AppState,
+  productId: number,
+  dateFilter?: DateWindow | null,
+): ProductMetrics | undefined {
+  const dept = useHierarchicalMetrics(state, dateFilter);
   for (const port of dept.portfolioMetrics) {
     const found = port.productMetrics.find(p => p.productId === productId);
     if (found) return found;

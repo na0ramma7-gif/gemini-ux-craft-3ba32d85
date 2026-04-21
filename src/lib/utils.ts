@@ -99,3 +99,83 @@ export const calculateDaysBetween = (startDate: string, endDate: string): number
   const diffTime = Math.abs(end.getTime() - start.getTime());
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
+
+/* ──────────────────────────────────────────────────────────
+ * Financial calculation helpers — SINGLE SOURCE OF TRUTH
+ * Used by useHierarchicalMetrics and any chart/table that
+ * needs to compute revenue/cost for a date window.
+ * ────────────────────────────────────────────────────────── */
+
+export interface DateWindow {
+  startDate: Date;
+  endDate: Date;
+}
+
+/**
+ * Returns ordered array of `YYYY-MM` keys covering every month
+ * between startDate and endDate inclusive.
+ */
+export const monthsInDateRange = (window?: DateWindow | null): string[] => {
+  if (!window) return [];
+  const start = new Date(window.startDate.getFullYear(), window.startDate.getMonth(), 1);
+  const end = new Date(window.endDate.getFullYear(), window.endDate.getMonth(), 1);
+  const result: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const y = cursor.getFullYear();
+    const m = String(cursor.getMonth() + 1).padStart(2, '0');
+    result.push(`${y}-${m}`);
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return result;
+};
+
+/**
+ * Monthly cost figure for a single Cost row.
+ * Primary model: c.monthly (cost entered per feature/month in Feature Financial Planning).
+ * Defensive fallback: legacy CAPEX rows (total / amortization).
+ * Returns 0 if neither shape applies.
+ */
+export const monthlyCostForRow = (cost: {
+  type?: string;
+  monthly?: number;
+  total?: number;
+  amortization?: number;
+}): number => {
+  if (cost.monthly && cost.monthly > 0) return cost.monthly;
+  if (cost.type === 'CAPEX' && cost.total && cost.amortization) {
+    return cost.total / cost.amortization;
+  }
+  return 0;
+};
+
+/**
+ * Total cost for a set of cost rows over a number of months.
+ * If `months` is 0 (no date window), returns 0 — callers should
+ * always pass a meaningful window.
+ */
+export const computeCostForMonths = (
+  costs: Array<{ type?: string; monthly?: number; total?: number; amortization?: number; startDate?: string; endDate?: string }>,
+  monthKeys: string[]
+): number => {
+  if (monthKeys.length === 0) return 0;
+  let total = 0;
+  for (const c of costs) {
+    const monthly = monthlyCostForRow(c);
+    if (monthly === 0) continue;
+    // Honor the cost row's own active window if present; otherwise apply for all months.
+    const activeMonths = monthKeys.filter(mk => {
+      if (c.startDate) {
+        const cs = c.startDate.slice(0, 7); // YYYY-MM
+        if (mk < cs) return false;
+      }
+      if (c.endDate) {
+        const ce = c.endDate.slice(0, 7);
+        if (mk > ce) return false;
+      }
+      return true;
+    });
+    total += monthly * activeMonths.length;
+  }
+  return total;
+};

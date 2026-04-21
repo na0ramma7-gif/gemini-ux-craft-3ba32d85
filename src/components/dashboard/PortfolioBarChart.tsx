@@ -11,15 +11,15 @@ interface Props {
 }
 
 const PortfolioBarChart = ({ onPortfolioClick }: Props) => {
-  const { state, t, language } = useApp();
-  const dept = useHierarchicalMetrics(state);
+  const { state, t, language, dateFilter } = useApp();
+  const dept = useHierarchicalMetrics(state, dateFilter);
 
   const data = useMemo(() => {
     return dept.portfolioMetrics.map(pm => {
-      const target = pm.planned * 1.35;
+      const target = pm.target;
       const achieved = pm.revenue;
       const remaining = Math.max(0, target - achieved);
-      const pct = target > 0 ? Math.round((achieved / target) * 100) : 0;
+      const pct = pm.achievementPct;
       const portfolio = state.portfolios.find(p => p.id === pm.portfolioId)!;
       return { name: pm.portfolioName, target, achieved, remaining, pct, portfolio };
     }).sort((a, b) => b.target - a.target);

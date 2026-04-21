@@ -1,71 +1,33 @@
 import { useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatCurrency } from '@/lib/utils';
+import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Lightbulb, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 
 const InsightsPanel = () => {
-  const { state, t, language } = useApp();
+  const { state, t, language, dateFilter } = useApp();
+  const dept = useHierarchicalMetrics(state, dateFilter);
 
   const insights = useMemo(() => {
     const results: { text: string; icon: 'up' | 'down' | 'alert'; }[] = [];
 
-    // Portfolio revenue contributions
-    const portfolioRevenues = state.portfolios.map(p => {
-      const products = state.products.filter(pr => pr.portfolioId === p.id);
-      let actual = 0;
-      products.forEach(pr => {
-        const features = state.features.filter(f => f.productId === pr.id);
-        features.forEach(f => {
-          state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { actual += r.actual; });
-        });
-      });
-      return { name: p.name, actual };
-    });
-
-    const totalRevenue = portfolioRevenues.reduce((s, p) => s + p.actual, 0);
-    const topPortfolio = [...portfolioRevenues].sort((a, b) => b.actual - a.actual)[0];
+    // Portfolio revenue contributions — use the shared hook.
+    const totalRevenue = dept.revenue;
+    const topPortfolio = [...dept.portfolioMetrics].sort((a, b) => b.revenue - a.revenue)[0];
     if (topPortfolio && totalRevenue > 0) {
-      const pct = ((topPortfolio.actual / totalRevenue) * 100).toFixed(0);
-      results.push({ text: `${topPortfolio.name} ${t('contributes')} ${pct}% ${t('ofDepartmentRevenue')}`, icon: 'up' });
+      const pct = ((topPortfolio.revenue / totalRevenue) * 100).toFixed(0);
+      results.push({ text: `${topPortfolio.portfolioName} ${t('contributes')} ${pct}% ${t('ofDepartmentRevenue')}`, icon: 'up' });
     }
 
-    // Highest profit margin portfolio
-    const portfolioProfit = state.portfolios.map(p => {
-      const products = state.products.filter(pr => pr.portfolioId === p.id);
-      let actual = 0;
-      let cost = 0;
-      products.forEach(pr => {
-        const features = state.features.filter(f => f.productId === pr.id);
-        features.forEach(f => {
-          state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { actual += r.actual; });
-        });
-        state.costs.filter(c => c.productId === pr.id).forEach(c => {
-          if (c.type === 'CAPEX' && c.total && c.amortization) cost += (c.total / c.amortization) * 6;
-          else if (c.monthly) cost += c.monthly * 6;
-        });
-      });
-      const margin = actual > 0 ? ((actual - cost) / actual) * 100 : 0;
-      return { name: p.name, margin };
-    });
-
-    const highMargin = [...portfolioProfit].sort((a, b) => b.margin - a.margin)[0];
+    const highMargin = [...dept.portfolioMetrics].sort((a, b) => b.margin - a.margin)[0];
     if (highMargin) {
-      results.push({ text: `${highMargin.name} ${t('highestProfitMargin')} (${highMargin.margin.toFixed(0)}%)`, icon: 'up' });
+      results.push({ text: `${highMargin.portfolioName} ${t('highestProfitMargin')} (${highMargin.margin.toFixed(0)}%)`, icon: 'up' });
     }
 
-    // Products with low achievement
-    const productMetrics = state.products.map(product => {
-      const features = state.features.filter(f => f.productId === product.id);
-      let actual = 0;
-      let planned = 0;
-      features.forEach(f => {
-        state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { actual += r.actual; });
-        state.revenuePlan.filter(r => r.featureId === f.id).forEach(r => { planned += r.expected; });
-      });
-      const target = planned * 1.35;
-      const pct = target > 0 ? (actual / target) * 100 : 0;
-      return { name: product.name, pct };
-    });
+    // Products with low achievement — use shared hook.
+    const productMetrics = dept.portfolioMetrics.flatMap(pm =>
+      pm.productMetrics.map(p => ({ name: p.productName, pct: p.achievementPct })),
+    );
 
     const weakProducts = productMetrics.filter(p => p.pct < 50);
     if (weakProducts.length > 0) {
@@ -83,7 +45,7 @@ const InsightsPanel = () => {
     }
 
     return results;
-  }, [state]);
+  }, [state, dept, t]);
 
   const Icon = ({ type }: { type: string }) => {
     if (type === 'up') return <TrendingUp className="w-4 h-4 text-success shrink-0" />;

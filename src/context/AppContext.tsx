@@ -95,28 +95,41 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const metrics = useMemo(() => {
+    // Window-aware metrics aligned with useHierarchicalMetrics.
+    const monthSet = new Set<string>();
+    const start = new Date(dateFilter.startDate.getFullYear(), dateFilter.startDate.getMonth(), 1);
+    const end = new Date(dateFilter.endDate.getFullYear(), dateFilter.endDate.getMonth(), 1);
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      monthSet.add(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`);
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
     let revenue = 0;
+    state.revenueActual.forEach(r => { if (monthSet.has(r.month)) revenue += r.actual; });
+
     let cost = 0;
-    
-    state.revenuePlan.forEach(r => {
-      revenue += r.expected;
-    });
-    
     state.costs.forEach(c => {
-      if (c.type === 'CAPEX' && c.total && c.amortization) {
-        cost += (c.total / c.amortization) * 6;
-      } else if (c.monthly) {
-        cost += c.monthly * 6;
-      }
+      const monthly = c.monthly && c.monthly > 0
+        ? c.monthly
+        : (c.type === 'CAPEX' && c.total && c.amortization ? c.total / c.amortization : 0);
+      if (monthly === 0) return;
+      const cs = c.startDate ? c.startDate.slice(0, 7) : null;
+      const ce = c.endDate ? c.endDate.slice(0, 7) : null;
+      monthSet.forEach(mk => {
+        if (cs && mk < cs) return;
+        if (ce && mk > ce) return;
+        cost += monthly;
+      });
     });
-    
+
     return {
       revenue,
       cost,
       profit: revenue - cost,
-      products: state.products.length
+      products: state.products.length,
     };
-  }, [state]);
+  }, [state, dateFilter]);
 
   const updateAssignment = (assignmentId: number, updates: Partial<Assignment>) => {
     setState(prev => ({
