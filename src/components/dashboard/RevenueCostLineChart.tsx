@@ -6,63 +6,93 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { format, eachMonthOfInterval } from 'date-fns';
+import CompareLegend from '@/components/compare/CompareLegend';
 
 const RevenueCostLineChart = () => {
   const { state, dateFilter, t, language } = useApp();
 
   const chartData = useMemo(() => {
-    const { startDate, endDate } = dateFilter;
-    const months = eachMonthOfInterval({ start: startDate, end: endDate });
-
-    return months.map(month => {
-      const monthKey = format(month, 'yyyy-MM');
-      const label = format(month, 'MMM');
-
-      let revenue = 0;
-      let cost = 0;
-
-      state.revenueActual.forEach(r => {
-        if (r.month === monthKey) revenue += r.actual;
+    const buildSeries = (start: Date, end: Date) => {
+      const months = eachMonthOfInterval({ start, end });
+      return months.map(month => {
+        const monthKey = format(month, 'yyyy-MM');
+        let revenue = 0;
+        let cost = 0;
+        state.revenueActual.forEach(r => {
+          if (r.month === monthKey) revenue += r.actual;
+        });
+        state.costs.forEach(c => {
+          const monthly = monthlyCostForRow(c);
+          if (monthly === 0) return;
+          const cs = c.startDate ? c.startDate.slice(0, 7) : null;
+          const ce = c.endDate ? c.endDate.slice(0, 7) : null;
+          if (cs && monthKey < cs) return;
+          if (ce && monthKey > ce) return;
+          cost += monthly;
+        });
+        return { monthKey, label: format(month, 'MMM'), revenue, cost, profit: revenue - cost };
       });
+    };
 
-      // Per-month cost using the shared helper. A cost row contributes
-      // only for months in its own active window (if defined).
-      state.costs.forEach(c => {
-        const monthly = monthlyCostForRow(c);
-        if (monthly === 0) return;
-        const cs = c.startDate ? c.startDate.slice(0, 7) : null;
-        const ce = c.endDate ? c.endDate.slice(0, 7) : null;
-        if (cs && monthKey < cs) return;
-        if (ce && monthKey > ce) return;
-        cost += monthly;
+    const primary = buildSeries(dateFilter.startDate, dateFilter.endDate);
+    const compare = dateFilter.compareEnabled
+      ? buildSeries(dateFilter.compareStartDate, dateFilter.compareEndDate)
+      : null;
+
+    // Align by month index. Longer window defines the X axis.
+    const length = compare ? Math.max(primary.length, compare.length) : primary.length;
+    const out: Array<Record<string, any>> = [];
+    for (let i = 0; i < length; i++) {
+      const p = primary[i];
+      const c = compare?.[i];
+      out.push({
+        name: p?.label ?? c?.label ?? '',
+        revenue: p?.revenue ?? null,
+        cost: p?.cost ?? null,
+        profit: p?.profit ?? null,
+        revenueCmp: c?.revenue ?? null,
+        costCmp: c?.cost ?? null,
+        cmpLabel: c?.label ?? null,
       });
-
-      const profit = revenue - cost;
-      return { name: label, revenue, cost, profit };
-    });
+    }
+    return out;
   }, [state, dateFilter]);
+
+  const compareEnabled = dateFilter.compareEnabled;
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
+    const rowFor = (key: string) => payload.find((p: any) => p.dataKey === key);
+    const cmpLabel = payload[0]?.payload?.cmpLabel;
     return (
       <div className="bg-card border border-border rounded-xl shadow-[var(--shadow-lg)] p-3.5 text-xs space-y-1.5">
         <p className="font-semibold text-foreground text-sm">{label}</p>
-        {payload.map((entry: any) => (
+        {payload
+          .filter((entry: any) => entry.value !== null && entry.value !== undefined)
+          .map((entry: any) => (
           <div key={entry.dataKey} className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
             <span className="text-muted-foreground">{entry.name}:</span>
             <span className="font-semibold text-foreground">{formatCurrency(entry.value, language)}</span>
           </div>
         ))}
+        {compareEnabled && cmpLabel && (
+          <p className="text-[10px] text-muted-foreground pt-1 border-t border-border">
+            {t('comparison')}: {cmpLabel}
+          </p>
+        )}
       </div>
     );
   };
 
   return (
     <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-6">
-      <div className="flex items-center gap-2 mb-5">
-        <TrendingUp className="w-5 h-5 text-primary" />
-        <h3 className="text-foreground">{t('revenueCostTrend')}</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-primary" />
+          <h3 className="text-foreground">{t('revenueCostTrend')}</h3>
+        </div>
+        {compareEnabled && <CompareLegend />}
       </div>
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
@@ -91,6 +121,7 @@ const RevenueCostLineChart = () => {
               dot={{ r: 4, fill: 'hsl(var(--revenue))', strokeWidth: 0 }}
               activeDot={{ r: 7, strokeWidth: 2, stroke: 'white' }}
               name={t('revenue')}
+              connectNulls
             />
             <Line
               type="monotone"
@@ -100,6 +131,7 @@ const RevenueCostLineChart = () => {
               dot={{ r: 4, fill: 'hsl(var(--cost))', strokeWidth: 0 }}
               activeDot={{ r: 7, strokeWidth: 2, stroke: 'white' }}
               name={t('cost')}
+              connectNulls
             />
             <Line
               type="monotone"
@@ -109,7 +141,34 @@ const RevenueCostLineChart = () => {
               strokeDasharray="6 4"
               dot={{ r: 3, fill: 'hsl(var(--profit))', strokeWidth: 0 }}
               name={t('netProfit')}
+              connectNulls
             />
+            {compareEnabled && (
+              <>
+                <Line
+                  type="monotone"
+                  dataKey="revenueCmp"
+                  stroke="hsl(var(--revenue))"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.7}
+                  dot={false}
+                  name={`${t('revenue')} (${t('comparison')})`}
+                  connectNulls
+                />
+                <Line
+                  type="monotone"
+                  dataKey="costCmp"
+                  stroke="hsl(var(--cost))"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.7}
+                  dot={false}
+                  name={`${t('cost')} (${t('comparison')})`}
+                  connectNulls
+                />
+              </>
+            )}
             <Legend
               iconType="circle"
               iconSize={10}
