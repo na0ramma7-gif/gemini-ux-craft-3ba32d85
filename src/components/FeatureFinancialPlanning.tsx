@@ -1364,10 +1364,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         </DialogContent>
       </Dialog>
 
-      {/* RESOURCE SELECTOR DIALOG */}
-      <Dialog open={resourceSelectorOpen} onOpenChange={setResourceSelectorOpen}>
-        {/* Delete-service confirmation (when service has historical lines) */}
-      </Dialog>
+      {/* Delete-service confirmation (when service has historical lines) */}
       <AlertDialog open={confirmDeleteServiceId != null} onOpenChange={(open) => { if (!open) setConfirmDeleteServiceId(null); }}>
         <AlertDialogContent>
           {(() => {
