@@ -25,7 +25,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-  ReferenceLine,
 } from 'recharts';
 import {
   TrendingUp,
@@ -33,7 +32,6 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
-  DollarSign,
 } from 'lucide-react';
 import {
   ForecastScenario,
