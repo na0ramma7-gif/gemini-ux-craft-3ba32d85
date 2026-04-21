@@ -329,9 +329,20 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
   const revenueEntries = useMemo(() => {
     const entries: any[] = [];
-    Object.entries(yearData).forEach(([ms, md]) => md.revenues.forEach(r => entries.push({ id: Date.now() + parseInt(ms), featureId: r.featureId, month: parseInt(ms), year: selectedYear, planned: r.planned, actual: r.actual })));
+    monthlyRevenue.forEach((mr, mi) => {
+      if (mr.planned > 0 || mr.actual > 0) {
+        entries.push({
+          id: `rev-${selectedYear}-${mi}`,
+          featureId: feature.id,
+          month: mi,
+          year: selectedYear,
+          planned: mr.planned,
+          actual: mr.actual,
+        });
+      }
+    });
     return entries;
-  }, [yearData, selectedYear]);
+  }, [monthlyRevenue, selectedYear, feature.id]);
 
   const costEntries = useMemo(() => {
     const entries: any[] = [];
