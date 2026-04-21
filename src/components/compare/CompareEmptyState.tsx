@@ -25,7 +25,12 @@ const CompareEmptyState = ({
 
   // Validation errors take priority.
   if (validation && !validation.ok) {
-    const messages = validation.errors.map(code => {
+    // Ignore "missing window" — it just means Compare is OFF, not a real error.
+    const realErrors = validation.errors.filter(
+      code => code !== 'primary.missing' && code !== 'comparison.missing',
+    );
+    if (realErrors.length === 0) return null;
+    const messages = realErrors.map(code => {
       switch (code) {
         case 'primary.endBeforeStart': return t('errPrimaryEndBeforeStart');
         case 'comparison.endBeforeStart': return t('errComparisonEndBeforeStart');

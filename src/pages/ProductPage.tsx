@@ -210,9 +210,6 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
       {compare.active && (
         <CompareEmptyState validation={compare.validation} dataState={compare.dataState} />
       )}
-      {!compare.active && compare.validation && !compare.validation.ok && (
-        <CompareEmptyState validation={compare.validation} />
-      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
