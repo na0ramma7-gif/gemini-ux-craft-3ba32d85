@@ -417,6 +417,131 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  // ── Revenue services & lines ──
+  // Lines are the single source of truth. After every mutation we rebuild
+  // legacy revenuePlan/revenueActual arrays from lines so all existing
+  // roll-ups (KPIs, charts, compare, forecast) keep working unchanged.
+  const rebuildLegacyRevenue = (lines: RevenueLine[]): { plan: AppState['revenuePlan']; actual: AppState['revenueActual'] } => {
+    const planMap = new Map<string, number>();
+    const actMap = new Map<string, number>();
+    lines.forEach(l => {
+      const k = `${l.featureId}|${l.month}`;
+      planMap.set(k, (planMap.get(k) ?? 0) + l.rate * (l.plannedTransactions || 0));
+      actMap.set(k, (actMap.get(k) ?? 0) + l.rate * (l.actualTransactions || 0));
+    });
+    let pid = 1, aid = 1;
+    const plan: AppState['revenuePlan'] = [];
+    planMap.forEach((expected, k) => {
+      const [fid, month] = k.split('|');
+      plan.push({ id: pid++, featureId: Number(fid), month, expected });
+    });
+    const actual: AppState['revenueActual'] = [];
+    actMap.forEach((act, k) => {
+      const [fid, month] = k.split('|');
+      actual.push({ id: aid++, featureId: Number(fid), month, actual: act });
+    });
+    return { plan, actual };
+  };
+
+  const setLines = (mutator: (lines: RevenueLine[]) => RevenueLine[]) => {
+    setState(prev => {
+      const nextLines = mutator(prev.revenueLines);
+      const { plan, actual } = rebuildLegacyRevenue(nextLines);
+      return { ...prev, revenueLines: nextLines, revenuePlan: plan, revenueActual: actual };
+    });
+  };
+
+  const addRevenueService: AppContextType['addRevenueService'] = (featureId, name, defaultRate) => {
+    const trimmed = (name ?? '').trim();
+    if (!trimmed) return { ok: false, error: 'Service name is required' };
+    if (!Number.isFinite(defaultRate) || defaultRate < 0) return { ok: false, error: 'Default rate must be a non-negative number' };
+    const lower = trimmed.toLowerCase();
+    const dup = state.revenueServices.some(s => s.featureId === featureId && s.name.trim().toLowerCase() === lower);
+    if (dup) return { ok: false, error: 'A service with this name already exists for this feature' };
+    const newId = Math.max(...state.revenueServices.map(s => s.id), 0) + 1;
+    const service: RevenueService = { id: newId, featureId, name: trimmed, defaultRate };
+    setState(prev => ({ ...prev, revenueServices: [...prev.revenueServices, service] }));
+    return { ok: true, service };
+  };
+
+  const updateRevenueService: AppContextType['updateRevenueService'] = (id, updates) => {
+    const current = state.revenueServices.find(s => s.id === id);
+    if (!current) return { ok: false, error: 'Service not found' };
+    let nextName = current.name;
+    if (typeof updates.name === 'string') {
+      const t = updates.name.trim();
+      if (!t) return { ok: false, error: 'Service name is required' };
+      const lower = t.toLowerCase();
+      const dup = state.revenueServices.some(
+        s => s.id !== id && s.featureId === current.featureId && s.name.trim().toLowerCase() === lower,
+      );
+      if (dup) return { ok: false, error: 'A service with this name already exists for this feature' };
+      nextName = t;
+    }
+    let nextRate = current.defaultRate;
+    if (typeof updates.defaultRate === 'number') {
+      if (!Number.isFinite(updates.defaultRate) || updates.defaultRate < 0) return { ok: false, error: 'Default rate must be a non-negative number' };
+      nextRate = updates.defaultRate;
+    }
+    setState(prev => ({
+      ...prev,
+      revenueServices: prev.revenueServices.map(s => (s.id === id ? { ...s, name: nextName, defaultRate: nextRate } : s)),
+    }));
+    return { ok: true };
+  };
+
+  const deleteRevenueService: AppContextType['deleteRevenueService'] = (id) => {
+    setState(prev => {
+      const nextLines = prev.revenueLines.filter(l => l.serviceId !== id);
+      const { plan, actual } = rebuildLegacyRevenue(nextLines);
+      return {
+        ...prev,
+        revenueServices: prev.revenueServices.filter(s => s.id !== id),
+        revenueLines: nextLines,
+        revenuePlan: plan,
+        revenueActual: actual,
+      };
+    });
+  };
+
+  const upsertRevenueLines: AppContextType['upsertRevenueLines'] = (featureId, month, incoming) => {
+    // Validation
+    const seenServices = new Set<number>();
+    for (const l of incoming) {
+      if (!Number.isFinite(l.serviceId) || l.serviceId <= 0) return { ok: false, error: 'Each row must reference a service' };
+      if (seenServices.has(l.serviceId)) return { ok: false, error: 'Duplicate service in the same month' };
+      seenServices.add(l.serviceId);
+      if (!Number.isFinite(l.rate) || l.rate < 0) return { ok: false, error: 'Rate must be a non-negative number' };
+      if (!Number.isFinite(l.plannedTransactions) || l.plannedTransactions < 0) return { ok: false, error: 'Planned transactions must be non-negative' };
+      if (!Number.isFinite(l.actualTransactions) || l.actualTransactions < 0) return { ok: false, error: 'Actual transactions must be non-negative' };
+      const svc = state.revenueServices.find(s => s.id === l.serviceId);
+      if (!svc || svc.featureId !== featureId) return { ok: false, error: 'Service does not belong to this feature' };
+    }
+    const ts = new Date().toISOString();
+    setLines(prev => {
+      // Drop existing lines for (featureId, month) and replace with incoming.
+      const kept = prev.filter(l => !(l.featureId === featureId && l.month === month));
+      let nextId = Math.max(...prev.map(l => l.id), 0) + 1;
+      const created: RevenueLine[] = incoming.map(l => ({
+        id: l.id ?? nextId++,
+        featureId,
+        month,
+        serviceId: l.serviceId,
+        rate: l.rate,
+        plannedTransactions: l.plannedTransactions,
+        actualTransactions: l.actualTransactions,
+        notes: l.notes?.trim() || undefined,
+        updatedAt: ts,
+      }));
+      return [...kept, ...created];
+    });
+    return { ok: true };
+  };
+
+  const deleteRevenueLine: AppContextType['deleteRevenueLine'] = (id) => {
+    setLines(prev => prev.filter(l => l.id !== id));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -457,6 +582,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         addStrategicObjective,
         updateStrategicObjective,
         deleteStrategicObjective,
+        addRevenueService,
+        updateRevenueService,
+        deleteRevenueService,
+        upsertRevenueLines,
+        deleteRevenueLine,
       }}
     >
       {children}
