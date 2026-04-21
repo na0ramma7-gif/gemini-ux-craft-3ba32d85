@@ -61,6 +61,20 @@ import {
 import { useApp } from '@/context/AppContext';
 import ForecastMatrixGrid from '@/components/forecast/ForecastMatrixGrid';
 
+const MONTH_LABEL_KEYS_FALLBACK = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+const SEASONAL_PRESETS: { id: SeasonalPresetId; key: string }[] = [
+  { id: 'flat', key: 'presetFlat' },
+  { id: 'ramadan', key: 'presetRamadan' },
+  { id: 'summer', key: 'presetSummer' },
+  { id: 'yearEnd', key: 'presetYearEnd' },
+  { id: 'backToSchool', key: 'presetBackToSchool' },
+  { id: 'custom', key: 'presetCustom' },
+];
+
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
