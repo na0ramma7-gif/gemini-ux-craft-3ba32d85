@@ -60,19 +60,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [showAddReleaseModal, setShowAddReleaseModal] = useState(false);
   const [editingRelease, setEditingRelease] = useState<Release | null>(null);
-  const [newRelease, setNewRelease] = useState({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' as Release['status'] });
-  const [selectedFeatureIds, setSelectedFeatureIds] = useState<number[]>([]);
   const [selectedFeatureForFinancials, setSelectedFeatureForFinancials] = useState<Feature | null>(null);
-  
-  const [newFeature, setNewFeature] = useState({
-    name: '',
-    startDate: '',
-    endDate: '',
-    status: 'To Do' as const,
-    owner: '',
-    priority: 'Medium' as const,
-    releaseId: null as number | null
-  });
 
   const releases = useMemo(() => 
     state.releases.filter(r => r.productId === product.id),
@@ -144,33 +132,6 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
       left: `${leftPercent}%`,
       width: `${widthPercent}%`
     };
-  };
-
-  const handleAddFeature = () => {
-    if (!newFeature.name || !newFeature.startDate || !newFeature.endDate) return;
-    
-    addFeature({
-      ...newFeature,
-      productId: product.id,
-      releaseId: newFeature.releaseId
-    });
-    
-    setNewFeature({
-      name: '',
-      startDate: '',
-      endDate: '',
-      status: 'To Do',
-      owner: '',
-      priority: 'Medium',
-      releaseId: null
-    });
-    setShowAddModal(false);
-  };
-
-  const handleUpdateFeature = () => {
-    if (!editingFeature) return;
-    updateFeature(editingFeature.id, editingFeature);
-    setEditingFeature(null);
   };
 
   const handleDeleteFeature = (id: number) => {
@@ -538,11 +499,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                         <div className="flex items-center gap-2">
                           <StatusBadge status={release.status} />
                           <button
-                            onClick={() => {
-                              setEditingRelease(release);
-                              setNewRelease({ version: release.version, name: release.name, startDate: release.startDate, endDate: release.endDate, status: release.status });
-                              setSelectedFeatureIds(state.features.filter(f => f.releaseId === release.id).map(f => f.id));
-                            }}
+                            onClick={() => setEditingRelease(release)}
                             className="p-1 rounded hover:bg-muted transition-colors"
                           >
                             <Edit className="w-3.5 h-3.5 text-muted-foreground" />
