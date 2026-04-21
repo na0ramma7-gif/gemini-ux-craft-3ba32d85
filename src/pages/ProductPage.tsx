@@ -7,6 +7,8 @@ import FeatureFinancialPlanning from '@/components/FeatureFinancialPlanning';
 import ProductForecast from '@/components/ProductForecast';
 import ProductOverview from '@/components/ProductOverview';
 import ProductDocumentation from '@/components/ProductDocumentation';
+import FeatureFormDialog from '@/components/FeatureFormDialog';
+import ReleaseFormDialog from '@/components/ReleaseFormDialog';
 import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, getFeatureEffectiveStatus, cn } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Button } from '@/components/ui/button';
@@ -58,19 +60,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [showAddReleaseModal, setShowAddReleaseModal] = useState(false);
   const [editingRelease, setEditingRelease] = useState<Release | null>(null);
-  const [newRelease, setNewRelease] = useState({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' as Release['status'] });
-  const [selectedFeatureIds, setSelectedFeatureIds] = useState<number[]>([]);
   const [selectedFeatureForFinancials, setSelectedFeatureForFinancials] = useState<Feature | null>(null);
-  
-  const [newFeature, setNewFeature] = useState({
-    name: '',
-    startDate: '',
-    endDate: '',
-    status: 'To Do' as const,
-    owner: '',
-    priority: 'Medium' as const,
-    releaseId: null as number | null
-  });
 
   const releases = useMemo(() => 
     state.releases.filter(r => r.productId === product.id),
@@ -142,33 +132,6 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
       left: `${leftPercent}%`,
       width: `${widthPercent}%`
     };
-  };
-
-  const handleAddFeature = () => {
-    if (!newFeature.name || !newFeature.startDate || !newFeature.endDate) return;
-    
-    addFeature({
-      ...newFeature,
-      productId: product.id,
-      releaseId: newFeature.releaseId
-    });
-    
-    setNewFeature({
-      name: '',
-      startDate: '',
-      endDate: '',
-      status: 'To Do',
-      owner: '',
-      priority: 'Medium',
-      releaseId: null
-    });
-    setShowAddModal(false);
-  };
-
-  const handleUpdateFeature = () => {
-    if (!editingFeature) return;
-    updateFeature(editingFeature.id, editingFeature);
-    setEditingFeature(null);
   };
 
   const handleDeleteFeature = (id: number) => {
@@ -536,11 +499,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                         <div className="flex items-center gap-2">
                           <StatusBadge status={release.status} />
                           <button
-                            onClick={() => {
-                              setEditingRelease(release);
-                              setNewRelease({ version: release.version, name: release.name, startDate: release.startDate, endDate: release.endDate, status: release.status });
-                              setSelectedFeatureIds(state.features.filter(f => f.releaseId === release.id).map(f => f.id));
-                            }}
+                            onClick={() => setEditingRelease(release)}
                             className="p-1 rounded hover:bg-muted transition-colors"
                           >
                             <Edit className="w-3.5 h-3.5 text-muted-foreground" />
@@ -568,110 +527,12 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
               </div>
 
               {/* Add/Edit Release Modal */}
-              <Dialog open={showAddReleaseModal || !!editingRelease} onOpenChange={open => { if (!open) { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); setSelectedFeatureIds([]); } }}>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>{editingRelease ? t('editRelease') : t('addRelease')}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-2">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-foreground">{t('version')}</label>
-                        <Input placeholder="v3.0" value={newRelease.version} onChange={e => setNewRelease(prev => ({ ...prev, version: e.target.value }))} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-foreground">{t('name')}</label>
-                        <Input placeholder="Release name" value={newRelease.name} onChange={e => setNewRelease(prev => ({ ...prev, name: e.target.value }))} />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-foreground">{t('startDate')}</label>
-                        <Input type="date" value={newRelease.startDate} onChange={e => setNewRelease(prev => ({ ...prev, startDate: e.target.value }))} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-foreground">{t('endDate')}</label>
-                        <Input type="date" value={newRelease.endDate} onChange={e => setNewRelease(prev => ({ ...prev, endDate: e.target.value }))} />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-foreground">{t('status')}</label>
-                      <Select value={newRelease.status} onValueChange={v => setNewRelease(prev => ({ ...prev, status: v as Release['status'] }))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Planned">{t('planned')}</SelectItem>
-                          <SelectItem value="In Progress">{t('inProgress')}</SelectItem>
-                          <SelectItem value="Released">{t('released')}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {/* Feature multi-select */}
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-foreground">{t('assignFeatures')}</label>
-                      <div className="border border-border rounded-md max-h-40 overflow-y-auto p-2 space-y-1">
-                        {(() => {
-                          const productFeatures = state.features.filter(f => f.productId === product.id);
-                          const available = productFeatures.filter(f =>
-                            f.releaseId === null || (editingRelease && f.releaseId === editingRelease.id)
-                          );
-                          if (available.length === 0) {
-                            return <p className="text-xs text-muted-foreground py-1">{t('noFeaturesAvailable')}</p>;
-                          }
-                          return available.map(f => (
-                            <div
-                              key={f.id}
-                              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm"
-                              onClick={() => {
-                                setSelectedFeatureIds(prev =>
-                                  prev.includes(f.id) ? prev.filter(id => id !== f.id) : [...prev, f.id]
-                                );
-                              }}
-                            >
-                              <Checkbox
-                                checked={selectedFeatureIds.includes(f.id)}
-                                onCheckedChange={() => {}}
-                              />
-                              <span className="text-foreground">{f.name}</span>
-                              <span className="text-xs text-muted-foreground ms-auto">{f.status}</span>
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                      {selectedFeatureIds.length > 0 && (
-                        <p className="text-xs text-muted-foreground">{selectedFeatureIds.length} {t('features')} {t('selected')}</p>
-                      )}
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => { setShowAddReleaseModal(false); setEditingRelease(null); setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' }); setSelectedFeatureIds([]); }}>{t('cancel')}</Button>
-                    <Button
-                      disabled={!newRelease.version || !newRelease.name || !newRelease.startDate || !newRelease.endDate}
-                      onClick={() => {
-                        if (editingRelease) {
-                          updateRelease(editingRelease.id, newRelease);
-                          // Assign selected features to this release
-                          selectedFeatureIds.forEach(fId => updateFeature(fId, { releaseId: editingRelease.id }));
-                          // Unassign features that were removed
-                          state.features
-                            .filter(f => f.releaseId === editingRelease.id && !selectedFeatureIds.includes(f.id))
-                            .forEach(f => updateFeature(f.id, { releaseId: null }));
-                          setEditingRelease(null);
-                        } else {
-                          // Create release first, then assign features
-                          const newId = Math.max(...state.releases.map(r => r.id), 0) + 1;
-                          addRelease({ productId: product.id, ...newRelease });
-                          selectedFeatureIds.forEach(fId => updateFeature(fId, { releaseId: newId }));
-                          setShowAddReleaseModal(false);
-                        }
-                        setNewRelease({ version: '', name: '', startDate: '', endDate: '', status: 'Planned' });
-                        setSelectedFeatureIds([]);
-                      }}
-                    >
-                      {t('save')}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <ReleaseFormDialog
+                open={showAddReleaseModal || !!editingRelease}
+                onOpenChange={(o) => { if (!o) { setShowAddReleaseModal(false); setEditingRelease(null); } }}
+                productId={product.id}
+                release={editingRelease}
+              />
             </TabsContent>
 
             {/* Financials Tab */}
@@ -753,191 +614,21 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
       </Tabs>
 
       {/* Add Feature Modal */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('addNewFeature')}</DialogTitle>
-            <DialogDescription>{t('createNewFeature')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('featureName')}</label>
-              <Input
-                value={newFeature.name}
-                onChange={(e) => setNewFeature({ ...newFeature, name: e.target.value })}
-                placeholder={t('enterFeatureName')}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('startDate')}</label>
-                <Input
-                  type="date"
-                  value={newFeature.startDate}
-                  onChange={(e) => setNewFeature({ ...newFeature, startDate: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('endDate')}</label>
-                <Input
-                  type="date"
-                  value={newFeature.endDate}
-                  onChange={(e) => setNewFeature({ ...newFeature, endDate: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('status')}</label>
-                <Select
-                  value={newFeature.status}
-                  onValueChange={(value) => setNewFeature({ ...newFeature, status: value as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="To Do">{t('toDo')}</SelectItem>
-                    <SelectItem value="In Progress">{t('inProgress')}</SelectItem>
-                    <SelectItem value="Delivered">{t('delivered')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('priority')}</label>
-                <Select
-                  value={newFeature.priority}
-                  onValueChange={(value) => setNewFeature({ ...newFeature, priority: value as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="High">{t('high')}</SelectItem>
-                    <SelectItem value="Medium">{t('medium')}</SelectItem>
-                    <SelectItem value="Low">{t('low')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('owner')}</label>
-              <Input
-                value={newFeature.owner}
-                onChange={(e) => setNewFeature({ ...newFeature, owner: e.target.value })}
-                placeholder={t('enterOwnerName')}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('release')}</label>
-              <Select
-                value={newFeature.releaseId?.toString() || 'none'}
-                onValueChange={(value) => setNewFeature({ ...newFeature, releaseId: value === 'none' ? null : parseInt(value) })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('selectRelease')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('noRelease')}</SelectItem>
-                  {releases.map(release => (
-                    <SelectItem key={release.id} value={release.id.toString()}>
-                      {release.version} - {release.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddModal(false)}>{t('cancel')}</Button>
-            <Button onClick={handleAddFeature}>{t('addFeature')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FeatureFormDialog
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        productId={product.id}
+        releases={releases}
+      />
 
       {/* Edit Feature Modal */}
-      <Dialog open={!!editingFeature} onOpenChange={() => setEditingFeature(null)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('editFeature')}</DialogTitle>
-            <DialogDescription>{t('updateFeatureDetails')}</DialogDescription>
-          </DialogHeader>
-          {editingFeature && (
-            <div className="space-y-4 py-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('featureName')}</label>
-                <Input
-                  value={editingFeature.name}
-                  onChange={(e) => setEditingFeature({ ...editingFeature, name: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground">{t('startDate')}</label>
-                  <Input
-                    type="date"
-                    value={editingFeature.startDate}
-                    onChange={(e) => setEditingFeature({ ...editingFeature, startDate: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground">{t('endDate')}</label>
-                  <Input
-                    type="date"
-                    value={editingFeature.endDate}
-                    onChange={(e) => setEditingFeature({ ...editingFeature, endDate: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground">{t('status')}</label>
-                  <Select
-                    value={editingFeature.status}
-                    onValueChange={(value) => setEditingFeature({ ...editingFeature, status: value as any })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="To Do">{t('toDo')}</SelectItem>
-                      <SelectItem value="In Progress">{t('inProgress')}</SelectItem>
-                      <SelectItem value="Delivered">{t('delivered')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground">{t('priority')}</label>
-                  <Select
-                    value={editingFeature.priority}
-                    onValueChange={(value) => setEditingFeature({ ...editingFeature, priority: value as any })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="High">{t('high')}</SelectItem>
-                      <SelectItem value="Medium">{t('medium')}</SelectItem>
-                      <SelectItem value="Low">{t('low')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('owner')}</label>
-                <Input
-                  value={editingFeature.owner}
-                  onChange={(e) => setEditingFeature({ ...editingFeature, owner: e.target.value })}
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingFeature(null)}>{t('cancel')}</Button>
-            <Button onClick={handleUpdateFeature}>{t('saveChanges')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FeatureFormDialog
+        open={!!editingFeature}
+        onOpenChange={(o) => { if (!o) setEditingFeature(null); }}
+        productId={product.id}
+        releases={releases}
+        feature={editingFeature}
+      />
 
       {/* Delete Confirmation Modal */}
       <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
