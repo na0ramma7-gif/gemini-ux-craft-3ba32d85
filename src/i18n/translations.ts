@@ -162,6 +162,9 @@ export const TRANSLATIONS = {
     // Common
     targetClient: 'Target Client',
     owner: 'Owner',
+    technicalLead: 'Technical Lead',
+    businessValue: 'Business Value',
+    portfolioProfile: 'Portfolio Profile',
     status: 'Status',
     priority: 'Priority',
     period: 'Period',
