@@ -208,6 +208,26 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
       }
     });
 
+    // Usage percent fields (0–100)
+    (['usageActiveUsersPct', 'usageRepeatUsagePct'] as const).forEach(k => {
+      const raw = String(s[k] ?? '').trim();
+      if (raw === '') return;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        (e as any)[k] = 'Enter a value between 0 and 100';
+      }
+    });
+
+    // Usage non-negative integer fields
+    (['usageNumberOfUsers', 'usageYearlyTransactions'] as const).forEach(k => {
+      const raw = String(s[k] ?? '').trim();
+      if (raw === '') return;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+        (e as any)[k] = 'Enter a non-negative whole number';
+      }
+    });
+
     return e;
   };
 
@@ -275,13 +295,24 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
       stability: numOrUndef(trimmed.matStability),
       customerSatisfaction: numOrUndef(trimmed.matSatisfaction),
     };
+    const usage: ProductUsage = {
+      numberOfUsers: numOrUndef(trimmed.usageNumberOfUsers),
+      yearlyTransactions: numOrUndef(trimmed.usageYearlyTransactions),
+      activeUsersPct: numOrUndef(trimmed.usageActiveUsersPct),
+      repeatUsagePct: numOrUndef(trimmed.usageRepeatUsagePct),
+      engagementLevel: trimmed.usageEngagementLevel || undefined,
+      usageTrend: trimmed.usageTrend || undefined,
+      updatedAt: new Date().toISOString(),
+    };
     const {
       healthStatus, healthOverallScore, healthAdoption, healthStability, healthSatisfaction,
       healthOpsReadiness, healthNotes,
       matAdoption, matRevenue, matEfficiency, matStability, matSatisfaction,
+      usageNumberOfUsers, usageYearlyTransactions, usageActiveUsersPct, usageRepeatUsagePct,
+      usageEngagementLevel, usageTrend,
       ...productFields
     } = trimmed;
-    updateProduct(product.id, { ...productFields, health, maturity });
+    updateProduct(product.id, { ...productFields, health, maturity, usage });
     toast.success('Changes saved');
     onOpenChange(false);
   };
