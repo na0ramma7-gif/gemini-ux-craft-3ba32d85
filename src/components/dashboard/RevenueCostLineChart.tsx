@@ -17,9 +17,13 @@ const RevenueCostLineChart = () => {
       return months.map(month => {
         const monthKey = format(month, 'yyyy-MM');
         let revenue = 0;
+        let planned = 0;
         let cost = 0;
         state.revenueActual.forEach(r => {
           if (r.month === monthKey) revenue += r.actual;
+        });
+        state.revenuePlan.forEach(r => {
+          if (r.month === monthKey) planned += r.expected;
         });
         state.costs.forEach(c => {
           const monthly = monthlyCostForRow(c);
@@ -30,7 +34,7 @@ const RevenueCostLineChart = () => {
           if (ce && monthKey > ce) return;
           cost += monthly;
         });
-        return { monthKey, label: format(month, 'MMM'), revenue, cost, profit: revenue - cost };
+        return { monthKey, label: format(month, 'MMM'), revenue, planned, cost, profit: revenue - cost };
       });
     };
 
@@ -48,6 +52,7 @@ const RevenueCostLineChart = () => {
       out.push({
         name: p?.label ?? c?.label ?? '',
         revenue: p?.revenue ?? null,
+        planned: p?.planned ?? null,
         cost: p?.cost ?? null,
         profit: p?.profit ?? null,
         revenueCmp: c?.revenue ?? null,
@@ -62,8 +67,12 @@ const RevenueCostLineChart = () => {
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
-    const rowFor = (key: string) => payload.find((p: any) => p.dataKey === key);
-    const cmpLabel = payload[0]?.payload?.cmpLabel;
+    const row = payload[0]?.payload ?? {};
+    const cmpLabel = row.cmpLabel;
+    const actual = typeof row.revenue === 'number' ? row.revenue : null;
+    const planned = typeof row.planned === 'number' ? row.planned : null;
+    const diff = actual != null && planned != null ? actual - planned : null;
+    const achievement = actual != null && planned && planned > 0 ? (actual / planned) * 100 : null;
     return (
       <div className="bg-card border border-border rounded-xl shadow-[var(--shadow-lg)] p-3.5 text-xs space-y-1.5">
         <p className="font-semibold text-foreground text-sm">{label}</p>
@@ -76,6 +85,26 @@ const RevenueCostLineChart = () => {
             <span className="font-semibold text-foreground">{formatCurrency(entry.value, language)}</span>
           </div>
         ))}
+        {(diff != null || achievement != null) && (
+          <div className="pt-1.5 mt-1 border-t border-border space-y-1">
+            {diff != null && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Δ {t('actual')} − {t('planned')}:</span>
+                <span className={`font-semibold ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
+                  {diff >= 0 ? '+' : '−'}{formatCurrency(Math.abs(diff), language)}
+                </span>
+              </div>
+            )}
+            {achievement != null && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">{t('achievement')}:</span>
+                <span className={`font-semibold ${achievement >= 100 ? 'text-success' : 'text-warning'}`}>
+                  {achievement.toFixed(1)}%
+                </span>
+              </div>
+            )}
+          </div>
+        )}
         {compareEnabled && cmpLabel && (
           <p className="text-[10px] text-muted-foreground pt-1 border-t border-border">
             {t('comparison')}: {cmpLabel}
@@ -121,6 +150,17 @@ const RevenueCostLineChart = () => {
               dot={{ r: 4, fill: 'hsl(var(--revenue))', strokeWidth: 0 }}
               activeDot={{ r: 7, strokeWidth: 2, stroke: 'white' }}
               name={t('revenue')}
+              connectNulls
+            />
+            <Line
+              type="monotone"
+              dataKey="planned"
+              stroke="hsl(var(--target))"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+              dot={{ r: 3, fill: 'hsl(var(--target))', strokeWidth: 0 }}
+              activeDot={{ r: 6, strokeWidth: 2, stroke: 'white' }}
+              name={t('plannedRevenue')}
               connectNulls
             />
             <Line
