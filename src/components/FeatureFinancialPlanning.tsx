@@ -3,6 +3,7 @@ import { useApp } from '@/context/AppContext';
 import { Feature } from '@/types';
 import FeatureForecast from '@/components/FeatureForecast';
 import { formatCurrency, cn } from '@/lib/utils';
+import { parseMoney, parsePercent } from '@/lib/validation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -526,11 +527,11 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('planned')} (SAR)</label>
-                    <Input type="number" value={editPlannedRev || ''} placeholder="0" onChange={e => setEditPlannedRev(parseFloat(e.target.value) || 0)} />
+                    <Input type="number" min={0} step="0.01" value={editPlannedRev || ''} placeholder="0" onChange={e => setEditPlannedRev(parseMoney(e.target.value))} />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('actual')} (SAR)</label>
-                    <Input type="number" value={editActualRev || ''} placeholder="0" onChange={e => setEditActualRev(parseFloat(e.target.value) || 0)} />
+                    <Input type="number" min={0} step="0.01" value={editActualRev || ''} placeholder="0" onChange={e => setEditActualRev(parseMoney(e.target.value))} />
                   </div>
                 </div>
                 {(editPlannedRev > 0 || editActualRev > 0) && (
@@ -583,8 +584,8 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                                       <td className="px-3 py-2"><div className="font-medium text-foreground">{resource.name}</div><div className="text-xs text-muted-foreground">{resource.role}</div></td>
                                       <td className="px-3 py-2 text-end text-foreground">{formatCurrency(resource.costRate, language)}</td>
                                       <td className="px-3 py-2 text-center">
-                                        <Input type="number" className="h-7 text-xs text-center w-16 mx-auto" value={alloc.utilization} min={0} max={100}
-                                          onChange={e => updateResourceUtil(editMonthIdx, alloc.resourceId, parseInt(e.target.value) || 0)} />
+                                        <Input type="number" className="h-7 text-xs text-center w-16 mx-auto" value={alloc.utilization} min={0} max={100} step="1"
+                                          onChange={e => updateResourceUtil(editMonthIdx, alloc.resourceId, parsePercent(e.target.value))} />
                                       </td>
                                       <td className="px-3 py-2 text-end font-semibold text-primary">{formatCurrency(resource.costRate * (alloc.utilization / 100), language)}</td>
                                       <td className="px-3 py-2 text-center">
@@ -636,8 +637,8 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                                     {items.map(item => (
                                       <tr key={item.id} className="hover:bg-secondary/30">
                                         <td className="px-3 py-1.5"><Input className="h-7 text-xs" value={item.name} placeholder={t('costName')} onChange={e => updateCostItem(editMonthIdx, cat, item.id, { name: e.target.value })} /></td>
-                                        <td className="px-3 py-1.5"><Input type="number" className="h-7 text-xs text-end" value={item.planned || ''} placeholder="0" onChange={e => updateCostItem(editMonthIdx, cat, item.id, { planned: parseFloat(e.target.value) || 0 })} /></td>
-                                        <td className="px-3 py-1.5"><Input type="number" className="h-7 text-xs text-end" value={item.actual || ''} placeholder="0" onChange={e => updateCostItem(editMonthIdx, cat, item.id, { actual: parseFloat(e.target.value) || 0 })} /></td>
+                                        <td className="px-3 py-1.5"><Input type="number" min={0} step="0.01" className="h-7 text-xs text-end" value={item.planned || ''} placeholder="0" onChange={e => updateCostItem(editMonthIdx, cat, item.id, { planned: parseMoney(e.target.value) })} /></td>
+                                        <td className="px-3 py-1.5"><Input type="number" min={0} step="0.01" className="h-7 text-xs text-end" value={item.actual || ''} placeholder="0" onChange={e => updateCostItem(editMonthIdx, cat, item.id, { actual: parseMoney(e.target.value) })} /></td>
                                         <td className="px-3 py-1.5"><Input className="h-7 text-xs" value={item.notes} placeholder="..." onChange={e => updateCostItem(editMonthIdx, cat, item.id, { notes: e.target.value })} /></td>
                                         <td className="px-3 py-1.5 text-center">
                                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive" onClick={() => removeCostItem(editMonthIdx, cat, item.id)}>
