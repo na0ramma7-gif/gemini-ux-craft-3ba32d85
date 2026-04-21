@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Product, LifecycleStage } from '@/types';
+import { Product, LifecycleStage, ProductHealth, ProductHealthStatus, ProductMaturity } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -66,6 +66,20 @@ type FormState = {
   capabilities: string[];
   successMetrics: string[];
   strategicObjectiveIds: number[];
+  // Product Health (user-defined)
+  healthStatus: ProductHealthStatus;
+  healthOverallScore: string;
+  healthAdoption: string;
+  healthStability: string;
+  healthSatisfaction: string;
+  healthOpsReadiness: string;
+  healthNotes: string;
+  // Product Maturity (user-scored 0–100)
+  matAdoption: string;
+  matRevenue: string;
+  matEfficiency: string;
+  matStability: string;
+  matSatisfaction: string;
 };
 
 type Errors = Partial<Record<keyof FormState, string>>;
@@ -99,6 +113,18 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     capabilities: product.capabilities ? [...product.capabilities] : [],
     successMetrics: product.successMetrics ? [...product.successMetrics] : [],
     strategicObjectiveIds: product.strategicObjectiveIds ? [...product.strategicObjectiveIds] : [],
+    healthStatus: (product.health?.status as ProductHealthStatus) ?? 'Healthy',
+    healthOverallScore: product.health?.overallScore != null ? String(product.health.overallScore) : '',
+    healthAdoption: product.health?.adoption != null ? String(product.health.adoption) : '',
+    healthStability: product.health?.stability != null ? String(product.health.stability) : '',
+    healthSatisfaction: product.health?.satisfaction != null ? String(product.health.satisfaction) : '',
+    healthOpsReadiness: product.health?.operationalReadiness != null ? String(product.health.operationalReadiness) : '',
+    healthNotes: product.health?.notes ?? '',
+    matAdoption: product.maturity?.adoption != null ? String(product.maturity.adoption) : '',
+    matRevenue: product.maturity?.revenuePerformance != null ? String(product.maturity.revenuePerformance) : '',
+    matEfficiency: product.maturity?.efficiency != null ? String(product.maturity.efficiency) : '',
+    matStability: product.maturity?.stability != null ? String(product.maturity.stability) : '',
+    matSatisfaction: product.maturity?.customerSatisfaction != null ? String(product.maturity.customerSatisfaction) : '',
   }), [product]);
 
   const [data, setData] = useState<FormState>(initial);
@@ -151,6 +177,20 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     if (s.businessValue.trim().length > MAX.business)
       e.businessValue = `Business value cannot exceed ${MAX.business} characters`;
 
+    // Score range validation (0–100, integer or empty)
+    const scoreFields: (keyof FormState)[] = [
+      'healthOverallScore', 'healthAdoption', 'healthStability', 'healthSatisfaction', 'healthOpsReadiness',
+      'matAdoption', 'matRevenue', 'matEfficiency', 'matStability', 'matSatisfaction',
+    ];
+    scoreFields.forEach(k => {
+      const raw = String(s[k] ?? '').trim();
+      if (raw === '') return;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        (e as any)[k] = 'Enter a value between 0 and 100';
+      }
+    });
+
     return e;
   };
 
@@ -175,6 +215,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     purpose: s.purpose.trim(),
     strategicObjective: s.strategicObjective.trim(),
     businessValue: s.businessValue.trim(),
+    healthNotes: s.healthNotes.trim(),
   });
 
   const handleSave = () => {
@@ -193,7 +234,36 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
       }
       return;
     }
-    updateProduct(product.id, trimmed);
+    const numOrUndef = (s: string): number | undefined => {
+      const t = s.trim();
+      if (t === '') return undefined;
+      const n = Number(t);
+      return Number.isFinite(n) ? Math.round(n) : undefined;
+    };
+    const health: ProductHealth = {
+      status: trimmed.healthStatus,
+      overallScore: numOrUndef(trimmed.healthOverallScore),
+      adoption: numOrUndef(trimmed.healthAdoption),
+      stability: numOrUndef(trimmed.healthStability),
+      satisfaction: numOrUndef(trimmed.healthSatisfaction),
+      operationalReadiness: numOrUndef(trimmed.healthOpsReadiness),
+      notes: trimmed.healthNotes.trim() || undefined,
+      updatedAt: new Date().toISOString(),
+    };
+    const maturity: ProductMaturity = {
+      adoption: numOrUndef(trimmed.matAdoption),
+      revenuePerformance: numOrUndef(trimmed.matRevenue),
+      efficiency: numOrUndef(trimmed.matEfficiency),
+      stability: numOrUndef(trimmed.matStability),
+      customerSatisfaction: numOrUndef(trimmed.matSatisfaction),
+    };
+    const {
+      healthStatus, healthOverallScore, healthAdoption, healthStability, healthSatisfaction,
+      healthOpsReadiness, healthNotes,
+      matAdoption, matRevenue, matEfficiency, matStability, matSatisfaction,
+      ...productFields
+    } = trimmed;
+    updateProduct(product.id, { ...productFields, health, maturity });
     onOpenChange(false);
   };
 
@@ -466,6 +536,105 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
                 className={errClasses('businessValue')}
               />
               <ErrorMsg k="businessValue" />
+            </div>
+
+            {/* ───── Product Health (user-defined) ───── */}
+            <div className="pt-3 mt-3 border-t border-border space-y-3">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">{t('sectionProductHealth')}</h4>
+                <p className="text-[11px] text-muted-foreground">{t('healthHelpStatus')}</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{t('healthStatus')} *</Label>
+                  <Select value={data.healthStatus} onValueChange={v => setField('healthStatus', v as ProductHealthStatus)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Healthy">{t('healthStatusHealthy')}</SelectItem>
+                      <SelectItem value="At Risk">{t('healthStatusAtRisk')}</SelectItem>
+                      <SelectItem value="Critical">{t('healthStatusCritical')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pp-overall" className="text-xs">{t('overallScore')} (0–100)</Label>
+                  <Input
+                    id="pp-overall"
+                    type="number" min={0} max={100} step={1}
+                    value={data.healthOverallScore}
+                    onChange={e => setField('healthOverallScore', e.target.value)}
+                    className={errClasses('healthOverallScore' as any)}
+                  />
+                  <p className="text-[10px] text-muted-foreground">{t('healthHelpScore')}</p>
+                  <ErrorMsg k={'healthOverallScore' as any} />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">{t('keyIndicators')}</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1.5">
+                  {([
+                    { k: 'healthAdoption' as const, label: t('adoptionLevel'), help: t('healthHelpAdoption') },
+                    { k: 'healthStability' as const, label: t('stability'), help: t('healthHelpStability') },
+                    { k: 'healthSatisfaction' as const, label: t('customerSatisfaction'), help: t('healthHelpSatisfaction') },
+                    { k: 'healthOpsReadiness' as const, label: t('operationalReadiness'), help: t('healthHelpOps') },
+                  ]).map(f => (
+                    <div key={f.k} className="space-y-1">
+                      <Label htmlFor={`pp-${f.k}`} className="text-xs">{f.label} (0–100)</Label>
+                      <Input
+                        id={`pp-${f.k}`}
+                        type="number" min={0} max={100} step={1}
+                        value={data[f.k]}
+                        onChange={e => setField(f.k, e.target.value)}
+                        className={errClasses(f.k as any)}
+                      />
+                      <p className="text-[10px] text-muted-foreground">{f.help}</p>
+                      <ErrorMsg k={f.k as any} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pp-hnotes" className="text-xs">{t('healthNotes')}</Label>
+                <Textarea
+                  id="pp-hnotes" rows={2} maxLength={500}
+                  value={data.healthNotes}
+                  onChange={e => setField('healthNotes', e.target.value)}
+                  placeholder={t('healthNotesPlaceholder')}
+                />
+              </div>
+            </div>
+
+            {/* ───── Product Maturity (user-scored) ───── */}
+            <div className="pt-3 mt-3 border-t border-border space-y-3">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">{t('sectionProductMaturity')}</h4>
+                <p className="text-[11px] text-muted-foreground">{t('scoreRangeHelp')}</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {([
+                  { k: 'matAdoption' as const, label: t('maturityAdoption'), help: t('maturityHelpAdoption') },
+                  { k: 'matRevenue' as const, label: t('maturityRevenue'), help: t('maturityHelpRevenue') },
+                  { k: 'matEfficiency' as const, label: t('maturityEfficiency'), help: t('maturityHelpEfficiency') },
+                  { k: 'matStability' as const, label: t('maturityStability'), help: t('maturityHelpStability') },
+                  { k: 'matSatisfaction' as const, label: t('maturitySatisfaction'), help: t('maturityHelpSatisfaction') },
+                ]).map(f => (
+                  <div key={f.k} className="space-y-1">
+                    <Label htmlFor={`pp-${f.k}`} className="text-xs">{f.label} (0–100)</Label>
+                    <Input
+                      id={`pp-${f.k}`}
+                      type="number" min={0} max={100} step={1}
+                      value={data[f.k]}
+                      onChange={e => setField(f.k, e.target.value)}
+                      className={errClasses(f.k as any)}
+                    />
+                    <p className="text-[10px] text-muted-foreground">{f.help}</p>
+                    <ErrorMsg k={f.k as any} />
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Capabilities */}

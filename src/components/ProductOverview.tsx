@@ -2,13 +2,13 @@ import { useMemo, useState, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Product } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   User, Target, TrendingUp, Activity, Zap, BarChart3, Pencil, Upload, X,
-  DollarSign, Package, Star, Lightbulb,
+  Package, Lightbulb, AlertTriangle, CheckCircle2, AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -49,33 +49,49 @@ const ProductOverview = ({ product }: Props) => {
   const releases = useMemo(() => state.releases.filter(r => r.productId === product.id), [state.releases, product.id]);
   const features = useMemo(() => state.features.filter(f => f.productId === product.id), [state.features, product.id]);
 
-  // Single source of truth: useHierarchicalMetrics
-  const health = useMemo(() => ({
-    revenue: productMetric?.revenue ?? 0,
-    cost: productMetric?.cost ?? 0,
-    profit: productMetric?.profit ?? 0,
-    achievement: productMetric?.achievementPct ?? 0,
-    deliveredFeatures: features.filter(f => f.status === 'Delivered').length,
-    inProgressFeatures: features.filter(f => f.status === 'In Progress').length,
-    featureCount: features.length,
-    releaseCount: releases.length,
-  }), [productMetric, features, releases]);
+  // User-defined Product Health (qualitative, no financial data here)
+  const health = product.health;
 
-  // Maturity radar data
-  const radarData = useMemo(() => {
-    const adoption = Math.min(100, health.achievement);
-    const revenueGrowth = health.revenue > 0 ? Math.min(100, Math.round((health.profit / health.revenue) * 100 + 50)) : 20;
-    const opEfficiency = health.cost > 0 ? Math.min(100, Math.round(((health.revenue - health.cost) / health.cost) * 100)) : 30;
-    const techStability = health.deliveredFeatures > 0 ? Math.min(100, Math.round((health.deliveredFeatures / Math.max(health.featureCount, 1)) * 100)) : 25;
-    const userSatisfaction = Math.min(100, adoption * 0.8 + 20);
-    return [
-      { dimension: 'Adoption', value: adoption, fullMark: 100 },
-      { dimension: 'Revenue', value: revenueGrowth, fullMark: 100 },
-      { dimension: 'Efficiency', value: opEfficiency, fullMark: 100 },
-      { dimension: 'Stability', value: techStability, fullMark: 100 },
-      { dimension: 'Satisfaction', value: userSatisfaction, fullMark: 100 },
-    ];
-  }, [health]);
+  // User-scored Product Maturity drives the radar — empty axes show as 0.
+  const maturity = product.maturity;
+  const hasMaturity = !!maturity && (
+    [maturity.adoption, maturity.revenuePerformance, maturity.efficiency, maturity.stability, maturity.customerSatisfaction]
+      .some(v => typeof v === 'number')
+  );
+  const radarData = useMemo(() => ([
+    { dimension: t('maturityAdoption'),     value: maturity?.adoption ?? 0,            fullMark: 100 },
+    { dimension: t('maturityRevenue'),      value: maturity?.revenuePerformance ?? 0,  fullMark: 100 },
+    { dimension: t('maturityEfficiency'),   value: maturity?.efficiency ?? 0,          fullMark: 100 },
+    { dimension: t('maturityStability'),    value: maturity?.stability ?? 0,           fullMark: 100 },
+    { dimension: t('maturitySatisfaction'), value: maturity?.customerSatisfaction ?? 0,fullMark: 100 },
+  ]), [maturity, t]);
+
+  const healthBadgeStyle = (status?: string) => {
+    switch (status) {
+      case 'Healthy':  return { cls: 'bg-success/10 text-success border-success/30',         Icon: CheckCircle2 };
+      case 'At Risk':  return { cls: 'bg-warning/10 text-warning border-warning/30',         Icon: AlertTriangle };
+      case 'Critical': return { cls: 'bg-destructive/10 text-destructive border-destructive/30', Icon: AlertCircle };
+      default:         return { cls: 'bg-muted text-muted-foreground border-border',         Icon: Activity };
+    }
+  };
+
+  const indicatorRow = (label: string, value?: number) => (
+    <div className="bg-card rounded-lg p-3 border border-border/50">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[11px] text-muted-foreground font-medium">{label}</span>
+        <span className="text-xs font-semibold text-foreground tabular-nums">
+          {typeof value === 'number' ? `${value}%` : '—'}
+        </span>
+      </div>
+      <div className="w-full bg-secondary rounded-full h-1.5">
+        <div
+          className={cn('h-1.5 rounded-full transition-all',
+            (value ?? 0) >= 70 ? 'bg-success' : (value ?? 0) >= 40 ? 'bg-warning' : 'bg-destructive')}
+          style={{ width: `${Math.min(value ?? 0, 100)}%` }}
+        />
+      </div>
+    </div>
+  );
 
   const openEditModal = () => setShowEditModal(true);
 
@@ -197,28 +213,64 @@ const ProductOverview = ({ product }: Props) => {
 
       {/* Section 3: Health & Maturity — side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Health Metrics */}
+        {/* Product Health — user-defined operational status (NOT financials) */}
         <div className="bg-secondary/30 rounded-xl p-5">
-          <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-primary" /> {t('productHealth')}
-          </h4>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { icon: <DollarSign className="w-4 h-4 text-success" />, label: t('revenue'), value: formatCurrency(health.revenue, language), color: 'text-success' },
-              { icon: <DollarSign className="w-4 h-4 text-destructive" />, label: t('cost'), value: formatCurrency(health.cost, language), color: 'text-destructive' },
-              { icon: <TrendingUp className="w-4 h-4 text-primary" />, label: t('netProfit'), value: formatCurrency(health.profit, language), color: health.profit >= 0 ? 'text-success' : 'text-destructive' },
-              { icon: <Target className="w-4 h-4 text-primary" />, label: t('targetVsAchieved'), value: `${health.achievement}%`, color: health.achievement >= 70 ? 'text-success' : 'text-destructive' },
-              { icon: <Star className="w-4 h-4 text-accent" />, label: t('activeFeatures'), value: `${health.inProgressFeatures}`, color: 'text-accent' },
-              { icon: <Zap className="w-4 h-4 text-primary" />, label: t('features'), value: `${health.deliveredFeatures}/${health.featureCount}`, color: 'text-primary' },
-              { icon: <Package className="w-4 h-4 text-foreground" />, label: t('releaseVelocity'), value: `${health.releaseCount}`, color: 'text-foreground' },
-            ].map((m, i) => (
-              <div key={i} className="bg-card rounded-lg p-3 border border-border/50 text-center">
-                <div className="flex justify-center mb-1">{m.icon}</div>
-                <div className={`text-base font-bold ${m.color}`}>{m.value}</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">{m.label}</div>
-              </div>
-            ))}
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Activity className="w-4 h-4 text-primary" /> {t('productHealth')}
+            </h4>
+            {health?.updatedAt && (
+              <span className="text-[10px] text-muted-foreground">
+                {t('lastUpdated')}: {formatDate(health.updatedAt, language)}
+              </span>
+            )}
           </div>
+
+          {!health ? (
+            <p className="text-xs text-muted-foreground italic">{t('healthNotSet')}</p>
+          ) : (
+            <div className="space-y-3">
+              {/* Status + Overall Score */}
+              <div className="flex items-center gap-3 flex-wrap">
+                {(() => {
+                  const { cls, Icon } = healthBadgeStyle(health.status);
+                  return (
+                    <span className={cn('inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border', cls)}>
+                      <Icon className="w-3.5 h-3.5" />
+                      {t(`healthStatus${health.status === 'At Risk' ? 'AtRisk' : health.status}` as any) || health.status}
+                    </span>
+                  );
+                })()}
+                {typeof health.overallScore === 'number' && (
+                  <span className="text-xs text-muted-foreground">
+                    {t('overallScore')}: <span className="font-semibold text-foreground">{health.overallScore}%</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Key Indicators */}
+              <div>
+                <div className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider mb-2">
+                  {t('keyIndicators')}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {indicatorRow(t('adoptionLevel'), health.adoption)}
+                  {indicatorRow(t('stability'), health.stability)}
+                  {indicatorRow(t('customerSatisfaction'), health.satisfaction)}
+                  {indicatorRow(t('operationalReadiness'), health.operationalReadiness)}
+                </div>
+              </div>
+
+              {health.notes && (
+                <div className="bg-card rounded-lg p-3 border border-border/50">
+                  <div className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">
+                    {t('healthNotes')}
+                  </div>
+                  <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{health.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Maturity Radar */}
@@ -226,17 +278,21 @@ const ProductOverview = ({ product }: Props) => {
           <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-primary" /> {t('productMaturity')}
           </h4>
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
-                <PolarGrid stroke="hsl(var(--border))" />
-                <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar name="Maturity" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
+          {!hasMaturity ? (
+            <p className="text-xs text-muted-foreground italic">{t('maturityNotSet')}</p>
+          ) : (
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
+                  <Radar name="Maturity" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
 
