@@ -309,36 +309,29 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
               <thead>
                 <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
                   <th className="text-start py-2 ps-1">{t('service')}</th>
-                  <th className="text-end py-2">{t('baseTx')}</th>
                   <th className="text-end py-2">{t('rate')}</th>
-                  <th className="text-end py-2">{t('growthPercent')}</th>
-                  <th className="text-end py-2">{t('pattern')}</th>
+                  <th className="text-end py-2">{t('forecast')} {t('transactionsShort')}</th>
+                  <th className="text-end py-2">{t('forecast')} {t('revenue')}</th>
                   <th className="text-end py-2 pe-1">{t('shareOfTotal')}</th>
                 </tr>
               </thead>
               <tbody>
                 {projection.services.map(s => {
-                  const overridden = activeScenario.services.some(a => a.serviceId === s.serviceId);
                   const share = projection.totalRevenue > 0 ? (s.totalRevenue / projection.totalRevenue) * 100 : 0;
                   return (
                     <tr key={s.serviceId} className="border-b border-border/50">
                       <td className="py-2 ps-1 font-medium text-foreground">
-                        <div className="flex items-center gap-2">
-                          {overridden && <span className="w-1.5 h-1.5 rounded-full bg-warning" title={t('overridden')} />}
-                          {s.serviceName}
-                        </div>
+                        {s.serviceName}
                       </td>
                       <td className="py-2 text-end tabular-nums text-muted-foreground">
-                        {Math.round(s.baseTx).toLocaleString()}
+                        {formatCurrency(s.defaultRate, language)}
                       </td>
-                      <td className="py-2 text-end tabular-nums text-muted-foreground">
-                        {formatCurrency(s.rate, language)}
+                      <td className="py-2 text-end tabular-nums text-foreground">
+                        {Math.round(s.totalTx).toLocaleString()}
                       </td>
-                      <td className={cn('py-2 text-end tabular-nums font-medium', overridden ? 'text-warning' : 'text-foreground')}>
-                        {s.growthRate.toFixed(1)}%
-                        {overridden && <Pencil className="inline w-2.5 h-2.5 ms-1" />}
+                      <td className="py-2 text-end tabular-nums font-medium text-foreground">
+                        {formatCurrency(Math.round(s.totalRevenue), language)}
                       </td>
-                      <td className="py-2 text-end text-muted-foreground">{t('flat')}</td>
                       <td className="py-2 pe-1 text-end text-muted-foreground tabular-nums">{share.toFixed(1)}%</td>
                     </tr>
                   );
@@ -417,11 +410,7 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
                       {s.monthly.map((m, i) => (
                         <td
                           key={i}
-                          className={cn(
-                            'p-3 text-end tabular-nums',
-                            m.sanityFlag ? 'text-warning' : 'text-foreground',
-                          )}
-                          title={m.sanityFlag ? t('sanitySpike') : undefined}
+                          className="p-3 text-end tabular-nums text-foreground"
                         >
                           {formatCurrency(Math.round(m.revenue), language)}
                         </td>
