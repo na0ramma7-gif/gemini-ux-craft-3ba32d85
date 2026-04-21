@@ -961,6 +961,9 @@ export const TRANSLATIONS = {
     
     // Common
     owner: 'المالك',
+    technicalLead: 'القائد التقني',
+    businessValue: 'القيمة التجارية',
+    portfolioProfile: 'ملف المحفظة',
     status: 'الحالة',
     priority: 'الأولوية',
     period: 'الفترة',
