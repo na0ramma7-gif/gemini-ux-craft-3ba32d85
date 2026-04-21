@@ -202,6 +202,13 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
         <CompareEmptyState validation={compare.validation} dataState={compare.dataState} />
       )}
 
+      {/* Per-service revenue breakdown for this portfolio */}
+      <ServiceBreakdownTable
+        current={compare.currentServices}
+        comparison={compare.comparisonServices}
+        active={compare.active}
+      />
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <KPICard
