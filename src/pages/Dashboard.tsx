@@ -22,7 +22,6 @@ import { Button } from '@/components/ui/button';
 import CompareControls from '@/components/compare/CompareControls';
 import CompareEmptyState from '@/components/compare/CompareEmptyState';
 import KPIDelta from '@/components/compare/KPIDelta';
-import ServiceBreakdownTable from '@/components/compare/ServiceBreakdownTable';
 import { useCompareMetrics } from '@/hooks/useCompareMetrics';
 
 export type PipelineHorizon = HorizonMonths;
@@ -80,13 +79,6 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
       {compare.active && (
         <CompareEmptyState validation={compare.validation} dataState={compare.dataState} />
       )}
-
-      {/* Per-service revenue breakdown — visible always; gains Δ% column when Compare is ON */}
-      <ServiceBreakdownTable
-        current={compare.currentServices}
-        comparison={compare.comparisonServices}
-        active={compare.active}
-      />
 
       {/* 1. Executive Summary KPIs — Department Level */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
