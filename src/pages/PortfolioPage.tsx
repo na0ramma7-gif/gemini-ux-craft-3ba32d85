@@ -7,6 +7,7 @@ import KPICard from '@/components/KPICard';
 import ProductFormDialog from '@/components/ProductFormDialog';
 import PortfolioFormDialog from '@/components/PortfolioFormDialog';
 import PortfolioStrategicAlignment from '@/components/PortfolioStrategicAlignment';
+import AssignmentFormDialog from '@/components/AssignmentFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +22,7 @@ import { useCompareMetrics } from '@/hooks/useCompareMetrics';
 import { computeWindowMetrics, computeDelta } from '@/lib/compare';
 import {
   ArrowLeft, ArrowRight, LayoutGrid, Package, Users, DollarSign, Target,
-  Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3, Plus,
+  Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3, Plus, Edit, Trash2,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
