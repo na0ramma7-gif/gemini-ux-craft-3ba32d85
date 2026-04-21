@@ -37,6 +37,8 @@ interface FeatureFinancialPlanningProps { feature: Feature; onClose: () => void;
 
 const COST_CATEGORIES = ['Infrastructure', 'Licensing', 'Marketing', 'Other'];
 const MONTHS_SHORT_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'] as const;
+const MONTHS_FULL_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'] as const;
+const MONTHS_FULL_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'] as const;
 const uid = () => Math.random().toString(36).slice(2, 9);
 const monthKeyOf = (year: number, monthIdx: number) =>
   `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
