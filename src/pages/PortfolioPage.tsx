@@ -5,6 +5,7 @@ import { Portfolio, Product } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import KPICard from '@/components/KPICard';
 import ProductFormDialog from '@/components/ProductFormDialog';
+import PortfolioFormDialog from '@/components/PortfolioFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,9 +17,6 @@ import {
   Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3, Plus,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -61,7 +59,6 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
   const [activeTab, setActiveTab] = useState('overview');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
-  const [editData, setEditData] = useState<Partial<Portfolio>>({});
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const products = useMemo(() => state.products.filter(p => p.portfolioId === portfolio.id), [state.products, portfolio.id]);
@@ -131,17 +128,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
 
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
 
-  const openEditModal = () => {
-    setEditData({
-      name: portfolio.name, description: portfolio.description, purpose: portfolio.purpose,
-      strategicObjective: portfolio.strategicObjective, businessValue: portfolio.businessValue,
-      owner: portfolio.owner, technicalLead: portfolio.technicalLead,
-      businessStakeholder: portfolio.businessStakeholder, priority: portfolio.priority,
-    });
-    setShowEditModal(true);
-  };
-
-  const handleSave = () => { updatePortfolio(portfolio.id, editData); setShowEditModal(false); };
+  const openEditModal = () => setShowEditModal(true);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -561,29 +548,11 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
       </Tabs>
 
       {/* Edit Portfolio Modal */}
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{t('editPortfolioProfile')}</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label className="text-xs">{t('name')}</Label><Input value={editData.name || ''} onChange={e => setEditData(prev => ({ ...prev, name: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">{t('owner')}</Label><Input value={editData.owner || ''} onChange={e => setEditData(prev => ({ ...prev, owner: e.target.value }))} placeholder={t('portfolioOwner')} /></div>
-            </div>
-            <div className="space-y-1.5"><Label className="text-xs">{t('description')}</Label><Input value={editData.description || ''} onChange={e => setEditData(prev => ({ ...prev, description: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">{t('purpose')}</Label><Input value={editData.purpose || ''} onChange={e => setEditData(prev => ({ ...prev, purpose: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">{t('strategicObjective')}</Label><Input value={editData.strategicObjective || ''} onChange={e => setEditData(prev => ({ ...prev, strategicObjective: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">{t('businessValueLabel')}</Label><Input value={editData.businessValue || ''} onChange={e => setEditData(prev => ({ ...prev, businessValue: e.target.value }))} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label className="text-xs">{t('technicalOwner')}</Label><Input value={editData.technicalLead || ''} onChange={e => setEditData(prev => ({ ...prev, technicalLead: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">{t('businessStakeholder')}</Label><Input value={editData.businessStakeholder || ''} onChange={e => setEditData(prev => ({ ...prev, businessStakeholder: e.target.value }))} /></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditModal(false)}>{t('cancel')}</Button>
-            <Button onClick={handleSave}><Save className="w-4 h-4 me-1.5" />{t('save')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PortfolioFormDialog
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        portfolio={portfolio}
+      />
 
       <ProductFormDialog
         open={showProductForm}
