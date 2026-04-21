@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Product, LifecycleStage, ProductHealth, ProductHealthStatus, ProductMaturity } from '@/types';
+import { Product, LifecycleStage, ProductHealth, ProductHealthStatus, ProductMaturity, ProductUsage, EngagementLevel, UsageTrend } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -83,6 +83,13 @@ type FormState = {
   matEfficiency: string;
   matStability: string;
   matSatisfaction: string;
+  // Product Usage / User Behavior
+  usageNumberOfUsers: string;
+  usageYearlyTransactions: string;
+  usageActiveUsersPct: string;
+  usageRepeatUsagePct: string;
+  usageEngagementLevel: EngagementLevel | '';
+  usageTrend: UsageTrend | '';
 };
 
 type Errors = Partial<Record<keyof FormState, string>>;
@@ -129,6 +136,12 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     matEfficiency: product.maturity?.efficiency != null ? String(product.maturity.efficiency) : '',
     matStability: product.maturity?.stability != null ? String(product.maturity.stability) : '',
     matSatisfaction: product.maturity?.customerSatisfaction != null ? String(product.maturity.customerSatisfaction) : '',
+    usageNumberOfUsers: product.usage?.numberOfUsers != null ? String(product.usage.numberOfUsers) : '',
+    usageYearlyTransactions: product.usage?.yearlyTransactions != null ? String(product.usage.yearlyTransactions) : '',
+    usageActiveUsersPct: product.usage?.activeUsersPct != null ? String(product.usage.activeUsersPct) : '',
+    usageRepeatUsagePct: product.usage?.repeatUsagePct != null ? String(product.usage.repeatUsagePct) : '',
+    usageEngagementLevel: (product.usage?.engagementLevel as EngagementLevel) ?? '',
+    usageTrend: (product.usage?.usageTrend as UsageTrend) ?? '',
   }), [product]);
 
   const [data, setData] = useState<FormState>(initial);
@@ -192,6 +205,26 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
       const n = Number(raw);
       if (!Number.isFinite(n) || n < 0 || n > 100) {
         (e as any)[k] = 'Enter a value between 0 and 100';
+      }
+    });
+
+    // Usage percent fields (0–100)
+    (['usageActiveUsersPct', 'usageRepeatUsagePct'] as const).forEach(k => {
+      const raw = String(s[k] ?? '').trim();
+      if (raw === '') return;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        (e as any)[k] = 'Enter a value between 0 and 100';
+      }
+    });
+
+    // Usage non-negative integer fields
+    (['usageNumberOfUsers', 'usageYearlyTransactions'] as const).forEach(k => {
+      const raw = String(s[k] ?? '').trim();
+      if (raw === '') return;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+        (e as any)[k] = 'Enter a non-negative whole number';
       }
     });
 
@@ -262,13 +295,24 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
       stability: numOrUndef(trimmed.matStability),
       customerSatisfaction: numOrUndef(trimmed.matSatisfaction),
     };
+    const usage: ProductUsage = {
+      numberOfUsers: numOrUndef(trimmed.usageNumberOfUsers),
+      yearlyTransactions: numOrUndef(trimmed.usageYearlyTransactions),
+      activeUsersPct: numOrUndef(trimmed.usageActiveUsersPct),
+      repeatUsagePct: numOrUndef(trimmed.usageRepeatUsagePct),
+      engagementLevel: trimmed.usageEngagementLevel || undefined,
+      usageTrend: trimmed.usageTrend || undefined,
+      updatedAt: new Date().toISOString(),
+    };
     const {
       healthStatus, healthOverallScore, healthAdoption, healthStability, healthSatisfaction,
       healthOpsReadiness, healthNotes,
       matAdoption, matRevenue, matEfficiency, matStability, matSatisfaction,
+      usageNumberOfUsers, usageYearlyTransactions, usageActiveUsersPct, usageRepeatUsagePct,
+      usageEngagementLevel, usageTrend,
       ...productFields
     } = trimmed;
-    updateProduct(product.id, { ...productFields, health, maturity });
+    updateProduct(product.id, { ...productFields, health, maturity, usage });
     toast.success('Changes saved');
     onOpenChange(false);
   };
@@ -662,6 +706,106 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
                     <ErrorMsg k={f.k as any} />
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* ───── Product Usage / User Behavior ───── */}
+            <div className="pt-3 mt-3 border-t border-border space-y-3">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">{t('sectionProductUsage')}</h4>
+                <p className="text-[11px] text-muted-foreground">
+                  {t('numberOfUsersHelp')} {t('yearlyTransactionsHelp')}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="pp-usage-users" className="text-xs">{t('numberOfUsers')}</Label>
+                  <Input
+                    id="pp-usage-users"
+                    type="number" min={0} step={1}
+                    value={data.usageNumberOfUsers}
+                    onChange={e => setField('usageNumberOfUsers', e.target.value)}
+                    onBlur={() => blur('usageNumberOfUsers')}
+                    className={errClasses('usageNumberOfUsers')}
+                    placeholder="e.g. 1200"
+                  />
+                  <p className="text-[10px] text-muted-foreground">{t('numberOfUsersHelp')}</p>
+                  <ErrorMsg k="usageNumberOfUsers" />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="pp-usage-tx" className="text-xs">
+                    {t('yearlyTransactions')}
+                  </Label>
+                  <Input
+                    id="pp-usage-tx"
+                    type="number" min={0} step={1}
+                    value={data.usageYearlyTransactions}
+                    onChange={e => setField('usageYearlyTransactions', e.target.value)}
+                    onBlur={() => blur('usageYearlyTransactions')}
+                    className={errClasses('usageYearlyTransactions')}
+                    placeholder="e.g. 50000"
+                  />
+                  <p className="text-[10px] text-muted-foreground">{t('yearlyTransactionsHelp')}</p>
+                  <ErrorMsg k="usageYearlyTransactions" />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="pp-usage-active" className="text-xs">{t('activeUsersPct')} (0–100)</Label>
+                  <Input
+                    id="pp-usage-active"
+                    type="number" min={0} max={100} step={1}
+                    value={data.usageActiveUsersPct}
+                    onChange={e => setField('usageActiveUsersPct', e.target.value)}
+                    className={errClasses('usageActiveUsersPct')}
+                  />
+                  <ErrorMsg k="usageActiveUsersPct" />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="pp-usage-repeat" className="text-xs">{t('repeatUsagePct')} (0–100)</Label>
+                  <Input
+                    id="pp-usage-repeat"
+                    type="number" min={0} max={100} step={1}
+                    value={data.usageRepeatUsagePct}
+                    onChange={e => setField('usageRepeatUsagePct', e.target.value)}
+                    className={errClasses('usageRepeatUsagePct')}
+                  />
+                  <ErrorMsg k="usageRepeatUsagePct" />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">{t('engagementLevel')}</Label>
+                  <Select
+                    value={data.usageEngagementLevel || 'none'}
+                    onValueChange={v => setField('usageEngagementLevel', (v === 'none' ? '' : v) as EngagementLevel | '')}
+                  >
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      <SelectItem value="Low">{t('engagementLow')}</SelectItem>
+                      <SelectItem value="Medium">{t('engagementMedium')}</SelectItem>
+                      <SelectItem value="High">{t('engagementHigh')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">{t('usageTrend')}</Label>
+                  <Select
+                    value={data.usageTrend || 'none'}
+                    onValueChange={v => setField('usageTrend', (v === 'none' ? '' : v) as UsageTrend | '')}
+                  >
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      <SelectItem value="Increasing">{t('trendIncreasing')}</SelectItem>
+                      <SelectItem value="Stable">{t('trendStable')}</SelectItem>
+                      <SelectItem value="Declining">{t('trendDeclining')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
