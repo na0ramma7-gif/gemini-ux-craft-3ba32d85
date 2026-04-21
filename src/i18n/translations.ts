@@ -433,6 +433,28 @@ export const TRANSLATIONS = {
     resetDefaults: 'Reset Defaults',
     months: 'months',
     type: 'Type',
+
+    // Forecast — scenario configuration (Department dashboard)
+    forecastConfigDesc: 'Configure how each scenario projects revenue. Values apply to the cards, chart and tooltip.',
+    growthMode: 'Growth Mode',
+    compound: 'Compound',
+    linear: 'Linear',
+    monthlyGrowthRate: 'Monthly Growth Rate (%)',
+    revenueAdjustment: 'Revenue Adjustment (%)',
+    pipelineConversionRate: 'Conversion Rate (%)',
+    rampFactor: 'Ramp / Slowdown (%)',
+    advancedSettings: 'Advanced Settings',
+    riskBuffer: 'Risk Buffer (%)',
+    monthlyCap: 'Monthly Cap (SAR)',
+    oneTimeSpike: 'One-time Spike',
+    off: 'Off',
+    month: 'Month',
+    resetScenario: 'Reset to preset',
+    base: 'Base',
+    adjusted: 'Adjusted',
+    converted: 'Converted',
+    appliedGrowth: 'Applied Growth',
+    appliedConversion: 'Conversion',
     
     // Additional UI labels
     activeReleases: 'Active Releases',
