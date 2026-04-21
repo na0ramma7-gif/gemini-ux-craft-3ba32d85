@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Plus, Check, X, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 interface Props {
   open: boolean;
@@ -64,6 +65,7 @@ type FormState = {
   businessValue: string;
   capabilities: string[];
   successMetrics: string[];
+  strategicObjectiveIds: number[];
 };
 
 type Errors = Partial<Record<keyof FormState, string>>;
@@ -78,6 +80,11 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
   const initialRef = useRef<FormState | null>(null);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
 
+  const portfolioObjectives = useMemo(
+    () => state.strategicObjectives.filter(o => o.portfolioId === product.portfolioId),
+    [state.strategicObjectives, product.portfolioId],
+  );
+
   const initial: FormState = useMemo(() => ({
     name: product.name ?? '',
     owner: product.owner ?? '',
@@ -91,6 +98,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     businessValue: product.businessValue ?? '',
     capabilities: product.capabilities ? [...product.capabilities] : [],
     successMetrics: product.successMetrics ? [...product.successMetrics] : [],
+    strategicObjectiveIds: product.strategicObjectiveIds ? [...product.strategicObjectiveIds] : [],
   }), [product]);
 
   const [data, setData] = useState<FormState>(initial);
@@ -420,25 +428,23 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
               <ErrorMsg k="purpose" />
             </div>
 
-            {/* Strategic Objective */}
+            {/* Strategic Alignment (linked objectives) */}
             <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="pp-so" className="text-xs">
-                  Strategic Objective <span className="text-muted-foreground">(optional)</span>
-                </Label>
-                <Counter value={data.strategicObjective} max={MAX.strategic} />
-              </div>
-              <Textarea
-                id="pp-so"
-                ref={(el) => { fieldRefs.current.strategicObjective = el; }}
-                rows={2}
-                value={data.strategicObjective}
-                maxLength={MAX.strategic}
-                onChange={e => setField('strategicObjective', e.target.value)}
-                onBlur={() => { setField('strategicObjective', data.strategicObjective.trim()); blur('strategicObjective'); }}
-                className={errClasses('strategicObjective')}
-              />
-              <ErrorMsg k="strategicObjective" />
+              <Label className="text-xs">{t('strategicAlignment')} <span className="text-muted-foreground">(optional)</span></Label>
+              {portfolioObjectives.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t('noObjectivesForPortfolio')}</p>
+              ) : (
+                <MultiSelect
+                  options={portfolioObjectives.map(o => ({
+                    value: String(o.id), label: o.title, description: o.description,
+                  }))}
+                  value={data.strategicObjectiveIds.map(String)}
+                  onChange={(vals) => setField('strategicObjectiveIds',
+                    vals.map(v => Number(v)).filter(n => !Number.isNaN(n)))}
+                  placeholder={t('selectStrategicObjectives')}
+                  searchPlaceholder="Search objectives…"
+                />
+              )}
             </div>
 
             {/* Business Value */}

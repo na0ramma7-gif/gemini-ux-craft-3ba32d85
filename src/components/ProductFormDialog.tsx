@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { MultiSelect } from '@/components/ui/multi-select';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -34,6 +35,7 @@ const ProductFormDialog = ({
   open, onOpenChange, portfolioId, portfolioName, onCreated,
 }: ProductFormDialogProps) => {
   const { addProduct, t, state } = useApp();
+  const portfolioObjectives = state.strategicObjectives.filter(o => o.portfolioId === portfolioId);
 
   const schema = z.object({
     name: nameField('Name'),
@@ -75,6 +77,7 @@ const ProductFormDialog = ({
   const [capabilities, setCapabilities] = useState<string[]>([]);
   const [successMetrics, setSuccessMetrics] = useState<string[]>([]);
   const [supportingTeams, setSupportingTeams] = useState<string[]>([]);
+  const [objectiveIds, setObjectiveIds] = useState<number[]>([]);
   const [capInput, setCapInput] = useState('');
   const [metricInput, setMetricInput] = useState('');
   const [teamInput, setTeamInput] = useState('');
@@ -83,6 +86,7 @@ const ProductFormDialog = ({
     if (open) {
       form.reset();
       setCapabilities([]); setSuccessMetrics([]); setSupportingTeams([]);
+      setObjectiveIds([]);
       setCapInput(''); setMetricInput(''); setTeamInput('');
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -143,6 +147,7 @@ const ProductFormDialog = ({
       deliveryManager: values.deliveryManager || '',
       businessStakeholder: values.businessStakeholder || '',
       supportingTeams,
+      strategicObjectiveIds: objectiveIds,
     });
     toast.success(`Product "${created.name}" created`);
     onOpenChange(false);
@@ -243,12 +248,25 @@ const ProductFormDialog = ({
               </FormItem>
             )} />
 
-            <FormField control={form.control} name="strategicObjective" render={({ field }) => (
-              <FormItem><FormLabel>Strategic Objective</FormLabel>
-                <FormControl><Textarea rows={2} maxLength={500} {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <div className="space-y-1.5">
+              <Label>{t('strategicAlignment')}</Label>
+              {portfolioObjectives.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t('noObjectivesForPortfolio')}</p>
+              ) : (
+                <MultiSelect
+                  options={portfolioObjectives.map(o => ({
+                    value: String(o.id),
+                    label: o.title,
+                    description: o.description,
+                  }))}
+                  value={objectiveIds.map(String)}
+                  onChange={(vals) => setObjectiveIds(vals.map(v => Number(v)).filter(n => !Number.isNaN(n)))}
+                  placeholder={t('selectStrategicObjectives')}
+                  searchPlaceholder="Search objectives…"
+                  emptyText="No matching objectives"
+                />
+              )}
+            </div>
 
             <FormField control={form.control} name="businessValue" render={({ field }) => (
               <FormItem><FormLabel>Business Value</FormLabel>

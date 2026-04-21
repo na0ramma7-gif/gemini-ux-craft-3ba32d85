@@ -495,6 +495,24 @@ export const TRANSLATIONS = {
     noDataComparison: 'No data in the comparison period for the selected entities.',
     noDataBoth: 'No data in either period for the selected entities.',
     noDataPartial: 'One period has no revenue or cost data — comparison may be incomplete.',
+
+    // Strategic Alignment (managed objectives)
+    addStrategicObjective: '+ Add Strategic Objective',
+    editObjective: 'Edit Objective',
+    deleteObjective: 'Delete Objective',
+    objectiveTitle: 'Objective Title',
+    objectiveDescription: 'Description',
+    objectiveStatus: 'Status',
+    archived: 'Archived',
+    objectiveTitleRequired: 'Objective title is required',
+    objectiveAlreadyExists: 'Objective already exists in this portfolio',
+    objectiveCannotBeEmpty: 'Objective cannot be empty',
+    confirmDeleteObjective: 'Are you sure you want to delete this objective?',
+    confirmDeleteObjectiveLinked: 'This objective is linked to {n} products. Are you sure you want to delete it?',
+    noObjectivesYet: 'No strategic objectives defined yet.',
+    selectStrategicObjectives: 'Select strategic objectives…',
+    noObjectivesForPortfolio: 'No objectives defined yet. Add them in the Portfolio view.',
+    invalidObjectiveSelection: 'Please select a valid strategic objective',
   },
   ar: {
     // Navigation
@@ -992,6 +1010,24 @@ export const TRANSLATIONS = {
     noDataComparison: 'لا توجد بيانات في فترة المقارنة للعناصر المحددة.',
     noDataBoth: 'لا توجد بيانات في أي من الفترتين للعناصر المحددة.',
     noDataPartial: 'إحدى الفترتين لا تحتوي على بيانات إيرادات أو تكلفة — قد تكون المقارنة غير مكتملة.',
+
+    // Strategic Alignment
+    addStrategicObjective: '+ إضافة هدف استراتيجي',
+    editObjective: 'تعديل الهدف',
+    deleteObjective: 'حذف الهدف',
+    objectiveTitle: 'عنوان الهدف',
+    objectiveDescription: 'الوصف',
+    objectiveStatus: 'الحالة',
+    archived: 'مؤرشف',
+    objectiveTitleRequired: 'عنوان الهدف مطلوب',
+    objectiveAlreadyExists: 'هذا الهدف موجود بالفعل في هذه المحفظة',
+    objectiveCannotBeEmpty: 'لا يمكن أن يكون الهدف فارغاً',
+    confirmDeleteObjective: 'هل أنت متأكد من حذف هذا الهدف؟',
+    confirmDeleteObjectiveLinked: 'هذا الهدف مرتبط بـ {n} منتج. هل أنت متأكد من الحذف؟',
+    noObjectivesYet: 'لم يتم تعريف أي أهداف استراتيجية بعد.',
+    selectStrategicObjectives: 'اختر الأهداف الاستراتيجية…',
+    noObjectivesForPortfolio: 'لا توجد أهداف بعد. أضفها من صفحة المحفظة.',
+    invalidObjectiveSelection: 'يرجى اختيار هدف استراتيجي صالح',
   }
 };
 

@@ -264,5 +264,6 @@ export const INITIAL_STATE: AppState = {
     { id: 23, featureId: 13, month: '2024-04', actual: 18500 },
   ],
   documents: [],
-  language: 'en'
+  strategicObjectives: [],
+  language: 'en',
 };
