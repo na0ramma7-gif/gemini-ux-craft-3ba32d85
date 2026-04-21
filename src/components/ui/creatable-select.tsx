@@ -7,6 +7,10 @@ import {
   CommandSeparator,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 export interface CreatableSelectProps {
   value?: string;
@@ -41,6 +45,9 @@ export const CreatableSelect = ({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newValue, setNewValue] = useState('');
+  const [dialogError, setDialogError] = useState<string | null>(null);
 
   const trimmed = query.trim();
   const lowerOptions = useMemo(
@@ -69,25 +76,40 @@ export const CreatableSelect = ({
     }
   };
 
+  const lowerOptionsForDialog = lowerOptions;
+  const handleDialogCreate = () => {
+    const t = newValue.trim();
+    if (t.length < minLength) { setDialogError(`Must be at least ${minLength} characters`); return; }
+    if (t.length > maxLength) { setDialogError(`Must be ${maxLength} characters or fewer`); return; }
+    if (lowerOptionsForDialog.has(t.toLowerCase())) { setDialogError('This value already exists'); return; }
+    const created = onCreate(t);
+    if (created) {
+      onChange(created);
+      setNewValue('');
+      setDialogError(null);
+      setCreateOpen(false);
+    }
+  };
+
   return (
-    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setQuery(''); setError(null); } }}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={disabled}
-          className={cn(
-            'w-full justify-between rounded-md font-normal h-10 px-3',
-            !value && 'text-muted-foreground',
-            className,
-          )}
-        >
-          <span className="truncate">{value || placeholder}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
+    <div className={cn('flex items-center gap-2', className)}>
+      <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setQuery(''); setError(null); } }}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            disabled={disabled}
+            className={cn(
+              'flex-1 justify-between rounded-md font-normal h-10 px-3',
+              !value && 'text-muted-foreground',
+            )}
+          >
+            <span className="truncate">{value || placeholder}</span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
       <PopoverContent
         className="p-0 w-[--radix-popover-trigger-width] min-w-[260px]"
         align="start"
@@ -166,7 +188,44 @@ export const CreatableSelect = ({
           </div>
         </Command>
       </PopoverContent>
-    </Popover>
+      </Popover>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        disabled={disabled}
+        onClick={() => { setNewValue(''); setDialogError(null); setCreateOpen(true); }}
+        title={addNewLabel}
+        aria-label={addNewLabel}
+        className="shrink-0 rounded-md"
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{addNewLabel}</DialogTitle>
+            <DialogDescription>Add a new value. It will be saved and reusable across portfolios.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              autoFocus
+              value={newValue}
+              maxLength={maxLength}
+              placeholder="Enter value…"
+              onChange={(e) => { setNewValue(e.target.value); setDialogError(null); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleDialogCreate(); } }}
+            />
+            {dialogError && <p className="text-xs text-destructive">{dialogError}</p>}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button type="button" onClick={handleDialogCreate}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 
