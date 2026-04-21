@@ -50,6 +50,9 @@ import {
   BarChart3,
   List,
   TrendingUp,
+  TrendingDown,
+  Receipt,
+  Target,
   Users,
 } from 'lucide-react';
 import AssignmentFormDialog from '@/components/AssignmentFormDialog';

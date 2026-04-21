@@ -202,24 +202,70 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KPICard title={t('totalRevenue')} value={formatCurrency(portfolioMetrics.totalRevenue, language)} icon={<span className="text-lg">💰</span>} variant="green"
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <KPICard
+          title={t('totalRevenue')}
+          value={formatCurrency(portfolioMetrics.totalRevenue, language)}
+          icon={<DollarSign className="w-5 h-5 text-success" />}
+          variant="green"
+          progress={{
+            label: t('plannedYear'),
+            target: formatCurrency(portMetrics?.target ?? 0, language),
+            percent: portMetrics?.achievementPct ?? 0,
+            status: (portMetrics?.achievementPct ?? 0) >= 70 ? 'positive' : 'negative',
+            remaining: formatCurrency(Math.max(0, (portMetrics?.target ?? 0) - portfolioMetrics.totalRevenue), language),
+          }}
           extra={compare.active ? (
             <KPIDelta comparisonFormatted={formatCurrency(compare.comparison.revenue, language)} delta={compare.delta.revenue} format="currency" />
           ) : undefined}
         />
-        <KPICard title={t('totalCost')} value={formatCurrency(portfolioMetrics.totalCost, language)} icon={<span className="text-lg">💸</span>} variant="red"
+        <KPICard
+          title={t('totalCost')}
+          value={formatCurrency(portfolioMetrics.totalCost, language)}
+          icon={<Receipt className="w-5 h-5 text-destructive" />}
+          variant="red"
+          progress={{
+            label: t('budgetYear'),
+            target: formatCurrency(portfolioMetrics.totalCost * 1.18, language),
+            percent: 85,
+            status: 'positive',
+            remaining: formatCurrency(portfolioMetrics.totalCost * 0.18, language),
+          }}
           extra={compare.active ? (
             <KPIDelta comparisonFormatted={formatCurrency(compare.comparison.cost, language)} delta={compare.delta.cost} lowerIsBetter format="currency" />
           ) : undefined}
         />
-        <KPICard title={t('netProfit')} value={formatCurrency(portfolioMetrics.profit, language)} subtitle={`${t('margin')}: ${portfolioMetrics.margin.toFixed(1)}%`} icon={<span className="text-lg">✅</span>} variant={portfolioMetrics.profit >= 0 ? 'green' : 'red'}
+        <KPICard
+          title={t('netProfit')}
+          value={formatCurrency(portfolioMetrics.profit, language)}
+          subtitle={`${t('margin')}: ${portfolioMetrics.margin.toFixed(1)}%`}
+          icon={portfolioMetrics.profit >= 0 ? <TrendingUp className="w-5 h-5 text-success" /> : <TrendingDown className="w-5 h-5 text-destructive" />}
+          variant={portfolioMetrics.profit >= 0 ? 'green' : 'red'}
           extra={compare.active ? (
             <KPIDelta comparisonFormatted={formatCurrency(compare.comparison.profit, language)} delta={compare.delta.profit} format="currency" />
           ) : undefined}
         />
-        <KPICard title={t('products')} value={portfolioMetrics.productCount.toString()} subtitle={`${portfolioMetrics.featureCount} ${t('features')}`} icon={<span className="text-lg">📦</span>} variant="purple" />
-        <KPICard title={t('activeReleases')} value={portfolioMetrics.activeReleases.toString()} subtitle={`${portfolioMetrics.inProgressFeatures} ${t('inProgress').toLowerCase()}`} icon={<span className="text-lg">🚀</span>} variant="gradient" />
+        <KPICard
+          title={t('plannedVsAchieved')}
+          value={`${portMetrics?.achievementPct ?? 0}%`}
+          subtitle={(portMetrics?.achievementPct ?? 0) >= 70 ? '↑ On Track' : '↓ Below Target'}
+          icon={<Target className="w-5 h-5 text-primary-foreground" />}
+          variant="gradient"
+          progress={{
+            label: t('plannedYear'),
+            target: formatCurrency(portMetrics?.target ?? 0, language),
+            percent: portMetrics?.achievementPct ?? 0,
+            status: (portMetrics?.achievementPct ?? 0) >= 70 ? 'positive' : 'negative',
+            remaining: formatCurrency(Math.max(0, (portMetrics?.target ?? 0) - portfolioMetrics.totalRevenue), language),
+          }}
+        />
+        <KPICard
+          title={t('products')}
+          value={portfolioMetrics.productCount.toString()}
+          subtitle={`${portfolioMetrics.featureCount} ${t('features')}`}
+          icon={<Package className="w-5 h-5 text-accent" />}
+          variant="purple"
+        />
       </div>
 
       {/* Tabs */}
