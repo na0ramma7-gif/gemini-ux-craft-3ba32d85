@@ -102,7 +102,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
 
   // Per-feature comparison metrics for the Financials revenue table.
   const compareByFeatureId = useMemo(() => {
-    const map = new Map<number, { revenue: number; cost: number; profit: number }>();
+    const map = new (globalThis.Map as MapConstructor)() as Map<number, { revenue: number; cost: number; profit: number }>;
     if (!compare.active || !compare.comparisonWindow) return map;
     features.forEach(f => {
       const m = computeWindowMetrics(state, compare.comparisonWindow, {
