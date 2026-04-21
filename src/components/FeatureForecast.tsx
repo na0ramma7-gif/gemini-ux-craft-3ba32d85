@@ -300,6 +300,20 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
         </div>
       )}
 
+      {/* Migration banner — shown once when legacy data was just upgraded */}
+      {settings.migratedFromLegacy && !migrationDismissed && (
+        <div className="flex items-start justify-between gap-2 bg-primary/5 border border-primary/30 rounded-lg px-3 py-2.5 text-xs">
+          <p className="text-foreground">{t('forecastMigratedBanner')}</p>
+          <button
+            type="button"
+            className="text-primary hover:underline shrink-0"
+            onClick={() => setMigrationDismissed(true)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <SummaryCard
