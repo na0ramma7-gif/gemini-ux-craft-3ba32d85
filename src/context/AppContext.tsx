@@ -443,6 +443,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         updateRelease,
         lookups,
         addLookupValue,
+        addStrategicObjective,
+        updateStrategicObjective,
+        deleteStrategicObjective,
       }}
     >
       {children}
