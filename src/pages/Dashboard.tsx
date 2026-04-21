@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import KPICard from '@/components/KPICard';
 import GlobalDateFilter from '@/components/GlobalDateFilter';
+import PortfolioFormDialog from '@/components/PortfolioFormDialog';
 import RevenueCostLineChart from '@/components/dashboard/RevenueCostLineChart';
 import PortfolioDonutChart from '@/components/dashboard/PortfolioDonutChart';
 import PortfolioBarChart from '@/components/dashboard/PortfolioBarChart';
@@ -13,7 +14,7 @@ import { formatCurrency } from '@/lib/utils';
 import { Portfolio, Product } from '@/types';
 import { ScenarioType } from '@/components/ForecastConfigModal';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
-import { TrendingUp, TrendingDown, Target, Package, DollarSign, Receipt, BarChart3, Settings2, Layers, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Package, DollarSign, Receipt, BarChart3, Settings2, Layers, Activity, Plus } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 
@@ -28,6 +29,7 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
   const dept = useHierarchicalMetrics(state, dateFilter);
   const [scenario, setScenario] = useState<ScenarioType>('baseline');
   const [horizon, setHorizon] = useState<PipelineHorizon>(9);
+  const [showPortfolioForm, setShowPortfolioForm] = useState(false);
 
   // Single source of truth: target & achievement come from the hook.
   const trend = useMemo(() => ({ achievePct: dept.achievementPct }), [dept.achievementPct]);
@@ -59,7 +61,12 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
             {dept.totalPortfolios} {t('portfolios')} · {dept.totalProducts} {t('products')} · {dept.totalFeatures} {t('features')} · {dept.totalReleases} {t('releases')}
           </p>
         </div>
-        <GlobalDateFilter />
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => setShowPortfolioForm(true)}>
+            <Plus className="w-4 h-4 me-1.5" />{t('addPortfolio')}
+          </Button>
+          <GlobalDateFilter />
+        </div>
       </div>
 
       {/* 1. Executive Summary KPIs — Department Level */}
@@ -187,6 +194,12 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
 
       {/* 6. Upcoming Revenue Drivers */}
       <UpcomingRevenueDrivers scenario={scenario} horizon={horizon} onProductClick={handleProductClick} />
+
+      <PortfolioFormDialog
+        open={showPortfolioForm}
+        onOpenChange={setShowPortfolioForm}
+        onCreated={onPortfolioClick}
+      />
     </div>
   );
 };
