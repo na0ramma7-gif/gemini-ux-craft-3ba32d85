@@ -248,12 +248,25 @@ const ProductFormDialog = ({
               </FormItem>
             )} />
 
-            <FormField control={form.control} name="strategicObjective" render={({ field }) => (
-              <FormItem><FormLabel>Strategic Objective</FormLabel>
-                <FormControl><Textarea rows={2} maxLength={500} {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <div className="space-y-1.5">
+              <Label>{t('strategicAlignment')}</Label>
+              {portfolioObjectives.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t('noObjectivesForPortfolio')}</p>
+              ) : (
+                <MultiSelect
+                  options={portfolioObjectives.map(o => ({
+                    value: String(o.id),
+                    label: o.title,
+                    description: o.description,
+                  }))}
+                  value={objectiveIds.map(String)}
+                  onChange={(vals) => setObjectiveIds(vals.map(v => Number(v)).filter(n => !Number.isNaN(n)))}
+                  placeholder={t('selectStrategicObjectives')}
+                  searchPlaceholder="Search objectives…"
+                  emptyText="No matching objectives"
+                />
+              )}
+            </div>
 
             <FormField control={form.control} name="businessValue" render={({ field }) => (
               <FormItem><FormLabel>Business Value</FormLabel>
