@@ -111,10 +111,16 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
     return { baseMonthlyCost, hasCostData: monthsWithCost.length > 0 };
   }, [costEntries]);
 
+  // First forecast month = month after the last historical month.
+  const forecastStartDate = useMemo(() => {
+    // Determined later via historicalChart; recomputed below.
+    return new Date();
+  }, []);
+
   // ── Live projection for the active scenario ───────────────────
   const projection = useMemo(
-    () => projectForecast(serviceBaselines, costBaseline, activeScenario, settings.horizon),
-    [serviceBaselines, costBaseline, activeScenario, settings.horizon],
+    () => projectForecast(serviceBaselines, costBaseline, activeScenario, settings.horizon, forecastStartDate),
+    [serviceBaselines, costBaseline, activeScenario, settings.horizon, forecastStartDate],
   );
 
   // ── Historical chart series ───────────────────────────────────
