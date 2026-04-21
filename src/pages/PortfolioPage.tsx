@@ -12,6 +12,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import CompareControls from '@/components/compare/CompareControls';
+import CompareEmptyState from '@/components/compare/CompareEmptyState';
+import KPIDelta from '@/components/compare/KPIDelta';
+import DeltaChip from '@/components/compare/DeltaChip';
+import { useCompareMetrics } from '@/hooks/useCompareMetrics';
+import { computeWindowMetrics, computeDelta } from '@/lib/compare';
 import {
   ArrowLeft, ArrowRight, LayoutGrid, Package, Users, DollarSign, Target,
   Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3, Plus,
@@ -55,7 +61,7 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 };
 
 const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps) => {
-  const { state, updatePortfolio, t, language, isRTL, dateFilter } = useApp();
+  const { state, updatePortfolio, t, language, isRTL, dateFilter, compareSelection } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
@@ -65,6 +71,25 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
 
   const deptMetrics = useHierarchicalMetrics(state, dateFilter);
   const portMetrics = deptMetrics.portfolioMetrics.find(p => p.portfolioId === portfolio.id);
+
+  const compare = useCompareMetrics({ scope: 'portfolio', portfolioId: portfolio.id });
+  const compareEnabled = dateFilter.compareEnabled;
+  const productFilter = compareSelection.productIds;
+
+  // Per-product comparison metrics (for the overview product table).
+  const compareByProductId = useMemo(() => {
+    const map = new Map<number, { revenue: number; cost: number; profit: number }>();
+    if (!compare.active || !compare.comparisonWindow) return map;
+    products.forEach(p => {
+      const m = computeWindowMetrics(state, compare.comparisonWindow!, {
+        portfolioIds: [],
+        productIds: [p.id],
+        featureIds: [],
+      });
+      map.set(p.id, { revenue: m.revenue, cost: m.cost, profit: m.profit });
+    });
+    return map;
+  }, [products, compare.active, compare.comparisonWindow, state]);
 
   // Backwards-compatible shape for charts
   const portfolioMetrics = useMemo(() => {
@@ -173,11 +198,31 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
         </Button>
       </div>
 
+      {/* Compare controls — visible only when Compare is ON */}
+      <CompareControls scope="portfolio" portfolioId={portfolio.id} />
+
+      {/* Compare validation / no-data banner */}
+      {compare.active && (
+        <CompareEmptyState validation={compare.validation} dataState={compare.dataState} />
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KPICard title={t('totalRevenue')} value={formatCurrency(portfolioMetrics.totalRevenue, language)} icon={<span className="text-lg">💰</span>} variant="green" />
-        <KPICard title={t('totalCost')} value={formatCurrency(portfolioMetrics.totalCost, language)} icon={<span className="text-lg">💸</span>} variant="red" />
-        <KPICard title={t('netProfit')} value={formatCurrency(portfolioMetrics.profit, language)} subtitle={`${t('margin')}: ${portfolioMetrics.margin.toFixed(1)}%`} icon={<span className="text-lg">✅</span>} variant={portfolioMetrics.profit >= 0 ? 'green' : 'red'} />
+        <KPICard title={t('totalRevenue')} value={formatCurrency(portfolioMetrics.totalRevenue, language)} icon={<span className="text-lg">💰</span>} variant="green"
+          extra={compare.active ? (
+            <KPIDelta comparisonFormatted={formatCurrency(compare.comparison.revenue, language)} delta={compare.delta.revenue} format="currency" />
+          ) : undefined}
+        />
+        <KPICard title={t('totalCost')} value={formatCurrency(portfolioMetrics.totalCost, language)} icon={<span className="text-lg">💸</span>} variant="red"
+          extra={compare.active ? (
+            <KPIDelta comparisonFormatted={formatCurrency(compare.comparison.cost, language)} delta={compare.delta.cost} lowerIsBetter format="currency" />
+          ) : undefined}
+        />
+        <KPICard title={t('netProfit')} value={formatCurrency(portfolioMetrics.profit, language)} subtitle={`${t('margin')}: ${portfolioMetrics.margin.toFixed(1)}%`} icon={<span className="text-lg">✅</span>} variant={portfolioMetrics.profit >= 0 ? 'green' : 'red'}
+          extra={compare.active ? (
+            <KPIDelta comparisonFormatted={formatCurrency(compare.comparison.profit, language)} delta={compare.delta.profit} format="currency" />
+          ) : undefined}
+        />
         <KPICard title={t('products')} value={portfolioMetrics.productCount.toString()} subtitle={`${portfolioMetrics.featureCount} ${t('features')}`} icon={<span className="text-lg">📦</span>} variant="purple" />
         <KPICard title={t('activeReleases')} value={portfolioMetrics.activeReleases.toString()} subtitle={`${portfolioMetrics.inProgressFeatures} ${t('inProgress').toLowerCase()}`} icon={<span className="text-lg">🚀</span>} variant="gradient" />
       </div>
