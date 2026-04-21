@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, monthlyCostForRow } from '@/lib/utils';
 import { TrendingUp } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -25,12 +25,16 @@ const RevenueCostLineChart = () => {
         if (r.month === monthKey) revenue += r.actual;
       });
 
+      // Per-month cost using the shared helper. A cost row contributes
+      // only for months in its own active window (if defined).
       state.costs.forEach(c => {
-        if (c.type === 'CAPEX' && c.total && c.amortization) {
-          cost += c.total / c.amortization;
-        } else if (c.monthly) {
-          cost += c.monthly;
-        }
+        const monthly = monthlyCostForRow(c);
+        if (monthly === 0) return;
+        const cs = c.startDate ? c.startDate.slice(0, 7) : null;
+        const ce = c.endDate ? c.endDate.slice(0, 7) : null;
+        if (cs && monthKey < cs) return;
+        if (ce && monthKey > ce) return;
+        cost += monthly;
       });
 
       const profit = revenue - cost;

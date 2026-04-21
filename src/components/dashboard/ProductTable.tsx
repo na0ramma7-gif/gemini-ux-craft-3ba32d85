@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatCurrency } from '@/lib/utils';
+import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Product } from '@/types';
 import { ChevronDown, ChevronUp, Trophy } from 'lucide-react';
@@ -10,35 +11,27 @@ interface Props {
 }
 
 const ProductTable = ({ onProductClick }: Props) => {
-  const { state, t, language } = useApp();
+  const { state, t, language, dateFilter } = useApp();
+  const dept = useHierarchicalMetrics(state, dateFilter);
 
+  // Use the hierarchical hook as the single source of truth.
   const products = useMemo(() => {
-    return state.products.map(product => {
-      const portfolio = state.portfolios.find(p => p.id === product.portfolioId);
-      const features = state.features.filter(f => f.productId === product.id);
-      let actual = 0;
-      let planned = 0;
-      features.forEach(f => {
-        state.revenueActual.filter(r => r.featureId === f.id).forEach(r => { actual += r.actual; });
-        state.revenuePlan.filter(r => r.featureId === f.id).forEach(r => { planned += r.expected; });
-      });
-
-      let cost = 0;
-      state.costs.filter(c => c.productId === product.id).forEach(c => {
-        if (c.type === 'CAPEX' && c.total && c.amortization) {
-          cost += (c.total / c.amortization) * 6;
-        } else if (c.monthly) {
-          cost += c.monthly * 6;
-        }
-      });
-
-      const target = planned * 1.35;
-      const profit = actual - cost;
-      const pct = target > 0 ? Math.round((actual / target) * 100) : 0;
-
-      return { ...product, portfolioName: portfolio?.name || '', actual, cost, profit, pct };
-    }).sort((a, b) => b.actual - a.actual);
-  }, [state]);
+    return dept.portfolioMetrics
+      .flatMap(pm =>
+        pm.productMetrics.map(prod => {
+          const fullProduct = state.products.find(p => p.id === prod.productId);
+          return {
+            ...(fullProduct as Product),
+            portfolioName: pm.portfolioName,
+            actual: prod.revenue,
+            cost: prod.cost,
+            profit: prod.profit,
+            pct: prod.achievementPct,
+          };
+        }),
+      )
+      .sort((a, b) => b.actual - a.actual);
+  }, [dept, state.products]);
 
   const getColor = (pct: number) => {
     if (pct >= 80) return 'text-success';
