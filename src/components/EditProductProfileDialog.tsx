@@ -215,6 +215,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     purpose: s.purpose.trim(),
     strategicObjective: s.strategicObjective.trim(),
     businessValue: s.businessValue.trim(),
+    healthNotes: s.healthNotes.trim(),
   });
 
   const handleSave = () => {
@@ -233,7 +234,36 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
       }
       return;
     }
-    updateProduct(product.id, trimmed);
+    const numOrUndef = (s: string): number | undefined => {
+      const t = s.trim();
+      if (t === '') return undefined;
+      const n = Number(t);
+      return Number.isFinite(n) ? Math.round(n) : undefined;
+    };
+    const health: ProductHealth = {
+      status: trimmed.healthStatus,
+      overallScore: numOrUndef(trimmed.healthOverallScore),
+      adoption: numOrUndef(trimmed.healthAdoption),
+      stability: numOrUndef(trimmed.healthStability),
+      satisfaction: numOrUndef(trimmed.healthSatisfaction),
+      operationalReadiness: numOrUndef(trimmed.healthOpsReadiness),
+      notes: trimmed.healthNotes.trim() || undefined,
+      updatedAt: new Date().toISOString(),
+    };
+    const maturity: ProductMaturity = {
+      adoption: numOrUndef(trimmed.matAdoption),
+      revenuePerformance: numOrUndef(trimmed.matRevenue),
+      efficiency: numOrUndef(trimmed.matEfficiency),
+      stability: numOrUndef(trimmed.matStability),
+      customerSatisfaction: numOrUndef(trimmed.matSatisfaction),
+    };
+    const {
+      healthStatus, healthOverallScore, healthAdoption, healthStability, healthSatisfaction,
+      healthOpsReadiness, healthNotes,
+      matAdoption, matRevenue, matEfficiency, matStability, matSatisfaction,
+      ...productFields
+    } = trimmed;
+    updateProduct(product.id, { ...productFields, health, maturity });
     onOpenChange(false);
   };
 
