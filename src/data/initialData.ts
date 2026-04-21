@@ -448,7 +448,31 @@ function migrateLegacyRevenue(state: AppState): AppState {
     });
   });
 
-  return { ...state, revenueServices: services, revenueLines: lines };
+  // Rebuild legacy revenuePlan/revenueActual from the lines so the
+  // "single source of truth" guarantee holds even when seed splitting
+  // applies a tiny per-line rate override on the absorber row. Any
+  // sub-rate residual is captured here, so downstream KPIs/charts stay
+  // in lockstep with the per-service breakdown.
+  const planByKey = new Map<string, number>();
+  const actByKey = new Map<string, number>();
+  lines.forEach(l => {
+    const k = `${l.featureId}|${l.month}`;
+    planByKey.set(k, (planByKey.get(k) ?? 0) + l.rate * l.plannedTransactions);
+    actByKey.set(k, (actByKey.get(k) ?? 0) + l.rate * l.actualTransactions);
+  });
+  let pid = 1, aid = 1;
+  const revenuePlan: AppState['revenuePlan'] = [];
+  const revenueActual: AppState['revenueActual'] = [];
+  planByKey.forEach((expected, k) => {
+    const [fidStr, month] = k.split('|');
+    revenuePlan.push({ id: pid++, featureId: Number(fidStr), month, expected });
+  });
+  actByKey.forEach((actual, k) => {
+    const [fidStr, month] = k.split('|');
+    revenueActual.push({ id: aid++, featureId: Number(fidStr), month, actual });
+  });
+
+  return { ...state, revenueServices: services, revenueLines: lines, revenuePlan, revenueActual };
 }
 
 export const INITIAL_STATE: AppState = migrateLegacyRevenue(RAW_INITIAL_STATE);
