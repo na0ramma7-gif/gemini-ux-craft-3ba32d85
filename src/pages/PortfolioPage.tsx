@@ -262,22 +262,16 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                     <div className="text-sm font-semibold text-foreground">{portfolio.priority || '—'}</div>
                   </div>
                 </div>
-                {(portfolio.purpose || portfolio.businessValue) && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-                    {portfolio.purpose && (
-                      <div className="bg-card rounded-lg p-3 border border-border/50">
-                        <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{(t as any)('purpose') || 'Purpose'}</div>
-                        <div className="text-sm text-foreground whitespace-pre-wrap break-words">{portfolio.purpose}</div>
-                      </div>
-                    )}
-                    {portfolio.businessValue && (
-                      <div className="bg-card rounded-lg p-3 border border-border/50">
-                        <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{(t as any)('businessValue') || 'Business Value'}</div>
-                        <div className="text-sm text-foreground whitespace-pre-wrap break-words">{portfolio.businessValue}</div>
-                      </div>
-                    )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                  <div className="bg-card rounded-lg p-3 border border-border/50">
+                    <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{(t as any)('purpose') || 'Purpose'}</div>
+                    <div className="text-sm text-foreground whitespace-pre-wrap break-words">{portfolio.purpose || '—'}</div>
                   </div>
-                )}
+                  <div className="bg-card rounded-lg p-3 border border-border/50">
+                    <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{(t as any)('businessValue') || 'Business Value'}</div>
+                    <div className="text-sm text-foreground whitespace-pre-wrap break-words">{portfolio.businessValue || '—'}</div>
+                  </div>
+                </div>
               </div>
 
               {/* Row 1: Revenue Contribution + Profitability */}
