@@ -717,7 +717,14 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
             <DialogDescription>{t('selectResourcesDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-[50vh] overflow-y-auto py-2">
-            {state.resources.filter(r => r.status === 'Active').map(resource => {
+            {productAssignedResources.length === 0 && (
+              <div className="flex flex-col items-center justify-center text-center py-8 px-4 rounded-lg border border-dashed border-border bg-secondary/20">
+                <Users className="w-8 h-8 text-muted-foreground mb-2" />
+                <div className="text-sm font-medium text-foreground">{t('noProductResources')}</div>
+                <div className="text-xs text-muted-foreground mt-1">{t('noProductResourcesDesc')}</div>
+              </div>
+            )}
+            {productAssignedResources.map(resource => {
               const isAlreadyAdded = yearData[resourceSelectorMonth]?.resources.some(a => a.resourceId === resource.id);
               const isSelected = selectedResourceIds.includes(resource.id);
               return (
