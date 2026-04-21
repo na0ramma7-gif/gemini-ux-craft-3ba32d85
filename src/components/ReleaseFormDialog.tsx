@@ -89,18 +89,25 @@ const ReleaseFormDialog = ({ open, onOpenChange, productId, release }: ReleaseFo
   const available = productFeatures.filter(f => f.releaseId === null || (release && f.releaseId === release.id));
 
   const onSubmit = (values: FormValues) => {
+    const payload = {
+      version: values.version!,
+      name: values.name!,
+      startDate: values.startDate!,
+      endDate: values.endDate!,
+      status: values.status,
+    };
     if (isEdit && release) {
-      updateRelease(release.id, values);
+      updateRelease(release.id, payload);
       selectedFeatureIds.forEach(fId => updateFeature(fId, { releaseId: release.id }));
       state.features
         .filter(f => f.releaseId === release.id && !selectedFeatureIds.includes(f.id))
         .forEach(f => updateFeature(f.id, { releaseId: null }));
-      toast.success(`Release ${values.version} updated`);
+      toast.success(`Release ${payload.version} updated`);
     } else {
       const newId = Math.max(...state.releases.map(r => r.id), 0) + 1;
-      addRelease({ productId, ...values });
+      addRelease({ productId, ...payload });
       selectedFeatureIds.forEach(fId => updateFeature(fId, { releaseId: newId }));
-      toast.success(`Release ${values.version} created`);
+      toast.success(`Release ${payload.version} created`);
     }
     onOpenChange(false);
   };
