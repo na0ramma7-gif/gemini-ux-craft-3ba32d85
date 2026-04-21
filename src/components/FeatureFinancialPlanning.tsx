@@ -21,8 +21,9 @@ import {
 import {
   ArrowLeft, ArrowRight, Plus, Trash2, DollarSign, Users, TrendingUp, TrendingDown,
   FileText, Save, ChevronDown, ChevronRight, UserPlus, Lightbulb, AlertTriangle,
-  BarChart3, PieChart, Pencil,
+  BarChart3, PieChart, Pencil, Target, Receipt,
 } from 'lucide-react';
+import KPICard from '@/components/KPICard';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
@@ -252,23 +253,71 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {[
-          { label: t('totalRevenue'), value: formatCurrency(totals.plannedRev, language), color: 'text-emerald-600', bgColor: 'bg-emerald-500/10', icon: <DollarSign className="w-4 h-4" /> },
-          { label: t('actualRevenue'), value: formatCurrency(totals.actualRev, language), color: 'text-emerald-700', bgColor: 'bg-emerald-500/10', icon: <TrendingUp className="w-4 h-4" /> },
-          { label: t('totalCost'), value: formatCurrency(totals.plannedCost, language), color: 'text-destructive', bgColor: 'bg-destructive/10', icon: <TrendingDown className="w-4 h-4" /> },
-          { label: t('netProfit'), value: formatCurrency(totals.profit, language), color: totals.profit >= 0 ? 'text-primary' : 'text-destructive', bgColor: totals.profit >= 0 ? 'bg-primary/10' : 'bg-destructive/10', icon: <BarChart3 className="w-4 h-4" /> },
-          { label: t('profitMargin'), value: `${totals.margin.toFixed(1)}%`, color: totals.margin >= 0 ? 'text-primary' : 'text-destructive', bgColor: totals.margin >= 0 ? 'bg-primary/10' : 'bg-destructive/10', icon: <PieChart className="w-4 h-4" /> },
-        ].map((card, idx) => (
-          <div key={idx} className="bg-card rounded-xl border border-border p-4 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
-              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", card.bgColor, card.color)}>{card.icon}</div>
-            </div>
-            <div className={cn("text-lg font-bold", card.color)}>{card.value}</div>
+      {(() => {
+        const planned = totals.plannedRev;
+        const achieved = totals.actualRev;
+        const achievementPct = planned > 0 ? Math.round((achieved / planned) * 100) : 0;
+        const remaining = Math.max(0, planned - achieved);
+        const budgetTotal = totals.plannedCost * 1.18;
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            <KPICard
+              title={t('totalRevenue')}
+              value={formatCurrency(achieved, language)}
+              icon={<DollarSign className="w-5 h-5 text-success" />}
+              variant="green"
+              progress={{
+                label: t('plannedYear'),
+                target: formatCurrency(planned, language),
+                percent: achievementPct,
+                status: achievementPct >= 70 ? 'positive' : 'negative',
+                remaining: formatCurrency(remaining, language),
+              }}
+            />
+            <KPICard
+              title={t('totalCost')}
+              value={formatCurrency(totals.actualCost, language)}
+              icon={<Receipt className="w-5 h-5 text-destructive" />}
+              variant="red"
+              progress={{
+                label: t('budgetYear'),
+                target: formatCurrency(budgetTotal, language),
+                percent: 85,
+                status: 'positive',
+                remaining: formatCurrency(Math.max(0, budgetTotal - totals.actualCost), language),
+              }}
+            />
+            <KPICard
+              title={t('netProfit')}
+              value={formatCurrency(totals.profit, language)}
+              subtitle={`${t('margin')}: ${totals.margin.toFixed(1)}%`}
+              icon={totals.profit >= 0 ? <TrendingUp className="w-5 h-5 text-success" /> : <TrendingDown className="w-5 h-5 text-destructive" />}
+              variant={totals.profit >= 0 ? 'green' : 'red'}
+            />
+            <KPICard
+              title={t('plannedVsAchieved')}
+              value={`${achievementPct}%`}
+              subtitle={achievementPct >= 70 ? '↑ On Track' : '↓ Below Target'}
+              icon={<Target className="w-5 h-5 text-primary-foreground" />}
+              variant="gradient"
+              progress={{
+                label: t('plannedYear'),
+                target: formatCurrency(planned, language),
+                percent: achievementPct,
+                status: achievementPct >= 70 ? 'positive' : 'negative',
+                remaining: formatCurrency(remaining, language),
+              }}
+            />
+            <KPICard
+              title={t('months')}
+              value={String(monthlySummaries.filter(m => m.plannedRev > 0 || m.plannedCost > 0).length)}
+              subtitle={`${selectedYear}`}
+              icon={<BarChart3 className="w-5 h-5 text-accent" />}
+              variant="purple"
+            />
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab} className="w-full">
