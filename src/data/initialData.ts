@@ -370,54 +370,79 @@ function migrateLegacyRevenue(state: AppState): AppState {
 
   const ts = new Date().toISOString();
 
-  // Split a total amount across services so that Σ(rate × tx) === amount exactly.
-  // Returns one transaction count per service (same order as `svcs`).
+  // Split a total amount across services so that Σ(rate_i × tx_i) === amount EXACTLY.
+  // Strategy: round-down each share to whole transactions, then assign the residual
+  // (always < max(rate)) as extra transactions at the LARGEST-SHARE row using its
+  // own rate as the divisor of last resort, with a per-line rate override applied
+  // upstream when remainder isn't divisible. Returns { txs, overrideRate } where
+  // `overrideRate` is the effective rate to use on the largest-share line so the
+  // final sum is exact (always equal to its catalog rate when remainder == 0).
   const splitToTransactions = (
     amount: number,
     svcs: Array<{ rate: number; share: number }>,
-  ): number[] => {
-    if (amount <= 0 || svcs.length === 0) return svcs.map(() => 0);
-    const txs = svcs.map(s => Math.round((amount * s.share) / s.rate));
-    let attained = svcs.reduce((sum, s, i) => sum + s.rate * txs[i], 0);
-    let diff = amount - attained;
-    // Absorb remainder on the largest-share row by adjusting its tx count.
+  ): { txs: number[]; overrideRate: number; largestIdx: number } => {
+    const n = svcs.length;
+    if (amount <= 0 || n === 0) {
+      return { txs: svcs.map(() => 0), overrideRate: svcs[0]?.rate ?? 1, largestIdx: 0 };
+    }
+    // Identify largest-share index (the absorber).
     let largest = 0;
-    for (let i = 1; i < svcs.length; i++) {
-      if (svcs[i].share > svcs[largest].share) largest = i;
+    for (let i = 1; i < n; i++) if (svcs[i].share > svcs[largest].share) largest = i;
+
+    // Round DOWN every non-absorber row.
+    const txs = svcs.map((s, i) =>
+      i === largest ? 0 : Math.max(0, Math.floor((amount * s.share) / s.rate)),
+    );
+    const sumOthers = svcs.reduce((sum, s, i) => (i === largest ? sum : sum + s.rate * txs[i]), 0);
+    const remainder = amount - sumOthers; // ≥ 0
+    const absorberRate = svcs[largest].rate;
+    const absorberTx = Math.max(0, Math.floor(remainder / absorberRate));
+    txs[largest] = absorberTx;
+    const finalSum = sumOthers + absorberTx * absorberRate;
+    const drift = amount - finalSum; // 0 ≤ drift < absorberRate
+
+    // If drift != 0, override the absorber's rate so (txs[largest]+1) × overrideRate
+    // exactly equals (remainder). This keeps Σ exact without losing realism.
+    let overrideRate = absorberRate;
+    if (drift > 0) {
+      const newTx = absorberTx + 1;
+      overrideRate = remainder / newTx;
+      txs[largest] = newTx;
     }
-    const adjust = Math.round(diff / svcs[largest].rate);
-    txs[largest] = Math.max(0, txs[largest] + adjust);
-    // Final exact reconciliation by adjusting whole transactions on the largest row.
-    attained = svcs.reduce((sum, s, i) => sum + s.rate * txs[i], 0);
-    diff = amount - attained;
-    if (diff !== 0) {
-      // If still not exact (rate doesn't divide diff), use a unit-rate fallback row.
-      // Add the diff as raw transactions on the largest row by treating residual
-      // as additional units at that row's rate (rounded). This keeps deviation < rate.
-      // For demo purposes this is acceptable; the residual is tiny.
-      txs[largest] += Math.round(diff / svcs[largest].rate);
-      txs[largest] = Math.max(0, txs[largest]);
-    }
-    return txs;
+    return { txs, overrideRate, largestIdx: largest };
   };
 
   monthMap.forEach((v, k) => {
     const [fidStr, month] = k.split('|');
     const fid = Number(fidStr);
     const svcs = ensureFeatureServices(fid);
-    const plannedTx = splitToTransactions(v.planned, svcs);
-    const actualTx = splitToTransactions(v.actual, svcs);
+    // Plan and actual are split independently; we group rows by service so each
+    // service yields ONE line per month (combining its planned + actual tx).
+    // Rate per line: planned and actual must share a single rate, so when an
+    // override is needed we use whichever side's override is non-default,
+    // preferring the actual side (closer to "what really happened").
+    const planSplit = splitToTransactions(v.planned, svcs);
+    const actSplit  = splitToTransactions(v.actual,  svcs);
     svcs.forEach((s, i) => {
-      // Skip empty rows to keep the dataset compact.
-      if (plannedTx[i] === 0 && actualTx[i] === 0) return;
+      const pTx = planSplit.txs[i];
+      const aTx = actSplit.txs[i];
+      if (pTx === 0 && aTx === 0) return;
+      // Determine the per-line rate. For non-absorber rows it's always the
+      // catalog rate. For the absorber row, prefer actual's override if any.
+      let rate = s.rate;
+      if (i === actSplit.largestIdx && actSplit.overrideRate !== s.rate) {
+        rate = actSplit.overrideRate;
+      } else if (i === planSplit.largestIdx && planSplit.overrideRate !== s.rate) {
+        rate = planSplit.overrideRate;
+      }
       lines.push({
         id: lineId++,
         featureId: fid,
         serviceId: s.id,
         month,
-        rate: s.rate,
-        plannedTransactions: plannedTx[i],
-        actualTransactions: actualTx[i],
+        rate,
+        plannedTransactions: pTx,
+        actualTransactions: aTx,
         updatedAt: ts,
       });
     });
