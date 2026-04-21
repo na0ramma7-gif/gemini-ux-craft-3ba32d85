@@ -263,7 +263,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
       ...productFields
     } = trimmed;
     updateProduct(product.id, { ...productFields, health, maturity });
-    toast.success(t('changesSaved') || 'Changes saved');
+    toast.success('Changes saved');
     onOpenChange(false);
   };
 
