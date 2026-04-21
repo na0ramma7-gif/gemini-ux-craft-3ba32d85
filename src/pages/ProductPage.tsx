@@ -205,6 +205,13 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
           subtitle={t('expectedFromFeatures')}
           icon={<span className="text-lg sm:text-2xl">💰</span>}
           variant="green"
+          extra={compare.active ? (
+            <KPIDelta
+              comparisonFormatted={formatCurrency(compare.comparison.revenue, language)}
+              delta={compare.delta.revenue}
+              format="currency"
+            />
+          ) : undefined}
         />
         <KPICard
           title={t('totalCost')}
@@ -212,6 +219,14 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
           subtitle={t('resourcesCapexOpex')}
           icon={<span className="text-lg sm:text-2xl">💸</span>}
           variant="red"
+          extra={compare.active ? (
+            <KPIDelta
+              comparisonFormatted={formatCurrency(compare.comparison.cost, language)}
+              delta={compare.delta.cost}
+              lowerIsBetter
+              format="currency"
+            />
+          ) : undefined}
         />
         <KPICard
           title={t('netProfit')}
@@ -219,6 +234,13 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
           subtitle={`${t('margin')}: ${productMetrics.margin.toFixed(1)}%`}
           icon={<span className="text-lg sm:text-2xl">✅</span>}
           variant={productMetrics.profit >= 0 ? 'green' : 'red'}
+          extra={compare.active ? (
+            <KPIDelta
+              comparisonFormatted={formatCurrency(compare.comparison.profit, language)}
+              delta={compare.delta.profit}
+              format="currency"
+            />
+          ) : undefined}
         />
         <KPICard
           title={t('targetVsAchieved')}
