@@ -239,7 +239,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   };
   const createServiceInline = (key: string, name: string, rate: number) => {
     const res = addRevenueService(feature.id, name, Number.isFinite(rate) ? rate : 0);
-    if (!res.ok) {
+    if (res.ok === false) {
       toast.error(res.error);
       return;
     }
@@ -289,7 +289,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         notes: l.notes,
       })),
     );
-    if (!res.ok) {
+    if (res.ok === false) {
       toast.error(res.error);
       return;
     }
