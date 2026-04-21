@@ -25,6 +25,35 @@ export interface Portfolio {
 
 export type LifecycleStage = 'Ideation' | 'Development' | 'Growth' | 'Mature' | 'Sunset';
 
+export type ProductHealthStatus = 'Healthy' | 'At Risk' | 'Critical';
+
+/**
+ * User-maintained operational/qualitative product health.
+ * Distinct from KPI cards, which show system-calculated financials.
+ */
+export interface ProductHealth {
+  status: ProductHealthStatus;
+  overallScore?: number;          // 0-100, optional rating
+  adoption?: number;              // 0-100
+  stability?: number;             // 0-100
+  satisfaction?: number;          // 0-100
+  operationalReadiness?: number;  // 0-100
+  notes?: string;
+  updatedAt?: string;             // ISO date, set automatically on save
+}
+
+/**
+ * User-scored Product Maturity (radar chart input).
+ * Each axis on a 0–100 scale. Empty means "not yet scored".
+ */
+export interface ProductMaturity {
+  adoption?: number;
+  revenuePerformance?: number;
+  efficiency?: number;
+  stability?: number;
+  customerSatisfaction?: number;
+}
+
 export interface Product {
   id: number;
   portfolioId: number;
@@ -52,6 +81,10 @@ export interface Product {
   businessStakeholder?: string;
   supportingTeams?: string[];
   logo?: string; // base64 or URL
+  /** User-defined operational/qualitative health (NOT financial). */
+  health?: ProductHealth;
+  /** User-defined maturity scores driving the radar chart. */
+  maturity?: ProductMaturity;
 }
 
 export type StrategicObjectiveStatus = 'Active' | 'Archived';
