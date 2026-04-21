@@ -399,7 +399,7 @@ const ForecastMatrixGrid = ({
           />
           <AlertDialogFooter>
             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={submitBulkValue}>{t('apply')}</AlertDialogAction>
+            <AlertDialogAction onClick={submitBulkValue}>{t('applyConfig')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
