@@ -88,6 +88,13 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
   const [resourceSelectorMonth, setResourceSelectorMonth] = useState<number>(0);
   const [selectedResourceIds, setSelectedResourceIds] = useState<number[]>([]);
+  // v2: hide-inactive toggle for Step 2.
+  const [hideInactive, setHideInactive] = useState(false);
+  // v2: delete-service confirmation when service has any history.
+  const [confirmDeleteServiceId, setConfirmDeleteServiceId] = useState<number | null>(null);
+  const [confirmDeleteTypedName, setConfirmDeleteTypedName] = useState('');
+  // v2: per-service rate-edit info note (one-shot per session).
+  const [showRateChangeNote, setShowRateChangeNote] = useState(false);
 
   const product = state.products.find(p => p.id === feature.productId);
   const productFeatures = state.features.filter(f => f.productId === feature.productId);
