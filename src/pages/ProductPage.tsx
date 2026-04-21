@@ -602,6 +602,95 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
               />
             </TabsContent>
 
+            {/* Resources Tab */}
+            <TabsContent value="resources" className="mt-0 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base sm:text-lg font-semibold text-foreground">{t('assignments')}</h3>
+                {state.resources.length > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setEditingAssignmentId(null);
+                      setAssignResourceId(undefined);
+                      setAssignDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 me-1.5" />{t('addAssignment')}
+                  </Button>
+                )}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px]">
+                  <thead className="bg-secondary/50">
+                    <tr>
+                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('name')}</th>
+                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('role')}</th>
+                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('release')}</th>
+                      <th className="px-4 py-2.5 text-start text-xs font-medium text-muted-foreground uppercase">{t('period')}</th>
+                      <th className="px-4 py-2.5 text-end text-xs font-medium text-muted-foreground uppercase">{t('utilization')}</th>
+                      <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {state.assignments.filter(a => a.productId === product.id).map(assignment => {
+                      const resource = state.resources.find(r => r.id === assignment.resourceId);
+                      const release = state.releases.find(r => r.id === assignment.releaseId);
+                      return (
+                        <tr key={assignment.id} className="hover:bg-secondary/30">
+                          <td className="px-4 py-2.5 font-medium text-sm">{resource?.name || '—'}</td>
+                          <td className="px-4 py-2.5 text-sm text-muted-foreground">{resource?.role || '—'}</td>
+                          <td className="px-4 py-2.5 text-sm">{release ? `${release.version} - ${release.name}` : '—'}</td>
+                          <td className="px-4 py-2.5 text-sm">{formatDate(assignment.startDate, language)} → {formatDate(assignment.endDate, language)}</td>
+                          <td className="px-4 py-2.5 text-end font-semibold text-primary text-sm">{assignment.utilization}%</td>
+                          <td className="px-4 py-2.5 text-center">
+                            <div className="flex justify-center gap-1">
+                              <Button
+                                size="sm" variant="ghost" className="h-8 w-8 p-0"
+                                onClick={() => {
+                                  setEditingAssignmentId(assignment.id);
+                                  setAssignResourceId(assignment.resourceId);
+                                  setAssignDialogOpen(true);
+                                }}
+                                aria-label={t('edit')}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm" variant="ghost"
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                onClick={() => deleteAssignment(assignment.id)}
+                                aria-label={t('delete')}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {state.assignments.filter(a => a.productId === product.id).length === 0 && (
+                  <div className="text-center py-10 text-sm text-muted-foreground border border-dashed border-border rounded-lg mt-2">
+                    {t('noAssignments')}
+                  </div>
+                )}
+              </div>
+              {assignDialogOpen && (
+                <AssignmentFormDialog
+                  open={assignDialogOpen}
+                  onOpenChange={(o) => {
+                    setAssignDialogOpen(o);
+                    if (!o) { setEditingAssignmentId(null); setAssignResourceId(undefined); }
+                  }}
+                  resourceId={assignResourceId}
+                  assignment={editingAssignmentId ? state.assignments.find(a => a.id === editingAssignmentId) ?? null : null}
+                  lockedProductId={product.id}
+                  allowResourceSelection
+                />
+              )}
+            </TabsContent>
+
             {/* Financials Tab */}
             <TabsContent value="financials" className="mt-0 space-y-6">
 
