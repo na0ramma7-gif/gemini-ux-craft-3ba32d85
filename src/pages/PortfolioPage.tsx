@@ -22,7 +22,7 @@ import { useCompareMetrics } from '@/hooks/useCompareMetrics';
 import { computeWindowMetrics, computeDelta } from '@/lib/compare';
 import {
   ArrowLeft, ArrowRight, LayoutGrid, Package, Users, DollarSign, Target,
-  Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3, Plus, Edit, Trash2,
+  Upload, X, TrendingUp, TrendingDown, Activity, User, Pencil, Save, BarChart3, Plus, Edit, Trash2, Receipt,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
