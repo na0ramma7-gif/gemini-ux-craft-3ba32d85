@@ -49,8 +49,10 @@ import {
   Trash2,
   BarChart3,
   List,
-  TrendingUp
+  TrendingUp,
+  Users,
 } from 'lucide-react';
+import AssignmentFormDialog from '@/components/AssignmentFormDialog';
 
 interface ProductPageProps {
   product: Product;
@@ -58,7 +60,7 @@ interface ProductPageProps {
 }
 
 const ProductPage = ({ product, onBack }: ProductPageProps) => {
-  const { state, addFeature, updateFeature, deleteFeature, addRelease, updateRelease, t, language, isRTL, dateFilter, compareSelection } = useApp();
+  const { state, addFeature, updateFeature, deleteFeature, addRelease, updateRelease, deleteAssignment, t, language, isRTL, dateFilter, compareSelection } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('list');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -67,6 +69,9 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
   const [showAddReleaseModal, setShowAddReleaseModal] = useState(false);
   const [editingRelease, setEditingRelease] = useState<Release | null>(null);
   const [selectedFeatureForFinancials, setSelectedFeatureForFinancials] = useState<Feature | null>(null);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignResourceId, setAssignResourceId] = useState<number | undefined>(undefined);
+  const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(null);
 
   const releases = useMemo(() => 
     state.releases.filter(r => r.productId === product.id),
