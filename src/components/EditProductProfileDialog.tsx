@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Product, LifecycleStage } from '@/types';
+import { Product, LifecycleStage, ProductHealth, ProductHealthStatus, ProductMaturity } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -66,6 +66,20 @@ type FormState = {
   capabilities: string[];
   successMetrics: string[];
   strategicObjectiveIds: number[];
+  // Product Health (user-defined)
+  healthStatus: ProductHealthStatus;
+  healthOverallScore: string;
+  healthAdoption: string;
+  healthStability: string;
+  healthSatisfaction: string;
+  healthOpsReadiness: string;
+  healthNotes: string;
+  // Product Maturity (user-scored 0–100)
+  matAdoption: string;
+  matRevenue: string;
+  matEfficiency: string;
+  matStability: string;
+  matSatisfaction: string;
 };
 
 type Errors = Partial<Record<keyof FormState, string>>;
