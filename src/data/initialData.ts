@@ -266,4 +266,10 @@ export const INITIAL_STATE: AppState = {
   documents: [],
   strategicObjectives: [],
   language: 'en',
+  // Subscription/Service revenue model.
+  // Seeded as one "Legacy Revenue" service per feature (rate=1) so legacy
+  // monthly amounts migrate 1:1 (plannedTx = expected, actualTx = actual).
+  // This preserves all existing roll-up totals exactly.
+  revenueServices: [],
+  revenueLines: [],
 };
