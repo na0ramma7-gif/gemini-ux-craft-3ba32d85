@@ -364,7 +364,19 @@ const ForecastAssumptionsPanel = ({
 
               <div>
                 <h4 className="text-sm font-semibold mb-2">{t('perServiceGrowth')}</h4>
-                {serviceBaselines.length === 0 ? (
+                {activeScenario.mode === 'matrix' ? (
+                  <ForecastMatrixGrid
+                    scenario={activeScenario}
+                    baselines={serviceBaselines}
+                    projectedServices={projection.services}
+                    forecastStartDate={forecastStartDate}
+                    horizon={draft.horizon}
+                    onSetCell={(sId, mIdx, tx) => setDraft(d => setCellOverride(d, activeId, sId, mIdx, tx))}
+                    onClearCell={(sId, mIdx) => setDraft(d => clearCellOverride(d, activeId, sId, mIdx))}
+                    onBulkSet={cells => setDraft(d => setCellOverridesBulk(d, activeId, cells))}
+                    onClearAll={() => setDraft(d => clearAllCellOverrides(d, activeId))}
+                  />
+                ) : serviceBaselines.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                     {t('noServicesForForecast')}
                   </div>
@@ -377,6 +389,12 @@ const ForecastAssumptionsPanel = ({
                           <th className="text-end px-3 py-2 font-medium">{t('baseTx')}</th>
                           <th className="text-end px-3 py-2 font-medium">{t('rate')}</th>
                           <th className="text-end px-3 py-2 font-medium">{t('growthPercent')}</th>
+                          {activeScenario.mode === 'seasonal' && (
+                            <>
+                              <th className="text-start px-3 py-2 font-medium">{t('seasonalPattern')}</th>
+                              <th className="text-center px-3 py-2 font-medium">{t('seasonalSparkline')}</th>
+                            </>
+                          )}
                           <th className="text-end px-3 py-2 font-medium">{t('forecastTxEnd')}</th>
                           <th className="text-end px-3 py-2 font-medium w-10"></th>
                         </tr>
@@ -387,6 +405,10 @@ const ForecastAssumptionsPanel = ({
                           const growth = getServiceGrowthRate(activeScenario, b.serviceId);
                           const last = b.baseTx * Math.pow(1 + growth / 100, draft.horizon);
                           const sanity = b.highestHistoricalTx > 0 && last > 3 * b.highestHistoricalTx;
+                          const sa = activeScenario.services.find(s => s.serviceId === b.serviceId);
+                          const pattern: SeasonalPresetId = sa?.pattern ?? 'flat';
+                          const ramadan = getRamadanMonth(activeScenario, forecastStartDate.getFullYear());
+                          const mults = buildSeasonalMultipliers(pattern, sa?.customPattern, ramadan);
                           return (
                             <tr key={b.serviceId} className={cn('border-t border-border/60', overridden && 'bg-warning/5')}>
                               <td className="px-3 py-2 font-medium text-foreground">
@@ -413,6 +435,26 @@ const ForecastAssumptionsPanel = ({
                                   <span className="absolute end-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
                                 </div>
                               </td>
+                              {activeScenario.mode === 'seasonal' && (
+                                <>
+                                  <td className="px-3 py-2">
+                                    <Select
+                                      value={pattern}
+                                      onValueChange={(v) => setDraft(d => setServicePattern(d, activeId, b.serviceId, v as SeasonalPresetId))}
+                                    >
+                                      <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {SEASONAL_PRESETS.map(p => (
+                                          <SelectItem key={p.id} value={p.id}>{t(p.key as any)}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <PatternBars values={mults} />
+                                  </td>
+                                </>
+                              )}
                               <td className="px-3 py-2 text-end tabular-nums">
                                 <span className={cn('inline-flex items-center gap-1', sanity ? 'text-warning' : 'text-foreground')}>
                                   {sanity && <AlertCircle className="w-3 h-3" aria-label={t('sanitySpike')} />}
@@ -425,7 +467,7 @@ const ForecastAssumptionsPanel = ({
                                     type="button"
                                     className="text-[11px] text-primary hover:underline"
                                     onClick={() => setDraft(d => resetServiceGrowth(d, activeId, b.serviceId))}
-                                    title={t('resetToDefault')}
+                                    title={t('resetToDefaultGrowth')}
                                   >
                                     {t('reset')}
                                   </button>
