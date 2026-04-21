@@ -58,9 +58,6 @@ const ProductOverview = ({ product }: Props) => {
     [dept, product.id],
   );
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editData, setEditData] = useState<Partial<Product>>({});
-  const [newCapability, setNewCapability] = useState('');
-  const [newMetric, setNewMetric] = useState('');
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const portfolio = state.portfolios.find(p => p.id === product.portfolioId);
