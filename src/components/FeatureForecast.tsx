@@ -339,16 +339,16 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <ChartCard title={t('revenueForecast')}>
+      <div className="grid grid-cols-1 gap-4">
+        <ChartCard title={t('revenueForecast')} tall>
           <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-            <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
             <Tooltip content={<CustomTooltip />} />
-            <Line type="monotone" dataKey="actualRevenue" stroke="hsl(var(--revenue))" strokeWidth={2} dot={false} name={`${t('actual')} ${t('revenue')}`} connectNulls={false} />
-            <Line type="monotone" dataKey="forecastRevenue" stroke={tone.hex} strokeWidth={2} strokeDasharray="6 3" strokeOpacity={0.85} dot={false} name={`${t('forecast')} ${t('revenue')}`} connectNulls={false} />
-            <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
+            <Line type="monotone" dataKey="actualRevenue" stroke="hsl(var(--revenue))" strokeWidth={2.5} dot={false} name={`${t('actual')} ${t('revenue')}`} connectNulls={false} />
+            <Line type="monotone" dataKey="forecastRevenue" stroke={tone.hex} strokeWidth={2.5} strokeDasharray="6 3" strokeOpacity={0.85} dot={false} name={`${t('forecast')} ${t('revenue')}`} connectNulls={false} />
+            <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
           </LineChart>
         </ChartCard>
       </div>
