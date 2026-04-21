@@ -159,6 +159,7 @@ const AssignmentFormDialog = ({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2" noValidate>
+            {!portfolioLocked && (
             <FormField control={form.control} name="portfolioId" render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('portfolio')} *</FormLabel>
@@ -180,6 +181,8 @@ const AssignmentFormDialog = ({
                 <FormMessage />
               </FormItem>
             )} />
+            )}
+            {!productLocked && (
             <FormField control={form.control} name="productId" render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('product')} *</FormLabel>
@@ -197,6 +200,7 @@ const AssignmentFormDialog = ({
                 <FormMessage />
               </FormItem>
             )} />
+            )}
             <FormField control={form.control} name="releaseId" render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('release')} *</FormLabel>
