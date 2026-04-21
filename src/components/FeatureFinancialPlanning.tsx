@@ -738,28 +738,161 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] min-h-0 max-h-[calc(90vh-140px)]">
             <div className="p-6 space-y-5 overflow-y-auto border-e border-border">
-              {/* Revenue */}
+              {/* Revenue Lines (subscription / service × rate × transactions) */}
               <div className="bg-card rounded-xl border border-border p-4">
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('revenue')}
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('planned')} (SAR)</label>
-                    <Input type="number" min={0} step="0.01" value={editPlannedRev || ''} placeholder="0" onChange={e => setEditPlannedRev(parseMoney(e.target.value))} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('actual')} (SAR)</label>
-                    <Input type="number" min={0} step="0.01" value={editActualRev || ''} placeholder="0" onChange={e => setEditActualRev(parseMoney(e.target.value))} />
-                  </div>
+                <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('revenueLines')}
+                  </h4>
+                  <Button size="sm" variant="outline" onClick={addDraftLine}>
+                    <Plus className="w-3.5 h-3.5 me-1.5" /> {t('addRevenueLine')}
+                  </Button>
                 </div>
-                {(editPlannedRev > 0 || editActualRev > 0) && (
-                  <div className={cn("mt-3 px-3 py-2 rounded-lg border text-xs font-semibold",
-                    editActualRev - editPlannedRev >= 0
-                      ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
-                      : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400"
-                  )}>
-                    {t('revenueVariance')}: {editActualRev - editPlannedRev >= 0 ? '+' : ''}{formatCurrency(editActualRev - editPlannedRev, language)}
+                <p className="text-xs text-muted-foreground mb-3">{t('revenueLinesDesc')}</p>
+
+                {editLines.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-6 border border-dashed border-border rounded-lg">
+                    {t('noRevenueLinesYet')}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-secondary/50">
+                        <tr>
+                          <th className="px-2 py-2 text-start text-xs font-semibold text-muted-foreground min-w-[180px]">{t('serviceName')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground w-28">{t('transactionRate')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground w-24">{t('plannedTx')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground w-24">{t('actualTx')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 w-28">{t('plannedRevenue')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 w-28">{t('actualRevenue')}</th>
+                          <th className="px-2 py-2 w-10" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {editLines.map(line => {
+                          const newName = newServiceFor[line.key];
+                          const isCreating = newName !== undefined;
+                          const plannedRev = (line.rate || 0) * (line.plannedTransactions || 0);
+                          const actualRev = (line.rate || 0) * (line.actualTransactions || 0);
+                          return (
+                            <tr key={line.key} className="hover:bg-secondary/30 align-top">
+                              <td className="px-2 py-1.5">
+                                {isCreating ? (
+                                  <div className="flex gap-1.5 items-center">
+                                    <Input
+                                      autoFocus
+                                      className="h-8 text-xs"
+                                      placeholder={t('serviceName')}
+                                      value={newName}
+                                      onChange={e => setNewServiceFor(prev => ({ ...prev, [line.key]: e.target.value }))}
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') { e.preventDefault(); createServiceInline(line.key, newName, line.rate); }
+                                        if (e.key === 'Escape') setNewServiceFor(prev => { const n = { ...prev }; delete n[line.key]; return n; });
+                                      }}
+                                    />
+                                    <Button size="sm" variant="default" className="h-8 px-2 text-xs"
+                                      onClick={() => createServiceInline(line.key, newName, line.rate)}>
+                                      {t('save')}
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Select
+                                    value={line.serviceId != null ? String(line.serviceId) : ''}
+                                    onValueChange={v => {
+                                      if (v === '__new__') {
+                                        setNewServiceFor(prev => ({ ...prev, [line.key]: '' }));
+                                      } else {
+                                        pickService(line.key, parseInt(v, 10));
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue placeholder={t('selectService')} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {featureServices.length === 0 && (
+                                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                                          {t('serviceCatalog')} —
+                                        </div>
+                                      )}
+                                      {featureServices.map(s => (
+                                        <SelectItem key={s.id} value={String(s.id)}>
+                                          <span className="flex items-center gap-1.5">
+                                            <Tag className="w-3 h-3 text-muted-foreground" />
+                                            {s.name}
+                                            <span className="text-[10px] text-muted-foreground">
+                                              · {formatCurrency(s.defaultRate, language)}
+                                            </span>
+                                          </span>
+                                        </SelectItem>
+                                      ))}
+                                      <SelectItem value="__new__">
+                                        <span className="flex items-center gap-1.5 text-primary">
+                                          <Plus className="w-3 h-3" /> {t('newService')}
+                                        </span>
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <Input
+                                  type="number" min={0} step="0.01"
+                                  className="h-8 text-xs text-end"
+                                  value={line.rate || ''}
+                                  placeholder="0"
+                                  onChange={e => updateDraftLine(line.key, { rate: parseMoney(e.target.value) })}
+                                />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <Input
+                                  type="number" min={0} step="1"
+                                  className="h-8 text-xs text-end"
+                                  value={line.plannedTransactions || ''}
+                                  placeholder="0"
+                                  onChange={e => updateDraftLine(line.key, { plannedTransactions: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+                                />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <Input
+                                  type="number" min={0} step="1"
+                                  className="h-8 text-xs text-end"
+                                  value={line.actualTransactions || ''}
+                                  placeholder="0"
+                                  onChange={e => updateDraftLine(line.key, { actualTransactions: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+                                />
+                              </td>
+                              <td className="px-2 py-1.5 text-end font-semibold text-foreground">
+                                {formatCurrency(plannedRev, language)}
+                              </td>
+                              <td className="px-2 py-1.5 text-end font-semibold text-emerald-600">
+                                {formatCurrency(actualRev, language)}
+                              </td>
+                              <td className="px-2 py-1.5 text-center">
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive/60 hover:text-destructive"
+                                  onClick={() => removeDraftLine(line.key)}>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-secondary/30">
+                        <tr>
+                          <td className="px-2 py-2 text-xs font-semibold text-muted-foreground" colSpan={4}>
+                            {t('total')}
+                          </td>
+                          <td className="px-2 py-2 text-end text-xs font-bold text-foreground">
+                            {formatCurrency(editMonthSummary.editPlannedRev, language)}
+                          </td>
+                          <td className="px-2 py-2 text-end text-xs font-bold text-emerald-600">
+                            {formatCurrency(editMonthSummary.editActualRev, language)}
+                          </td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
                   </div>
                 )}
               </div>
@@ -897,7 +1030,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">{t('financialSummary')}</h4>
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="text-xs font-medium text-muted-foreground mb-1">{t('plannedRevenue')}</div>
-                <div className="text-xl font-bold text-emerald-600">{formatCurrency(editPlannedRev, language)}</div>
+                <div className="text-xl font-bold text-emerald-600">{formatCurrency(editMonthSummary.editPlannedRev, language)}</div>
               </div>
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="text-xs font-medium text-muted-foreground mb-1">{t('totalCost')}</div>
