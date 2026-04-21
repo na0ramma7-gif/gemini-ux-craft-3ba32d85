@@ -145,11 +145,18 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
           }
         />
         <KPICard
-          title={t('targetVsAchieved')}
+          title={t('plannedVsAchieved')}
           value={`${trend.achievePct}%`}
           subtitle={trend.achievePct >= 70 ? '↑ On Track' : '↓ Below Target'}
           icon={<Target className="w-5 h-5 text-primary-foreground" />}
           variant="gradient"
+          progress={{
+            label: t('plannedYear'),
+            target: formatCurrency(dept.target, language),
+            percent: trend.achievePct,
+            status: trend.achievePct >= 70 ? 'positive' : 'negative',
+            remaining: formatCurrency(Math.max(0, dept.target - dept.revenue), language),
+          }}
         />
         <KPICard
           title={t('products')}
