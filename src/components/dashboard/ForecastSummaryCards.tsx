@@ -1,22 +1,17 @@
 import { useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatCurrency } from '@/lib/utils';
-import { ScenarioType } from '@/components/ForecastConfigModal';
+import { ScenarioType, ScenarioConfig, projectSeries } from '@/lib/forecastEngine';
 import { PipelineHorizon } from '@/pages/Dashboard';
 import { TrendingUp, Calendar, Zap } from 'lucide-react';
-
-const SCENARIO_MONTHLY_GROWTH: Record<ScenarioType, number> = {
-  baseline: 1.08,
-  optimistic: 1.14,
-  conservative: 1.03,
-};
 
 interface Props {
   scenario: ScenarioType;
   horizon: PipelineHorizon;
+  config: ScenarioConfig;
 }
 
-const ForecastSummaryCards = ({ scenario, horizon }: Props) => {
+const ForecastSummaryCards = ({ scenario, horizon, config }: Props) => {
   const { state, t, language } = useApp();
 
   const projections = useMemo(() => {
@@ -29,18 +24,14 @@ const ForecastSummaryCards = ({ scenario, horizon }: Props) => {
       ? Object.values(monthlyRevenues).reduce((s, v) => s + v, 0) / months.length
       : 0;
 
-    const growthRate = SCENARIO_MONTHLY_GROWTH[scenario];
-    let rev3 = 0, rev6 = 0, revH = 0;
-    let base = avgMonthly;
-    for (let i = 1; i <= horizon; i++) {
-      base *= growthRate;
-      if (i <= 3) rev3 += base;
-      if (i <= 6) rev6 += base;
-      revH += base;
-    }
-
-    return { rev3, rev6, revH };
-  }, [state, scenario, horizon]);
+    const series = projectSeries(avgMonthly, horizon, config);
+    const sumTo = (n: number) => series.slice(0, n).reduce((s, m) => s + m.converted, 0);
+    return {
+      rev3: sumTo(Math.min(3, horizon)),
+      rev6: sumTo(Math.min(6, horizon)),
+      revH: sumTo(horizon),
+    };
+  }, [state, scenario, horizon, config]);
 
   const cards = [
     { label: t('projected3Months'), value: projections.rev3, icon: TrendingUp, accent: 'bg-success/10 text-success' },

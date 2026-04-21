@@ -1,32 +1,31 @@
 import { useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { ScenarioType } from '@/components/ForecastConfigModal';
+import { ScenarioType, ScenarioConfig } from '@/lib/forecastEngine';
 import { PipelineHorizon } from '@/pages/Dashboard';
 import { Rocket } from 'lucide-react';
 import { Product } from '@/types';
 import { addMonths, format } from 'date-fns';
 
-const SCENARIO_MULTIPLIER: Record<ScenarioType, number> = {
-  baseline: 1.0,
-  optimistic: 1.25,
-  conservative: 0.75,
-};
-
 interface UpcomingRevenueDriversProps {
   scenario: ScenarioType;
   horizon: PipelineHorizon;
+  config: ScenarioConfig;
   onProductClick: (product: Product) => void;
 }
 
-const UpcomingRevenueDrivers = ({ scenario, horizon, onProductClick }: UpcomingRevenueDriversProps) => {
+const UpcomingRevenueDrivers = ({ scenario, horizon, config, onProductClick }: UpcomingRevenueDriversProps) => {
   const { state, t, language } = useApp();
 
   const drivers = useMemo(() => {
     const now = new Date(2024, 3, 1);
     const cutoffDate = addMonths(now, horizon);
     const cutoffKey = format(cutoffDate, 'yyyy-MM');
-    const multiplier = SCENARIO_MULTIPLIER[scenario];
+    // Effective scenario multiplier derived from config
+    const adj = 1 + config.revenueAdjustment / 100;
+    const conv = config.conversionRate / 100;
+    const buf = 1 - config.riskBuffer / 100;
+    const multiplier = adj * conv * buf;
 
     const upcoming = state.features
       .filter(f => f.status === 'In Progress' || f.status === 'To Do')
@@ -57,7 +56,7 @@ const UpcomingRevenueDrivers = ({ scenario, horizon, onProductClick }: UpcomingR
       .slice(0, 6);
 
     return upcoming;
-  }, [state, scenario, horizon]);
+  }, [state, scenario, horizon, config]);
 
   const totalProjected = drivers.reduce((s, d) => s + d.projectedRevenue, 0);
 
