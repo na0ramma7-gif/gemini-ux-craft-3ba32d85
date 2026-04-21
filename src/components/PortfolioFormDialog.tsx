@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useApp } from '@/context/AppContext';
 import { Portfolio } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -11,6 +13,13 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
+} from '@/components/ui/form';
+import { toast } from 'sonner';
+import {
+  nameField, codeField, longText, optionalText, personField, M,
+} from '@/lib/validation';
 
 interface PortfolioFormDialogProps {
   open: boolean;
@@ -18,35 +27,45 @@ interface PortfolioFormDialogProps {
   onCreated?: (portfolio: Portfolio) => void;
 }
 
-const empty: Omit<Portfolio, 'id'> = {
-  name: '',
-  code: '',
-  description: '',
-  priority: 'Medium',
-  purpose: '',
-  strategicObjective: '',
-  businessValue: '',
-  owner: '',
-  technicalLead: '',
-  businessStakeholder: '',
-};
-
 const PortfolioFormDialog = ({ open, onOpenChange, onCreated }: PortfolioFormDialogProps) => {
-  const { addPortfolio, t } = useApp();
-  const [form, setForm] = useState<Omit<Portfolio, 'id'>>(empty);
+  const { addPortfolio, t, state } = useApp();
 
-  useEffect(() => {
-    if (open) setForm(empty);
-  }, [open]);
+  const schema = z.object({
+    name: nameField('Name'),
+    code: codeField('Code', { min: 2, max: 8 }).refine(
+      v => !state.portfolios.some(p => p.code.trim().toUpperCase() === v),
+      { message: M.duplicate('Code') },
+    ),
+    description: longText('Description', 1000),
+    priority: z.enum(['High', 'Medium', 'Low']),
+    purpose: longText('Purpose', 500),
+    strategicObjective: longText('Strategic Objective', 500),
+    businessValue: longText('Business Value', 500),
+    owner: personField('Owner', false),
+    technicalLead: personField('Technical Lead', false),
+    businessStakeholder: personField('Business Stakeholder', false),
+  });
 
-  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
-    setForm(prev => ({ ...prev, [k]: v }));
+  type FormValues = z.infer<typeof schema>;
 
-  const canSave = form.name.trim().length > 0 && form.code.trim().length > 0;
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    mode: 'onBlur',
+    defaultValues: {
+      name: '', code: '', description: '', priority: 'Medium',
+      purpose: '', strategicObjective: '', businessValue: '',
+      owner: '', technicalLead: '', businessStakeholder: '',
+    },
+  });
 
-  const handleSave = () => {
-    if (!canSave) return;
-    const created = addPortfolio(form);
+  useEffect(() => { if (open) form.reset(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onSubmit = (values: FormValues) => {
+    const created = addPortfolio({
+      ...values,
+      description: values.description || '',
+    } as Omit<Portfolio, 'id'>);
+    toast.success(`Portfolio "${created.name}" created`);
     onOpenChange(false);
     onCreated?.(created);
   };
@@ -59,72 +78,109 @@ const PortfolioFormDialog = ({ open, onOpenChange, onCreated }: PortfolioFormDia
           <DialogDescription>Create a new portfolio with full profile details.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label>Name *</Label>
-              <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Portfolio name" />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2" noValidate>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormField control={form.control} name="name" render={({ field }) => (
+                <FormItem className="sm:col-span-2">
+                  <FormLabel>Name *</FormLabel>
+                  <FormControl><Input placeholder="Portfolio name" maxLength={100} {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="code" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Code *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ABC" maxLength={8}
+                      {...field}
+                      onChange={e => field.onChange(e.target.value.toUpperCase())}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
             </div>
-            <div className="space-y-1.5">
-              <Label>Code *</Label>
-              <Input value={form.code} onChange={e => set('code', e.target.value.toUpperCase())} placeholder="ABC" />
+
+            <FormField control={form.control} name="description" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl><Textarea rows={2} maxLength={1000} {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField control={form.control} name="priority" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('priority')}</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="High">{t('high')}</SelectItem>
+                      <SelectItem value="Medium">{t('medium')}</SelectItem>
+                      <SelectItem value="Low">{t('low')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="owner" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Owner</FormLabel>
+                  <FormControl><Input maxLength={100} {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label>Description</Label>
-            <Textarea value={form.description} onChange={e => set('description', e.target.value)} rows={2} />
-          </div>
+            <FormField control={form.control} name="purpose" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Purpose</FormLabel>
+                <FormControl><Textarea rows={2} maxLength={500} {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>{t('priority')}</Label>
-              <Select value={form.priority} onValueChange={v => set('priority', v as Portfolio['priority'])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="High">{t('high')}</SelectItem>
-                  <SelectItem value="Medium">{t('medium')}</SelectItem>
-                  <SelectItem value="Low">{t('low')}</SelectItem>
-                </SelectContent>
-              </Select>
+            <FormField control={form.control} name="strategicObjective" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Strategic Objective</FormLabel>
+                <FormControl><Textarea rows={2} maxLength={500} {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="businessValue" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Business Value</FormLabel>
+                <FormControl><Textarea rows={2} maxLength={500} {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField control={form.control} name="technicalLead" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Technical Lead</FormLabel>
+                  <FormControl><Input maxLength={100} {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="businessStakeholder" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Stakeholder</FormLabel>
+                  <FormControl><Input maxLength={100} {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
             </div>
-            <div className="space-y-1.5">
-              <Label>Owner</Label>
-              <Input value={form.owner || ''} onChange={e => set('owner', e.target.value)} />
-            </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label>Purpose</Label>
-            <Textarea value={form.purpose || ''} onChange={e => set('purpose', e.target.value)} rows={2} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Strategic Objective</Label>
-            <Textarea value={form.strategicObjective || ''} onChange={e => set('strategicObjective', e.target.value)} rows={2} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Business Value</Label>
-            <Textarea value={form.businessValue || ''} onChange={e => set('businessValue', e.target.value)} rows={2} />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Technical Lead</Label>
-              <Input value={form.technicalLead || ''} onChange={e => set('technicalLead', e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Business Stakeholder</Label>
-              <Input value={form.businessStakeholder || ''} onChange={e => set('businessStakeholder', e.target.value)} />
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
-          <Button onClick={handleSave} disabled={!canSave}>{t('addPortfolio')}</Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>{t('addPortfolio')}</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
