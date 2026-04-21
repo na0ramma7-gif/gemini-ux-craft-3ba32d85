@@ -41,6 +41,8 @@ export interface Product {
   purpose?: string;
   businessProblem?: string;
   strategicObjective?: string;
+  /** IDs of StrategicObjective rows the product contributes to (within same portfolio). */
+  strategicObjectiveIds?: number[];
   lifecycleStage?: LifecycleStage;
   startDate?: string;
   capabilities?: string[];
@@ -50,6 +52,16 @@ export interface Product {
   businessStakeholder?: string;
   supportingTeams?: string[];
   logo?: string; // base64 or URL
+}
+
+export type StrategicObjectiveStatus = 'Active' | 'Archived';
+
+export interface StrategicObjective {
+  id: number;
+  portfolioId: number;
+  title: string;            // required, ≤150
+  description?: string;     // optional, ≤250
+  status?: StrategicObjectiveStatus;
 }
 
 export interface Release {
@@ -173,6 +185,7 @@ export interface AppState {
   revenuePlan: RevenuePlan[];
   revenueActual: RevenueActual[];
   documents: Document[];
+  strategicObjectives: StrategicObjective[];
   language: 'en' | 'ar';
 }
 
