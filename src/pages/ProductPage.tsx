@@ -197,6 +197,15 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
         </div>
       </div>
 
+      {/* Compare controls (visible only when Compare is ON) */}
+      <CompareControls scope="product" productId={product.id} />
+      {compare.active && (
+        <CompareEmptyState validation={compare.validation} dataState={compare.dataState} />
+      )}
+      {!compare.active && compare.validation && !compare.validation.ok && (
+        <CompareEmptyState validation={compare.validation} />
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
         <KPICard
@@ -601,6 +610,9 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                         <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('actual')}</th>
                         <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('cost')}</th>
                         <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('variance')}</th>
+                        {compare.active && (
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('vsCompare')}</th>
+                        )}
                         <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
                       </tr>
                     </thead>
@@ -612,6 +624,8 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                         state.revenueActual.filter(r => r.featureId === feature.id).forEach(r => actual += r.actual);
                         const cost = expected * 0.6;
                         const variance = actual - expected;
+                        const cmp = compareByFeatureId.get(feature.id);
+                        const revDelta = cmp ? computeDelta(actual, cmp.revenue) : null;
                         return (
                           <tr key={feature.id} className="hover:bg-secondary/50">
                             <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium text-foreground text-xs sm:text-sm">{feature.name}</td>
@@ -626,6 +640,15 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                                 {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
                               </span>
                             </td>
+                            {compare.active && (
+                              <td className="px-3 sm:px-4 py-2 sm:py-3 text-end">
+                                {revDelta ? (
+                                  <DeltaChip delta={revDelta} format="currency" />
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </td>
+                            )}
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
                               <Button size="sm" className="text-xs h-7" onClick={() => setSelectedFeatureForFinancials(feature)}>
                                 {t('planFinancials')}
