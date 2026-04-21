@@ -616,4 +616,23 @@ const Sparkline = ({ values, color, label }: { values: number[]; color: string; 
   );
 };
 
+const PatternBars = ({ values }: { values: number[] }) => {
+  const w = 96;
+  const h = 24;
+  const max = Math.max(...values, 1.01);
+  const barW = w / values.length;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h}>
+      <line x1={0} y1={h / 2} x2={w} y2={h / 2} stroke="hsl(var(--border))" strokeDasharray="2 2" />
+      {values.map((v, i) => {
+        const norm = v / max;
+        const barH = Math.max(1, norm * (h - 2));
+        const y = h - barH;
+        const fill = v < 0.95 ? 'hsl(var(--warning))' : v > 1.05 ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))';
+        return <rect key={i} x={i * barW + 0.5} y={y} width={Math.max(1, barW - 1)} height={barH} fill={fill} opacity={0.85} />;
+      })}
+    </svg>
+  );
+};
+
 export default ForecastAssumptionsPanel;
