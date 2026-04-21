@@ -12,6 +12,7 @@ import {
 import { Resource, ResourceSkill, SkillProficiency } from '@/types';
 import { ArrowLeft, User, Plus, Edit, Trash2, Clock, Briefcase, Star, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import ResourceFormDialog from '@/components/ResourceFormDialog';
 import AssignmentFormDialog from '@/components/AssignmentFormDialog';
 
