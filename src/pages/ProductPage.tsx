@@ -7,6 +7,8 @@ import FeatureFinancialPlanning from '@/components/FeatureFinancialPlanning';
 import ProductForecast from '@/components/ProductForecast';
 import ProductOverview from '@/components/ProductOverview';
 import ProductDocumentation from '@/components/ProductDocumentation';
+import FeatureFormDialog from '@/components/FeatureFormDialog';
+import ReleaseFormDialog from '@/components/ReleaseFormDialog';
 import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, getFeatureEffectiveStatus, cn } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Button } from '@/components/ui/button';
