@@ -268,6 +268,55 @@ const ForecastAssumptionsPanel = ({
 
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_320px] overflow-hidden">
             <div className="overflow-auto p-6 space-y-5">
+              {/* Mode selector + Ramadan override */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="inline-flex bg-muted rounded-lg p-1 gap-1" role="tablist" aria-label={t('mode')}>
+                  {(['simple', 'seasonal', 'matrix'] as ForecastMode[]).map(m => {
+                    const active = activeScenario.mode === m;
+                    const label = t(m === 'simple' ? 'modeSimple' : m === 'seasonal' ? 'modeSeasonal' : 'modeMatrix');
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => requestModeSwitch(m)}
+                        className={cn(
+                          'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                          active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground flex-1 min-w-[160px]">
+                  {t(activeScenario.mode === 'simple' ? 'modeSimpleHelp' : activeScenario.mode === 'seasonal' ? 'modeSeasonalHelp' : 'modeMatrixHelp')}
+                </p>
+                {activeScenario.mode === 'seasonal' && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground">{t('ramadanMonth')}</Label>
+                    <Select
+                      value={activeScenario.ramadanMonthOverride == null ? 'auto' : String(activeScenario.ramadanMonthOverride)}
+                      onValueChange={v =>
+                        setDraft(d => setRamadanMonthOverride(d, activeId, v === 'auto' ? null : Number(v)))
+                      }
+                    >
+                      <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">
+                          {t('autoDetect')} ({MONTH_LABEL_KEYS_FALLBACK[getRamadanMonth(activeScenario, forecastStartDate.getFullYear())]})
+                        </SelectItem>
+                        {MONTH_LABEL_KEYS_FALLBACK.map((m, i) => (
+                          <SelectItem key={i} value={String(i)}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-border bg-muted/20">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">{t('defaultRevenueGrowth')}</Label>
