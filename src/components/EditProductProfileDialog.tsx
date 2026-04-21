@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Plus, Check, X, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 interface Props {
   open: boolean;
@@ -64,6 +65,7 @@ type FormState = {
   businessValue: string;
   capabilities: string[];
   successMetrics: string[];
+  strategicObjectiveIds: number[];
 };
 
 type Errors = Partial<Record<keyof FormState, string>>;
@@ -91,6 +93,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     businessValue: product.businessValue ?? '',
     capabilities: product.capabilities ? [...product.capabilities] : [],
     successMetrics: product.successMetrics ? [...product.successMetrics] : [],
+    strategicObjectiveIds: product.strategicObjectiveIds ? [...product.strategicObjectiveIds] : [],
   }), [product]);
 
   const [data, setData] = useState<FormState>(initial);
