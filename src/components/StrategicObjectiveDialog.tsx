@@ -62,11 +62,11 @@ const StrategicObjectiveDialog = ({ open, onOpenChange, portfolioId, objective }
     };
     if (isEdit && objective) {
       const res = updateStrategicObjective(objective.id, payload);
-      if (!res.ok) { setError(res.error); return; }
+      if (res.ok === false) { setError(res.error); return; }
       toast.success('Objective updated');
     } else {
       const res = addStrategicObjective({ portfolioId, ...payload });
-      if (!res.ok) { setError(res.error); return; }
+      if (res.ok === false) { setError(res.error); return; }
       toast.success('Objective added');
     }
     onOpenChange(false);
