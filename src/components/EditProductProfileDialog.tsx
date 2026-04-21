@@ -136,6 +136,12 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     matEfficiency: product.maturity?.efficiency != null ? String(product.maturity.efficiency) : '',
     matStability: product.maturity?.stability != null ? String(product.maturity.stability) : '',
     matSatisfaction: product.maturity?.customerSatisfaction != null ? String(product.maturity.customerSatisfaction) : '',
+    usageNumberOfUsers: product.usage?.numberOfUsers != null ? String(product.usage.numberOfUsers) : '',
+    usageYearlyTransactions: product.usage?.yearlyTransactions != null ? String(product.usage.yearlyTransactions) : '',
+    usageActiveUsersPct: product.usage?.activeUsersPct != null ? String(product.usage.activeUsersPct) : '',
+    usageRepeatUsagePct: product.usage?.repeatUsagePct != null ? String(product.usage.repeatUsagePct) : '',
+    usageEngagementLevel: (product.usage?.engagementLevel as EngagementLevel) ?? '',
+    usageTrend: (product.usage?.usageTrend as UsageTrend) ?? '',
   }), [product]);
 
   const [data, setData] = useState<FormState>(initial);
