@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatCurrency } from '@/lib/utils';
+import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { PieChart as PieChartIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
@@ -13,23 +14,15 @@ const PORTFOLIO_COLORS = [
 ];
 
 const PortfolioDonutChart = () => {
-  const { state, t, language } = useApp();
+  const { state, t, language, dateFilter } = useApp();
+  const dept = useHierarchicalMetrics(state, dateFilter);
 
+  // Use shared hook so donut totals match the dashboard KPI total.
   const data = useMemo(() => {
-    return state.portfolios.map(p => {
-      const products = state.products.filter(pr => pr.portfolioId === p.id);
-      let actual = 0;
-      products.forEach(pr => {
-        const features = state.features.filter(f => f.productId === pr.id);
-        features.forEach(f => {
-          state.revenueActual.filter(r => r.featureId === f.id).forEach(r => {
-            actual += r.actual;
-          });
-        });
-      });
-      return { name: p.name, value: actual, id: p.id };
-    }).filter(d => d.value > 0);
-  }, [state]);
+    return dept.portfolioMetrics
+      .map(pm => ({ name: pm.portfolioName, value: pm.revenue, id: pm.portfolioId }))
+      .filter(d => d.value > 0);
+  }, [dept]);
 
   const total = data.reduce((s, d) => s + d.value, 0);
 
