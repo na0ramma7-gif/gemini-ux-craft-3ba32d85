@@ -786,17 +786,22 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
       {/* MONTH EDIT POPUP */}
       <Dialog open={editMonthOpen} onOpenChange={setEditMonthOpen}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
-            <DialogTitle className="flex items-center gap-2 text-lg">
+        <DialogContent
+          className="p-0 overflow-hidden flex flex-col gap-0 w-[95vw] max-w-[1400px] h-[90vh] max-h-[900px] sm:rounded-xl"
+        >
+          {/* Sticky header */}
+          <DialogHeader className="px-6 pt-5 pb-4 border-b border-border bg-card shrink-0 text-start">
+            <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
               <DollarSign className="w-5 h-5 text-primary" />
-              {t(MONTHS_SHORT_KEYS[editMonthIdx])} {selectedYear} — {t('financialPlanning')}
+              {(language === 'ar' ? MONTHS_FULL_AR : MONTHS_FULL_EN)[editMonthIdx]} {selectedYear} — {t('monthlyFinancialPlanning')}
             </DialogTitle>
-            <DialogDescription>{feature.name}</DialogDescription>
+            <DialogDescription className="text-sm text-muted-foreground">
+              {t('planMonthSubtitle')}
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] min-h-0 max-h-[calc(90vh-140px)]">
-            <div className="p-6 space-y-5 overflow-y-auto border-e border-border">
+          <div className="grid grid-cols-1 min-[1100px]:grid-cols-[minmax(720px,1fr)_340px] gap-6 px-6 py-5 flex-1 min-h-0 overflow-y-auto bg-[hsl(var(--muted)/0.3)]">
+            <div className="space-y-5 min-w-0">
               {/* STEP 1 — Services / Subscriptions (catalog) */}
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="flex items-start justify-between gap-2 flex-wrap mb-1">
