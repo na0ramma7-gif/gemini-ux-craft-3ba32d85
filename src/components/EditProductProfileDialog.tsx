@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Product, LifecycleStage, ProductHealth, ProductHealthStatus, ProductMaturity } from '@/types';
+import { Product, LifecycleStage, ProductHealth, ProductHealthStatus, ProductMaturity, ProductUsage, EngagementLevel, UsageTrend } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -83,6 +83,13 @@ type FormState = {
   matEfficiency: string;
   matStability: string;
   matSatisfaction: string;
+  // Product Usage / User Behavior
+  usageNumberOfUsers: string;
+  usageYearlyTransactions: string;
+  usageActiveUsersPct: string;
+  usageRepeatUsagePct: string;
+  usageEngagementLevel: EngagementLevel | '';
+  usageTrend: UsageTrend | '';
 };
 
 type Errors = Partial<Record<keyof FormState, string>>;
