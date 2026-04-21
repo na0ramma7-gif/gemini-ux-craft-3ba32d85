@@ -165,12 +165,10 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     if (!s.lifecycleStage) e.lifecycleStage = 'Please select a lifecycle stage';
 
     const desc = s.description.trim();
-    if (!desc) e.description = 'Description is required';
-    else if (desc.length > MAX.description) e.description = `Description cannot exceed ${MAX.description} characters`;
+    if (desc.length > MAX.description) e.description = `Description cannot exceed ${MAX.description} characters`;
 
     const purp = s.purpose.trim();
-    if (!purp) e.purpose = 'Purpose is required';
-    else if (purp.length > MAX.purpose) e.purpose = `Purpose cannot exceed ${MAX.purpose} characters`;
+    if (purp.length > MAX.purpose) e.purpose = `Purpose cannot exceed ${MAX.purpose} characters`;
 
     if (s.strategicObjective.trim().length > MAX.strategic)
       e.strategicObjective = `Strategic objective cannot exceed ${MAX.strategic} characters`;
