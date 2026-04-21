@@ -242,23 +242,23 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
               {/* Portfolio Profile Information */}
               <div className="bg-secondary/30 rounded-xl p-5">
                 <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <User className="w-4 h-4 text-primary" /> {t('portfolioProfile') || 'Portfolio Profile'}
+                  <User className="w-4 h-4 text-primary" /> {(t as any)('portfolioProfile') || 'Portfolio Profile'}
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-card rounded-lg p-3 border border-border/50">
-                    <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{t('owner') || 'Owner'}</div>
+                    <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{(t as any)('owner') || 'Owner'}</div>
                     <div className="text-sm font-semibold text-foreground break-words">{portfolio.owner || '—'}</div>
                   </div>
                   <div className="bg-card rounded-lg p-3 border border-border/50">
-                    <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{t('technicalLead') || 'Technical Lead'}</div>
+                    <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{(t as any)('technicalLead') || 'Technical Lead'}</div>
                     <div className="text-sm font-semibold text-foreground break-words">{portfolio.technicalLead || '—'}</div>
                   </div>
                   <div className="bg-card rounded-lg p-3 border border-border/50">
-                    <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{t('businessStakeholder') || 'Business Stakeholder'}</div>
+                    <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{(t as any)('businessStakeholder') || 'Business Stakeholder'}</div>
                     <div className="text-sm font-semibold text-foreground break-words">{portfolio.businessStakeholder || '—'}</div>
                   </div>
                   <div className="bg-card rounded-lg p-3 border border-border/50">
-                    <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{t('priority') || 'Priority'}</div>
+                    <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{(t as any)('priority') || 'Priority'}</div>
                     <div className="text-sm font-semibold text-foreground">{portfolio.priority || '—'}</div>
                   </div>
                 </div>
@@ -266,13 +266,13 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
                     {portfolio.purpose && (
                       <div className="bg-card rounded-lg p-3 border border-border/50">
-                        <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{t('purpose') || 'Purpose'}</div>
+                        <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{(t as any)('purpose') || 'Purpose'}</div>
                         <div className="text-sm text-foreground whitespace-pre-wrap break-words">{portfolio.purpose}</div>
                       </div>
                     )}
                     {portfolio.businessValue && (
                       <div className="bg-card rounded-lg p-3 border border-border/50">
-                        <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{t('businessValue') || 'Business Value'}</div>
+                        <div className="text-[10px] uppercase font-medium text-muted-foreground mb-1">{(t as any)('businessValue') || 'Business Value'}</div>
                         <div className="text-sm text-foreground whitespace-pre-wrap break-words">{portfolio.businessValue}</div>
                       </div>
                     )}
