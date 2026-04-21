@@ -70,6 +70,21 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   const productFeatures = state.features.filter(f => f.productId === feature.productId);
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
 
+  // Resources actually assigned to the current product (via assignments).
+  // Feature-level resource cost selection must be limited to this set.
+  const productResourceIds = useMemo(() => {
+    const ids = new Set<number>();
+    (state.assignments || []).forEach(a => {
+      if (a.productId === feature.productId) ids.add(a.resourceId);
+    });
+    return ids;
+  }, [state.assignments, feature.productId]);
+
+  const productAssignedResources = useMemo(
+    () => state.resources.filter(r => productResourceIds.has(r.id) && r.status === 'Active'),
+    [state.resources, productResourceIds],
+  );
+
   const monthlySummaries = useMemo(() =>
     Array.from({ length: 12 }, (_, i) => {
       const md = yearData[i];
