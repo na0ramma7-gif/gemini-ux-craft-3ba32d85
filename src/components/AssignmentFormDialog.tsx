@@ -157,11 +157,10 @@ const AssignmentFormDialog = ({ open, onOpenChange, resourceId, assignment }: As
             )} />
             <FormField control={form.control} name="releaseId" render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('release')}</FormLabel>
+                <FormLabel>{t('release')} *</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl><SelectTrigger><SelectValue placeholder={t('selectReleasePlaceholder')} /></SelectTrigger></FormControl>
                   <SelectContent>
-                    <SelectItem value="0">—</SelectItem>
                     {filteredReleases.map(r => (
                       <SelectItem key={r.id} value={String(r.id)}>{r.version} - {r.name}</SelectItem>
                     ))}
