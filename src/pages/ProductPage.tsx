@@ -8,6 +8,7 @@ import ProductForecast from '@/components/ProductForecast';
 import ProductOverview from '@/components/ProductOverview';
 import ProductDocumentation from '@/components/ProductDocumentation';
 import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, getFeatureEffectiveStatus, cn } from '@/lib/utils';
+import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
