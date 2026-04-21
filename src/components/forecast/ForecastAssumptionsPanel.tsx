@@ -30,23 +30,50 @@ import { Copy, Trash2, RotateCcw, Pencil, AlertCircle } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import {
   FeatureForecastSettings,
+  ForecastMode,
   ForecastScenarioId,
   MAX_SCENARIOS,
+  SeasonalPresetId,
   ServiceBaselineInput,
   TONE_CLASSES,
+  buildSeasonalMultipliers,
+  getRamadanMonth,
   getServiceGrowthRate,
   projectForecast,
 } from '@/lib/featureForecast';
 import {
+  clearAllCellOverrides,
+  clearCellOverride,
   duplicateScenario,
   deleteScenario,
   renameScenario,
   resetScenarioToDefaults,
   resetServiceGrowth,
+  scenarioHasOverrides,
+  setCellOverride,
+  setCellOverridesBulk,
+  setRamadanMonthOverride,
+  setScenarioMode,
   setServiceGrowth,
+  setServicePattern,
   updateScenario,
 } from '@/hooks/useFeatureForecastSettings';
 import { useApp } from '@/context/AppContext';
+import ForecastMatrixGrid from '@/components/forecast/ForecastMatrixGrid';
+
+const MONTH_LABEL_KEYS_FALLBACK = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+const SEASONAL_PRESETS: { id: SeasonalPresetId; key: string }[] = [
+  { id: 'flat', key: 'presetFlat' },
+  { id: 'ramadan', key: 'presetRamadan' },
+  { id: 'summer', key: 'presetSummer' },
+  { id: 'yearEnd', key: 'presetYearEnd' },
+  { id: 'backToSchool', key: 'presetBackToSchool' },
+  { id: 'custom', key: 'presetCustom' },
+];
 
 interface Props {
   open: boolean;
@@ -55,6 +82,7 @@ interface Props {
   serviceBaselines: ServiceBaselineInput[];
   costBaseline: { baseMonthlyCost: number; hasCostData: boolean };
   onApply: (next: FeatureForecastSettings) => void;
+  forecastStartDate: Date;
 }
 
 const ForecastAssumptionsPanel = ({
@@ -64,6 +92,7 @@ const ForecastAssumptionsPanel = ({
   serviceBaselines,
   costBaseline,
   onApply,
+  forecastStartDate,
 }: Props) => {
   const { t, language } = useApp();
   const [draft, setDraft] = useState<FeatureForecastSettings>(initialSettings);
@@ -72,6 +101,7 @@ const ForecastAssumptionsPanel = ({
   const [renameValue, setRenameValue] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<ForecastScenarioId | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [pendingModeSwitch, setPendingModeSwitch] = useState<ForecastMode | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -86,8 +116,8 @@ const ForecastAssumptionsPanel = ({
   );
 
   const projection = useMemo(
-    () => projectForecast(serviceBaselines, costBaseline, activeScenario, draft.horizon),
-    [serviceBaselines, costBaseline, activeScenario, draft.horizon],
+    () => projectForecast(serviceBaselines, costBaseline, activeScenario, draft.horizon, forecastStartDate),
+    [serviceBaselines, costBaseline, activeScenario, draft.horizon, forecastStartDate],
   );
 
   const dirty = useMemo(
@@ -124,6 +154,26 @@ const ForecastAssumptionsPanel = ({
 
   const updateActive = (patch: any) => {
     setDraft(d => updateScenario(d, activeId, patch));
+  };
+
+  const requestModeSwitch = (next: ForecastMode) => {
+    if (next === activeScenario.mode) return;
+    // Warn only when overrides would be lost (Matrix → other) or when leaving
+    // Seasonal would lose patterns. Per spec, the warning text is generic.
+    const wouldLoseOverrides =
+      activeScenario.mode === 'matrix' && scenarioHasOverrides(draft, activeId);
+    if (wouldLoseOverrides) {
+      setPendingModeSwitch(next);
+    } else {
+      setDraft(d => setScenarioMode(d, activeId, next));
+    }
+  };
+
+  const confirmModeSwitch = () => {
+    if (pendingModeSwitch) {
+      setDraft(d => setScenarioMode(d, activeId, pendingModeSwitch));
+      setPendingModeSwitch(null);
+    }
   };
 
   const handleResetScenario = () => {
@@ -232,6 +282,55 @@ const ForecastAssumptionsPanel = ({
 
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_320px] overflow-hidden">
             <div className="overflow-auto p-6 space-y-5">
+              {/* Mode selector + Ramadan override */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="inline-flex bg-muted rounded-lg p-1 gap-1" role="tablist" aria-label={t('mode')}>
+                  {(['simple', 'seasonal', 'matrix'] as ForecastMode[]).map(m => {
+                    const active = activeScenario.mode === m;
+                    const label = t(m === 'simple' ? 'modeSimple' : m === 'seasonal' ? 'modeSeasonal' : 'modeMatrix');
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => requestModeSwitch(m)}
+                        className={cn(
+                          'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                          active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground flex-1 min-w-[160px]">
+                  {t(activeScenario.mode === 'simple' ? 'modeSimpleHelp' : activeScenario.mode === 'seasonal' ? 'modeSeasonalHelp' : 'modeMatrixHelp')}
+                </p>
+                {activeScenario.mode === 'seasonal' && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground">{t('ramadanMonth')}</Label>
+                    <Select
+                      value={activeScenario.ramadanMonthOverride == null ? 'auto' : String(activeScenario.ramadanMonthOverride)}
+                      onValueChange={v =>
+                        setDraft(d => setRamadanMonthOverride(d, activeId, v === 'auto' ? null : Number(v)))
+                      }
+                    >
+                      <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">
+                          {t('autoDetect')} ({MONTH_LABEL_KEYS_FALLBACK[getRamadanMonth(activeScenario, forecastStartDate.getFullYear())]})
+                        </SelectItem>
+                        {MONTH_LABEL_KEYS_FALLBACK.map((m, i) => (
+                          <SelectItem key={i} value={String(i)}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-border bg-muted/20">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">{t('defaultRevenueGrowth')}</Label>
@@ -265,7 +364,19 @@ const ForecastAssumptionsPanel = ({
 
               <div>
                 <h4 className="text-sm font-semibold mb-2">{t('perServiceGrowth')}</h4>
-                {serviceBaselines.length === 0 ? (
+                {activeScenario.mode === 'matrix' ? (
+                  <ForecastMatrixGrid
+                    scenario={activeScenario}
+                    baselines={serviceBaselines}
+                    projectedServices={projection.services}
+                    forecastStartDate={forecastStartDate}
+                    horizon={draft.horizon}
+                    onSetCell={(sId, mIdx, tx) => setDraft(d => setCellOverride(d, activeId, sId, mIdx, tx))}
+                    onClearCell={(sId, mIdx) => setDraft(d => clearCellOverride(d, activeId, sId, mIdx))}
+                    onBulkSet={cells => setDraft(d => setCellOverridesBulk(d, activeId, cells))}
+                    onClearAll={() => setDraft(d => clearAllCellOverrides(d, activeId))}
+                  />
+                ) : serviceBaselines.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                     {t('noServicesForForecast')}
                   </div>
@@ -278,6 +389,12 @@ const ForecastAssumptionsPanel = ({
                           <th className="text-end px-3 py-2 font-medium">{t('baseTx')}</th>
                           <th className="text-end px-3 py-2 font-medium">{t('rate')}</th>
                           <th className="text-end px-3 py-2 font-medium">{t('growthPercent')}</th>
+                          {activeScenario.mode === 'seasonal' && (
+                            <>
+                              <th className="text-start px-3 py-2 font-medium">{t('seasonalPattern')}</th>
+                              <th className="text-center px-3 py-2 font-medium">{t('seasonalSparkline')}</th>
+                            </>
+                          )}
                           <th className="text-end px-3 py-2 font-medium">{t('forecastTxEnd')}</th>
                           <th className="text-end px-3 py-2 font-medium w-10"></th>
                         </tr>
@@ -288,6 +405,10 @@ const ForecastAssumptionsPanel = ({
                           const growth = getServiceGrowthRate(activeScenario, b.serviceId);
                           const last = b.baseTx * Math.pow(1 + growth / 100, draft.horizon);
                           const sanity = b.highestHistoricalTx > 0 && last > 3 * b.highestHistoricalTx;
+                          const sa = activeScenario.services.find(s => s.serviceId === b.serviceId);
+                          const pattern: SeasonalPresetId = sa?.pattern ?? 'flat';
+                          const ramadan = getRamadanMonth(activeScenario, forecastStartDate.getFullYear());
+                          const mults = buildSeasonalMultipliers(pattern, sa?.customPattern, ramadan);
                           return (
                             <tr key={b.serviceId} className={cn('border-t border-border/60', overridden && 'bg-warning/5')}>
                               <td className="px-3 py-2 font-medium text-foreground">
@@ -314,6 +435,26 @@ const ForecastAssumptionsPanel = ({
                                   <span className="absolute end-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
                                 </div>
                               </td>
+                              {activeScenario.mode === 'seasonal' && (
+                                <>
+                                  <td className="px-3 py-2">
+                                    <Select
+                                      value={pattern}
+                                      onValueChange={(v) => setDraft(d => setServicePattern(d, activeId, b.serviceId, v as SeasonalPresetId))}
+                                    >
+                                      <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {SEASONAL_PRESETS.map(p => (
+                                          <SelectItem key={p.id} value={p.id}>{t(p.key as any)}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <PatternBars values={mults} />
+                                  </td>
+                                </>
+                              )}
                               <td className="px-3 py-2 text-end tabular-nums">
                                 <span className={cn('inline-flex items-center gap-1', sanity ? 'text-warning' : 'text-foreground')}>
                                   {sanity && <AlertCircle className="w-3 h-3" aria-label={t('sanitySpike')} />}
@@ -326,7 +467,7 @@ const ForecastAssumptionsPanel = ({
                                     type="button"
                                     className="text-[11px] text-primary hover:underline"
                                     onClick={() => setDraft(d => resetServiceGrowth(d, activeId, b.serviceId))}
-                                    title={t('resetToDefault')}
+                                    title={t('resetToDefaultGrowth')}
                                   >
                                     {t('reset')}
                                   </button>
@@ -434,6 +575,24 @@ const ForecastAssumptionsPanel = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!pendingModeSwitch} onOpenChange={v => !v && setPendingModeSwitch(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('confirmModeSwitchTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('confirmModeSwitchDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('keep')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmModeSwitch}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('discardAndSwitch')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
@@ -472,6 +631,25 @@ const Sparkline = ({ values, color, label }: { values: number[]; color: string; 
         <polyline fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" points={points} />
       </svg>
     </div>
+  );
+};
+
+const PatternBars = ({ values }: { values: number[] }) => {
+  const w = 96;
+  const h = 24;
+  const max = Math.max(...values, 1.01);
+  const barW = w / values.length;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h}>
+      <line x1={0} y1={h / 2} x2={w} y2={h / 2} stroke="hsl(var(--border))" strokeDasharray="2 2" />
+      {values.map((v, i) => {
+        const norm = v / max;
+        const barH = Math.max(1, norm * (h - 2));
+        const y = h - barH;
+        const fill = v < 0.95 ? 'hsl(var(--warning))' : v > 1.05 ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))';
+        return <rect key={i} x={i * barW + 0.5} y={y} width={Math.max(1, barW - 1)} height={barH} fill={fill} opacity={0.85} />;
+      })}
+    </svg>
   );
 };
 
