@@ -260,3 +260,46 @@ export function classifyDataState(
   if ((cur === 0) !== (cmp === 0)) return 'partial';
   return 'ok';
 }
+
+// ── Per-service revenue breakdown ─────────────────────────────
+// Aggregates `revenueLines` by service name (case-insensitive) within a
+// window and selection. Returns sorted by actual revenue (desc).
+export interface ServiceBreakdownRow {
+  /** Display name (first encountered casing wins). */
+  name: string;
+  planned: number;
+  actual: number;
+  lineCount: number;
+}
+
+export function computeServiceBreakdown(
+  state: AppState,
+  window: DateWindow | null | undefined,
+  selection: CompareSelection = EMPTY_SELECTION,
+): ServiceBreakdownRow[] {
+  if (!window) return [];
+  const monthKeys = monthsInDateRange(window);
+  if (monthKeys.length === 0) return [];
+  const monthSet = new Set(monthKeys);
+  const featureSet = new Set(resolveFeatureIds(state, selection));
+
+  // serviceId → display name
+  const nameById = new Map<number, string>();
+  state.revenueServices.forEach(s => nameById.set(s.id, s.name));
+
+  // key = lowercased name → row
+  const byName = new Map<string, ServiceBreakdownRow>();
+  state.revenueLines.forEach(l => {
+    if (!featureSet.has(l.featureId)) return;
+    if (!monthSet.has(l.month)) return;
+    const display = nameById.get(l.serviceId) ?? 'Unknown';
+    const key = display.trim().toLowerCase();
+    const cur = byName.get(key) ?? { name: display, planned: 0, actual: 0, lineCount: 0 };
+    cur.planned += l.rate * (l.plannedTransactions || 0);
+    cur.actual += l.rate * (l.actualTransactions || 0);
+    cur.lineCount += 1;
+    byName.set(key, cur);
+  });
+
+  return Array.from(byName.values()).sort((a, b) => b.actual - a.actual);
+}
