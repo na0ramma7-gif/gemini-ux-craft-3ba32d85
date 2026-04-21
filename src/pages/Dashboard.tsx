@@ -9,6 +9,7 @@ import PortfolioBarChart from '@/components/dashboard/PortfolioBarChart';
 import ProductTable from '@/components/dashboard/ProductTable';
 import ForecastSummaryCards from '@/components/dashboard/ForecastSummaryCards';
 import RevenuePipelineChart from '@/components/dashboard/RevenuePipelineChart';
+import ForecastByService from '@/components/dashboard/ForecastByService';
 import UpcomingRevenueDrivers from '@/components/dashboard/UpcomingRevenueDrivers';
 import ScenarioConfigModal from '@/components/dashboard/ScenarioConfigModal';
 import { formatCurrency } from '@/lib/utils';
@@ -213,6 +214,7 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
 
         <ForecastSummaryCards scenario={scenario} horizon={horizon} config={configs[scenario]} />
         <RevenuePipelineChart scenario={scenario} horizon={horizon} config={configs[scenario]} />
+        <ForecastByService horizon={horizon} config={configs[scenario]} />
       </div>
 
       {/* 6. Upcoming Revenue Drivers */}

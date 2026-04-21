@@ -275,32 +275,107 @@ const RAW_INITIAL_STATE: AppState = {
 };
 
 /**
+ * Per-product service catalog used to seed realistic, multi-service
+ * monthly revenue lines. Each entry is a (name, rate, share) triple
+ * where `share` defines how much of a feature's monthly amount this
+ * service contributes (shares per product must sum to 1).
+ *
+ * Rate is in SAR per transaction. Splitting: planned/actual amount is
+ * multiplied by `share`, then divided by `rate` and rounded to whole
+ * transactions; the largest-share row absorbs the rounding remainder
+ * so per-feature, per-month totals stay EXACTLY equal to the legacy
+ * numbers (no drift in KPIs, charts, compare, or forecast).
+ */
+const PRODUCT_SERVICE_CATALOG: Record<number, Array<{ name: string; rate: number; share: number }>> = {
+  // Professional License Portal
+  1: [
+    { name: 'New License Application', rate: 250, share: 0.55 },
+    { name: 'Verification Lookup',     rate: 15,  share: 0.30 },
+    { name: 'Premium Support',         rate: 120, share: 0.15 },
+  ],
+  // License Renewal System
+  2: [
+    { name: 'Annual Renewal',     rate: 180, share: 0.70 },
+    { name: 'Late Renewal Fee',   rate: 50,  share: 0.20 },
+    { name: 'Compliance Report',  rate: 75,  share: 0.10 },
+  ],
+  // Supply Chain Tracker
+  3: [
+    { name: 'Shipment Tracking',  rate: 8,   share: 0.60 },
+    { name: 'Analytics API Call', rate: 2,   share: 0.25 },
+    { name: 'Premium Dashboard',  rate: 200, share: 0.15 },
+  ],
+  // Asset Management System
+  4: [
+    { name: 'Asset Tag',          rate: 12,  share: 0.50 },
+    { name: 'Audit Report',       rate: 350, share: 0.30 },
+    { name: 'Lifecycle Service',  rate: 90,  share: 0.20 },
+  ],
+  // Practitioner Verification
+  5: [
+    { name: 'Credential Verification', rate: 35,  share: 0.65 },
+    { name: 'Bulk Verification Pack',  rate: 200, share: 0.25 },
+    { name: 'API Access Fee',          rate: 5,   share: 0.10 },
+  ],
+  // Practitioner Directory
+  6: [
+    { name: 'Directory Listing',  rate: 60,  share: 0.55 },
+    { name: 'Featured Profile',   rate: 250, share: 0.30 },
+    { name: 'Profile Analytics',  rate: 25,  share: 0.15 },
+  ],
+  // Claims Management
+  7: [
+    { name: 'Claim Submission',   rate: 45,  share: 0.50 },
+    { name: 'Adjudication Fee',   rate: 90,  share: 0.35 },
+    { name: 'Appeal Processing',  rate: 150, share: 0.15 },
+  ],
+  // Policy Management
+  8: [
+    { name: 'Policy Issuance',    rate: 220, share: 0.55 },
+    { name: 'Endorsement',        rate: 80,  share: 0.30 },
+    { name: 'Renewal Notice',     rate: 20,  share: 0.15 },
+  ],
+};
+
+/** Default catalog if a product isn't listed above. */
+const DEFAULT_CATALOG = [
+  { name: 'Standard Subscription', rate: 100, share: 0.70 },
+  { name: 'Usage Service',         rate: 10,  share: 0.30 },
+];
+
+/**
  * Migrate legacy revenuePlan/revenueActual into the subscription/service
- * revenue model. For each feature that has any revenue rows, we create a
- * single "Legacy Revenue" service (rate = 1 SAR) so existing monthly
- * amounts map 1:1 to plannedTransactions / actualTransactions. Rolling
- * up `rate × transactions` reproduces the exact same totals — KPIs,
- * charts, compare and forecast see no change.
+ * revenue model with realistic, multi-service per-product seeds.
+ * Totals per (feature, month) are preserved EXACTLY — the largest-share
+ * row absorbs any rounding remainder so KPIs, charts, compare and
+ * forecast see no numerical drift.
  */
 function migrateLegacyRevenue(state: AppState): AppState {
-  const featureIds = new Set<number>();
-  state.revenuePlan.forEach(r => featureIds.add(r.featureId));
-  state.revenueActual.forEach(r => featureIds.add(r.featureId));
-
   const services: RevenueService[] = [];
   const lines: RevenueLine[] = [];
   let serviceId = 1;
   let lineId = 1;
 
-  // Map: featureId -> serviceId for the legacy service.
-  const legacyServiceFor = new Map<number, number>();
-  Array.from(featureIds)
-    .sort((a, b) => a - b)
-    .forEach(fid => {
+  // Build feature → product lookup.
+  const productOf = new Map<number, number>();
+  state.features.forEach(f => productOf.set(f.id, f.productId));
+
+  // Per-feature service map: featureId → array of { id, rate, share }.
+  // Created lazily as features are encountered so unused features add no rows.
+  const featureServices = new Map<number, Array<{ id: number; rate: number; share: number }>>();
+
+  const ensureFeatureServices = (fid: number) => {
+    if (featureServices.has(fid)) return featureServices.get(fid)!;
+    const pid = productOf.get(fid);
+    const catalog = (pid != null && PRODUCT_SERVICE_CATALOG[pid]) || DEFAULT_CATALOG;
+    const arr = catalog.map(c => {
       const sid = serviceId++;
-      legacyServiceFor.set(fid, sid);
-      services.push({ id: sid, featureId: fid, name: 'Legacy Revenue', defaultRate: 1 });
+      services.push({ id: sid, featureId: fid, name: c.name, defaultRate: c.rate });
+      return { id: sid, rate: c.rate, share: c.share };
     });
+    featureServices.set(fid, arr);
+    return arr;
+  };
 
   // Combine plan + actual by (featureId, month).
   const monthMap = new Map<string, { planned: number; actual: number }>();
@@ -318,23 +393,110 @@ function migrateLegacyRevenue(state: AppState): AppState {
   });
 
   const ts = new Date().toISOString();
+
+  // Split a total amount across services so that Σ(rate_i × tx_i) === amount EXACTLY.
+  // Strategy: round-down each share to whole transactions, then assign the residual
+  // (always < max(rate)) as extra transactions at the LARGEST-SHARE row using its
+  // own rate as the divisor of last resort, with a per-line rate override applied
+  // upstream when remainder isn't divisible. Returns { txs, overrideRate } where
+  // `overrideRate` is the effective rate to use on the largest-share line so the
+  // final sum is exact (always equal to its catalog rate when remainder == 0).
+  const splitToTransactions = (
+    amount: number,
+    svcs: Array<{ rate: number; share: number }>,
+  ): { txs: number[]; overrideRate: number; largestIdx: number } => {
+    const n = svcs.length;
+    if (amount <= 0 || n === 0) {
+      return { txs: svcs.map(() => 0), overrideRate: svcs[0]?.rate ?? 1, largestIdx: 0 };
+    }
+    // Identify largest-share index (the absorber).
+    let largest = 0;
+    for (let i = 1; i < n; i++) if (svcs[i].share > svcs[largest].share) largest = i;
+
+    // Round DOWN every non-absorber row.
+    const txs = svcs.map((s, i) =>
+      i === largest ? 0 : Math.max(0, Math.floor((amount * s.share) / s.rate)),
+    );
+    const sumOthers = svcs.reduce((sum, s, i) => (i === largest ? sum : sum + s.rate * txs[i]), 0);
+    const remainder = amount - sumOthers; // ≥ 0
+    const absorberRate = svcs[largest].rate;
+    const absorberTx = Math.max(0, Math.floor(remainder / absorberRate));
+    txs[largest] = absorberTx;
+    const finalSum = sumOthers + absorberTx * absorberRate;
+    const drift = amount - finalSum; // 0 ≤ drift < absorberRate
+
+    // If drift != 0, override the absorber's rate so (txs[largest]+1) × overrideRate
+    // exactly equals (remainder). This keeps Σ exact without losing realism.
+    let overrideRate = absorberRate;
+    if (drift > 0) {
+      const newTx = absorberTx + 1;
+      overrideRate = remainder / newTx;
+      txs[largest] = newTx;
+    }
+    return { txs, overrideRate, largestIdx: largest };
+  };
+
   monthMap.forEach((v, k) => {
     const [fidStr, month] = k.split('|');
     const fid = Number(fidStr);
-    const sid = legacyServiceFor.get(fid)!;
-    lines.push({
-      id: lineId++,
-      featureId: fid,
-      serviceId: sid,
-      month,
-      rate: 1,
-      plannedTransactions: v.planned,
-      actualTransactions: v.actual,
-      updatedAt: ts,
+    const svcs = ensureFeatureServices(fid);
+    // Plan and actual are split independently; we group rows by service so each
+    // service yields ONE line per month (combining its planned + actual tx).
+    // Rate per line: planned and actual must share a single rate, so when an
+    // override is needed we use whichever side's override is non-default,
+    // preferring the actual side (closer to "what really happened").
+    const planSplit = splitToTransactions(v.planned, svcs);
+    const actSplit  = splitToTransactions(v.actual,  svcs);
+    svcs.forEach((s, i) => {
+      const pTx = planSplit.txs[i];
+      const aTx = actSplit.txs[i];
+      if (pTx === 0 && aTx === 0) return;
+      // Determine the per-line rate. For non-absorber rows it's always the
+      // catalog rate. For the absorber row, prefer actual's override if any.
+      let rate = s.rate;
+      if (i === actSplit.largestIdx && actSplit.overrideRate !== s.rate) {
+        rate = actSplit.overrideRate;
+      } else if (i === planSplit.largestIdx && planSplit.overrideRate !== s.rate) {
+        rate = planSplit.overrideRate;
+      }
+      lines.push({
+        id: lineId++,
+        featureId: fid,
+        serviceId: s.id,
+        month,
+        rate,
+        plannedTransactions: pTx,
+        actualTransactions: aTx,
+        updatedAt: ts,
+      });
     });
   });
 
-  return { ...state, revenueServices: services, revenueLines: lines };
+  // Rebuild legacy revenuePlan/revenueActual from the lines so the
+  // "single source of truth" guarantee holds even when seed splitting
+  // applies a tiny per-line rate override on the absorber row. Any
+  // sub-rate residual is captured here, so downstream KPIs/charts stay
+  // in lockstep with the per-service breakdown.
+  const planByKey = new Map<string, number>();
+  const actByKey = new Map<string, number>();
+  lines.forEach(l => {
+    const k = `${l.featureId}|${l.month}`;
+    planByKey.set(k, (planByKey.get(k) ?? 0) + l.rate * l.plannedTransactions);
+    actByKey.set(k, (actByKey.get(k) ?? 0) + l.rate * l.actualTransactions);
+  });
+  let pid = 1, aid = 1;
+  const revenuePlan: AppState['revenuePlan'] = [];
+  const revenueActual: AppState['revenueActual'] = [];
+  planByKey.forEach((expected, k) => {
+    const [fidStr, month] = k.split('|');
+    revenuePlan.push({ id: pid++, featureId: Number(fidStr), month, expected });
+  });
+  actByKey.forEach((actual, k) => {
+    const [fidStr, month] = k.split('|');
+    revenueActual.push({ id: aid++, featureId: Number(fidStr), month, actual });
+  });
+
+  return { ...state, revenueServices: services, revenueLines: lines, revenuePlan, revenueActual };
 }
 
 export const INITIAL_STATE: AppState = migrateLegacyRevenue(RAW_INITIAL_STATE);

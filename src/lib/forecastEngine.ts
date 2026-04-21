@@ -199,6 +199,76 @@ export const projectSeries = (
 export const sumConverted = (series: MonthProjection[]): number =>
   series.reduce((s, m) => s + m.converted, 0);
 
+// ── Per-service projection ────────────────────────────────────
+// A lightweight, service-aware extension of the scenario engine.
+// Given a per-service baseline (avg monthly revenue), each service is
+// projected independently using the same scenario config so totals
+// remain consistent with the existing single-line forecast — but now
+// users can see WHICH services drive the projection.
+
+export interface ServiceBaseline {
+  /** Stable display name (case-insensitive merge upstream). */
+  name: string;
+  /** Average monthly revenue (rate × tx) observed historically. */
+  avgMonthlyRevenue: number;
+}
+
+export interface ServiceProjection extends ServiceBaseline {
+  /** Per-month projected (converted) revenue for the horizon. */
+  monthlySeries: number[];
+  /** Sum of monthlySeries across the horizon. */
+  totalProjected: number;
+  /** Share of totalProjected vs sum of all services (0..1). */
+  share: number;
+}
+
+/**
+ * Project each service independently for the given horizon.
+ * Returns rows sorted by totalProjected (desc) and the grand total.
+ * If the global single-line projection (`sumConverted`) and the sum of
+ * `monthlySeries` here disagree by more than rounding, scenario inputs
+ * differ — never a bug in this helper.
+ */
+export const projectServiceSeries = (
+  baselines: ServiceBaseline[],
+  horizon: number,
+  cfg: ScenarioConfig,
+  startSeasonIndex = 0,
+): { rows: ServiceProjection[]; total: number } => {
+  const rows: ServiceProjection[] = baselines.map(b => {
+    const series = projectSeries(b.avgMonthlyRevenue, horizon, cfg, startSeasonIndex);
+    const monthlySeries = series.map(m => m.converted);
+    const totalProjected = monthlySeries.reduce((s, v) => s + v, 0);
+    return { ...b, monthlySeries, totalProjected, share: 0 };
+  });
+  const total = rows.reduce((s, r) => s + r.totalProjected, 0);
+  rows.forEach(r => { r.share = total > 0 ? r.totalProjected / total : 0; });
+  rows.sort((a, b) => b.totalProjected - a.totalProjected);
+  return { rows, total };
+};
+
+/**
+ * Build per-service baselines from RevenueLine[]-shaped rows (case-
+ * insensitive name merge). `monthsObserved` is the count of distinct
+ * months in the historical window — used to compute the monthly avg.
+ */
+export const buildServiceBaselines = (
+  lines: Array<{ rate: number; actualTransactions: number; serviceName: string }>,
+  monthsObserved: number,
+): ServiceBaseline[] => {
+  if (monthsObserved <= 0) return [];
+  const byName = new Map<string, { name: string; total: number }>();
+  lines.forEach(l => {
+    const key = l.serviceName.trim().toLowerCase();
+    const cur = byName.get(key) ?? { name: l.serviceName, total: 0 };
+    cur.total += l.rate * (l.actualTransactions || 0);
+    byName.set(key, cur);
+  });
+  return Array.from(byName.values())
+    .map(v => ({ name: v.name, avgMonthlyRevenue: v.total / monthsObserved }))
+    .filter(b => b.avgMonthlyRevenue > 0);
+};
+
 export const STORAGE_KEY = 'forecast.scenarioConfigs.v1';
 
 export const loadScenarioConfigs = (): ScenarioConfigs => {
