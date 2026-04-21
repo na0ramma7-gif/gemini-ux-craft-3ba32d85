@@ -98,6 +98,9 @@ const ProductTable = ({ onProductClick }: Props) => {
               <TableHead className="text-xs uppercase tracking-wide text-end">{t('revenue')}</TableHead>
               <TableHead className="text-xs uppercase tracking-wide text-end">{t('cost')}</TableHead>
               <TableHead className="text-xs uppercase tracking-wide text-end">{t('netProfit')}</TableHead>
+              {compareEnabled && (
+                <TableHead className="text-xs uppercase tracking-wide text-end">{t('vsCompare')}</TableHead>
+              )}
               <TableHead className="text-xs uppercase tracking-wide text-center">{t('achievementRate')}</TableHead>
             </TableRow>
           </TableHeader>
@@ -124,6 +127,15 @@ const ProductTable = ({ onProductClick }: Props) => {
                 <TableCell className={`text-end font-semibold ${p.profit >= 0 ? 'text-profit' : 'text-destructive'}`}>
                   {formatCurrency(p.profit, language)}
                 </TableCell>
+                {compareEnabled && (
+                  <TableCell className="text-end">
+                    <div className="flex flex-col items-end gap-1">
+                      {p.dRev && <DeltaChip delta={p.dRev} format="currency" />}
+                      {p.dCost && <DeltaChip delta={p.dCost} format="currency" lowerIsBetter />}
+                      {p.dProfit && <DeltaChip delta={p.dProfit} format="currency" />}
+                    </div>
+                  </TableCell>
+                )}
                 <TableCell className="text-center">
                   <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${getBg(p.pct)} ${getColor(p.pct)}`}>
                     {p.pct}%
