@@ -265,17 +265,17 @@ export const getServiceGrowthRate = (
  * Ramadan straddles two Gregorian months; we pick the month that contains
  * the majority (≥ 15) of Ramadan days. Source: Umm al-Qura calendar.
  */
+// Ramadan begins (approx): 2024 Mar 11, 2025 Mar 1, 2026 Feb 18, 2027 Feb 8,
+// 2028 Jan 28, 2029 Jan 16, 2030 Jan 5. We pick the start month.
 export const RAMADAN_GREGORIAN_MONTH: Record<number, number> = {
-  2024: 2,  // Mar 2024
-  2025: 1,  // Feb / Mar 2025 — majority in Mar (idx 2)? Actually Mar 1–29 → use 2
-  2026: 1,  // Feb 2026
-  2027: 1,  // Feb 2027
-  2028: 0,  // Jan 2028
-  2029: 0,  // Jan 2029
-  2030: 11, // Dec 2029 / Jan 2030 — majority in Jan but for year=2030 use Jan(0)
+  2024: 2, // Mar
+  2025: 2, // Mar
+  2026: 1, // Feb
+  2027: 1, // Feb
+  2028: 0, // Jan
+  2029: 0, // Jan
+  2030: 0, // Jan
 };
-// Corrected: 2025 Ramadan = Mar 1 → idx 2; 2026 = Feb 17 → idx 1.
-RAMADAN_GREGORIAN_MONTH[2025] = 2;
 
 export const getRamadanMonth = (
   scenario: ForecastScenario,
