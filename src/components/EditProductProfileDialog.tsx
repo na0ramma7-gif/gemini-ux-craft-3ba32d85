@@ -538,6 +538,105 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
               <ErrorMsg k="businessValue" />
             </div>
 
+            {/* ───── Product Health (user-defined) ───── */}
+            <div className="pt-3 mt-3 border-t border-border space-y-3">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">{t('sectionProductHealth')}</h4>
+                <p className="text-[11px] text-muted-foreground">{t('healthHelpStatus')}</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{t('healthStatus')} *</Label>
+                  <Select value={data.healthStatus} onValueChange={v => setField('healthStatus', v as ProductHealthStatus)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Healthy">{t('healthStatusHealthy')}</SelectItem>
+                      <SelectItem value="At Risk">{t('healthStatusAtRisk')}</SelectItem>
+                      <SelectItem value="Critical">{t('healthStatusCritical')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pp-overall" className="text-xs">{t('overallScore')} (0–100)</Label>
+                  <Input
+                    id="pp-overall"
+                    type="number" min={0} max={100} step={1}
+                    value={data.healthOverallScore}
+                    onChange={e => setField('healthOverallScore', e.target.value)}
+                    className={errClasses('healthOverallScore' as any)}
+                  />
+                  <p className="text-[10px] text-muted-foreground">{t('healthHelpScore')}</p>
+                  <ErrorMsg k={'healthOverallScore' as any} />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">{t('keyIndicators')}</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1.5">
+                  {([
+                    { k: 'healthAdoption' as const, label: t('adoptionLevel'), help: t('healthHelpAdoption') },
+                    { k: 'healthStability' as const, label: t('stability'), help: t('healthHelpStability') },
+                    { k: 'healthSatisfaction' as const, label: t('customerSatisfaction'), help: t('healthHelpSatisfaction') },
+                    { k: 'healthOpsReadiness' as const, label: t('operationalReadiness'), help: t('healthHelpOps') },
+                  ]).map(f => (
+                    <div key={f.k} className="space-y-1">
+                      <Label htmlFor={`pp-${f.k}`} className="text-xs">{f.label} (0–100)</Label>
+                      <Input
+                        id={`pp-${f.k}`}
+                        type="number" min={0} max={100} step={1}
+                        value={data[f.k]}
+                        onChange={e => setField(f.k, e.target.value)}
+                        className={errClasses(f.k as any)}
+                      />
+                      <p className="text-[10px] text-muted-foreground">{f.help}</p>
+                      <ErrorMsg k={f.k as any} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pp-hnotes" className="text-xs">{t('healthNotes')}</Label>
+                <Textarea
+                  id="pp-hnotes" rows={2} maxLength={500}
+                  value={data.healthNotes}
+                  onChange={e => setField('healthNotes', e.target.value)}
+                  placeholder={t('healthNotesPlaceholder')}
+                />
+              </div>
+            </div>
+
+            {/* ───── Product Maturity (user-scored) ───── */}
+            <div className="pt-3 mt-3 border-t border-border space-y-3">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">{t('sectionProductMaturity')}</h4>
+                <p className="text-[11px] text-muted-foreground">{t('scoreRangeHelp')}</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {([
+                  { k: 'matAdoption' as const, label: t('maturityAdoption'), help: t('maturityHelpAdoption') },
+                  { k: 'matRevenue' as const, label: t('maturityRevenue'), help: t('maturityHelpRevenue') },
+                  { k: 'matEfficiency' as const, label: t('maturityEfficiency'), help: t('maturityHelpEfficiency') },
+                  { k: 'matStability' as const, label: t('maturityStability'), help: t('maturityHelpStability') },
+                  { k: 'matSatisfaction' as const, label: t('maturitySatisfaction'), help: t('maturityHelpSatisfaction') },
+                ]).map(f => (
+                  <div key={f.k} className="space-y-1">
+                    <Label htmlFor={`pp-${f.k}`} className="text-xs">{f.label} (0–100)</Label>
+                    <Input
+                      id={`pp-${f.k}`}
+                      type="number" min={0} max={100} step={1}
+                      value={data[f.k]}
+                      onChange={e => setField(f.k, e.target.value)}
+                      className={errClasses(f.k as any)}
+                    />
+                    <p className="text-[10px] text-muted-foreground">{f.help}</p>
+                    <ErrorMsg k={f.k as any} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Capabilities */}
             <div className="space-y-2" ref={(el) => { fieldRefs.current.capabilities = el; }}>
               <div className="flex justify-between items-center">
