@@ -181,9 +181,17 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     let totalCost = 0;
     Object.values(md.costs).forEach(items => items.forEach(i => { totalCost += i.planned; }));
     md.resources.forEach(a => { const r = state.resources.find(res => res.id === a.resourceId); if (r) totalCost += r.costRate * (a.utilization / 100); });
+    const editPlannedRev = editLines.reduce((s, l) => s + (l.rate || 0) * (l.plannedTransactions || 0), 0);
+    const editActualRev = editLines.reduce((s, l) => s + (l.rate || 0) * (l.actualTransactions || 0), 0);
     const profit = editPlannedRev - totalCost;
-    return { totalCost, profit, margin: editPlannedRev > 0 ? (profit / editPlannedRev) * 100 : 0 };
-  }, [yearData, editMonthIdx, editPlannedRev, state.resources]);
+    return {
+      totalCost,
+      profit,
+      margin: editPlannedRev > 0 ? (profit / editPlannedRev) * 100 : 0,
+      editPlannedRev,
+      editActualRev,
+    };
+  }, [yearData, editMonthIdx, editLines, state.resources]);
 
   const toggleMonth = (idx: number) => setExpandedMonths(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
 
@@ -192,23 +200,100 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   }, []);
 
   const openMonthEditor = (monthIdx: number) => {
-    const md = yearData[monthIdx];
-    const rev = md.revenues.find(r => r.featureId === feature.id);
+    const mk = monthKeyOf(selectedYear, monthIdx);
+    const existing = featureLines.filter(l => l.month === mk);
     setEditMonthIdx(monthIdx);
-    setEditPlannedRev(rev?.planned || 0);
-    setEditActualRev(rev?.actual || 0);
+    setEditLines(
+      existing.map(l => ({
+        key: uid(),
+        id: l.id,
+        serviceId: l.serviceId,
+        rate: l.rate,
+        plannedTransactions: l.plannedTransactions,
+        actualTransactions: l.actualTransactions,
+        notes: l.notes,
+      })),
+    );
+    setNewServiceFor({});
     setEditCostCatsOpen([]);
     setEditMonthOpen(true);
   };
 
-  const saveMonthRevenue = () => {
-    updateMonthData(editMonthIdx, md => {
-      const existing = md.revenues.findIndex(r => r.featureId === feature.id);
-      const newRevs = [...md.revenues];
-      if (existing >= 0) newRevs[existing] = { ...newRevs[existing], planned: editPlannedRev, actual: editActualRev };
-      else if (editPlannedRev > 0 || editActualRev > 0) newRevs.push({ featureId: feature.id, planned: editPlannedRev, actual: editActualRev });
-      return { ...md, revenues: newRevs };
+  // ── Draft helpers ──
+  const addDraftLine = () => {
+    setEditLines(prev => [
+      ...prev,
+      { key: uid(), serviceId: null, rate: 0, plannedTransactions: 0, actualTransactions: 0 },
+    ]);
+  };
+  const updateDraftLine = (key: string, updates: Partial<RevenueLineDraft>) => {
+    setEditLines(prev => prev.map(l => (l.key === key ? { ...l, ...updates } : l)));
+  };
+  const removeDraftLine = (key: string) => {
+    setEditLines(prev => prev.filter(l => l.key !== key));
+  };
+  const pickService = (key: string, serviceId: number) => {
+    const svc = featureServices.find(s => s.id === serviceId);
+    if (!svc) return;
+    updateDraftLine(key, { serviceId, rate: svc.defaultRate });
+  };
+  const createServiceInline = (key: string, name: string, rate: number) => {
+    const res = addRevenueService(feature.id, name, Number.isFinite(rate) ? rate : 0);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    updateDraftLine(key, { serviceId: res.service.id, rate: res.service.defaultRate });
+    setNewServiceFor(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
     });
+  };
+
+  const saveMonthRevenue = () => {
+    // Pre-validate locally for clearer messages
+    const seen = new Set<number>();
+    for (const l of editLines) {
+      if (l.serviceId == null) {
+        toast.error(t('serviceNameRequired'));
+        return;
+      }
+      if (seen.has(l.serviceId)) {
+        toast.error(t('duplicateServiceInMonth'));
+        return;
+      }
+      seen.add(l.serviceId);
+      if (!Number.isFinite(l.rate) || l.rate < 0) {
+        toast.error(t('rateInvalid'));
+        return;
+      }
+      if (
+        !Number.isInteger(l.plannedTransactions) || l.plannedTransactions < 0 ||
+        !Number.isInteger(l.actualTransactions) || l.actualTransactions < 0
+      ) {
+        toast.error(t('txInvalid'));
+        return;
+      }
+    }
+    const mk = monthKeyOf(selectedYear, editMonthIdx);
+    const res = upsertRevenueLines(
+      feature.id,
+      mk,
+      editLines.map(l => ({
+        id: l.id,
+        serviceId: l.serviceId as number,
+        rate: l.rate,
+        plannedTransactions: l.plannedTransactions,
+        actualTransactions: l.actualTransactions,
+        notes: l.notes,
+      })),
+    );
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success(t('save'));
     setEditMonthOpen(false);
   };
 
