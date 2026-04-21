@@ -84,7 +84,6 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
         <KPICard
           title={t('totalRevenue')}
           value={formatCurrency(dept.revenue, language)}
-          subtitle="↑ 8% vs last month"
           icon={<DollarSign className="w-5 h-5 text-success" />}
           variant="green"
           progress={{
@@ -107,16 +106,8 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
         <KPICard
           title={t('totalCost')}
           value={formatCurrency(dept.cost, language)}
-          subtitle="↓ 3% vs last month"
           icon={<Receipt className="w-5 h-5 text-destructive" />}
           variant="red"
-          progress={{
-            label: t('budgetYear'),
-            target: formatCurrency(dept.cost * 1.18, language),
-            percent: 85,
-            status: 'positive',
-            remaining: formatCurrency(dept.cost * 0.18, language)
-          }}
           extra={
             compare.active ? (
               <KPIDelta

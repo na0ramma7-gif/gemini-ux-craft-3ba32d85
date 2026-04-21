@@ -224,13 +224,6 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
           value={formatCurrency(portfolioMetrics.totalCost, language)}
           icon={<Receipt className="w-5 h-5 text-destructive" />}
           variant="red"
-          progress={{
-            label: t('budgetYear'),
-            target: formatCurrency(portfolioMetrics.totalCost * 1.18, language),
-            percent: 85,
-            status: 'positive',
-            remaining: formatCurrency(portfolioMetrics.totalCost * 0.18, language),
-          }}
           extra={compare.active ? (
             <KPIDelta comparisonFormatted={formatCurrency(compare.comparison.cost, language)} delta={compare.delta.cost} lowerIsBetter format="currency" />
           ) : undefined}
