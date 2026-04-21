@@ -21,17 +21,20 @@ import { dateField, dateRangeRefine, percentField, M } from '@/lib/validation';
 interface AssignmentFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  resourceId: number;
+  /** Pre-selected resource. If not provided (and allowResourceSelection is true), user picks one. */
+  resourceId?: number;
   assignment?: Assignment | null;
   /** When set, the portfolio is fixed and cannot be changed by the user. */
   lockedPortfolioId?: number;
   /** When set, the product is fixed (implies portfolio is also fixed) and cannot be changed. */
   lockedProductId?: number;
+  /** Show a resource picker inside the dialog (used when opening from a portfolio/product context). */
+  allowResourceSelection?: boolean;
 }
 
 const AssignmentFormDialog = ({
   open, onOpenChange, resourceId, assignment,
-  lockedPortfolioId, lockedProductId,
+  lockedPortfolioId, lockedProductId, allowResourceSelection,
 }: AssignmentFormDialogProps) => {
   const { state, addAssignment, updateAssignment, t } = useApp();
   const isEdit = !!assignment;
@@ -47,6 +50,10 @@ const AssignmentFormDialog = ({
 
   const schema = z
     .object({
+      resourceId: z
+        .string()
+        .min(1, M.required('Resource'))
+        .refine(v => v !== '0' && v !== '', { message: M.required('Resource') }),
       portfolioId: z
         .string()
         .min(1, M.required('Portfolio'))
