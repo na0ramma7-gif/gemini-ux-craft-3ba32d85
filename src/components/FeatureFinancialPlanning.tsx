@@ -507,6 +507,11 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                           {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                           {ms.label}
                           {!hasData && <span className="text-xs text-muted-foreground font-normal ml-1">—</span>}
+                          {ms.lineCount > 0 && (
+                            <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full font-medium">
+                              {ms.lineCount} {t('items')}
+                            </span>
+                          )}
                         </div>
                         <div className="text-sm font-medium text-emerald-600 text-end">{ms.plannedRev > 0 ? formatCurrency(ms.plannedRev, language) : '—'}</div>
                         <div className="text-sm font-medium text-emerald-700 text-end">{ms.actualRev > 0 ? formatCurrency(ms.actualRev, language) : '—'}</div>
