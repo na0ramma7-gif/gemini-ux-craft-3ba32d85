@@ -209,7 +209,9 @@ const PortfolioFormDialog = ({ open, onOpenChange, onCreated, portfolio }: Portf
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>{t('addPortfolio')}</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {isEdit ? t('save') : t('addPortfolio')}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
