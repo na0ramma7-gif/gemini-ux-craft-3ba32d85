@@ -1320,7 +1320,7 @@ export const TRANSLATIONS = {
     noCostBannerLong: 'لا توجد بيانات تكاليف للتنبؤ. أضف التكاليف في التخطيط المالي للحصول على توقعات دقيقة للربح والهامش.',
     noServicesForForecast: 'لا توجد خدمات لها بيانات تاريخية بعد. أضف المعاملات في التخطيط المالي لتمكين النمو لكل خدمة.',
     noServicesForForecastBanner: 'لا توجد معاملات خدمات لهذه الميزة. ستظل التوقعات فارغة حتى تسجل بعض التاريخ في التخطيط المالي.',
-    resetToDefault: 'إعادة إلى النمو الافتراضي',
+    resetToDefaultGrowth: 'إعادة إلى النمو الافتراضي',
 
     // Forecast — scenario configuration (Department dashboard)
     forecastConfigDesc: 'حدد كيفية توقع كل سيناريو للإيرادات. تنطبق القيم على البطاقات والرسم البياني والتلميح.',
