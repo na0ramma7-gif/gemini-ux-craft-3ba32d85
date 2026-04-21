@@ -433,17 +433,26 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                         <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('revenue')}</th>
                         <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('cost')}</th>
                         <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('netProfit')}</th>
+                        {compareEnabled && (
+                          <th className="text-end text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('vsCompare')}</th>
+                        )}
                         <th className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('features')}</th>
                         <th className="text-center text-[10px] font-medium text-muted-foreground uppercase px-3 py-2.5">{t('releases')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
-                      {products.map(product => {
+                      {products
+                        .filter(product => productFilter.length === 0 || productFilter.includes(product.id))
+                        .map(product => {
                         const pd = portfolioMetrics.productData.find(d => d.name === product.name);
                         const featureCount = state.features.filter(f => f.productId === product.id).length;
                         const activeFeatures = state.features.filter(f => f.productId === product.id && f.status === 'In Progress').length;
                         const releaseCount = state.releases.filter(r => r.productId === product.id).length;
                         const activeRelCount = state.releases.filter(r => r.productId === product.id && r.status === 'In Progress').length;
+                        const cmp = compareByProductId.get(product.id);
+                        const dRev = cmp ? computeDelta(pd?.revenue || 0, cmp.revenue) : null;
+                        const dCost = cmp ? computeDelta(pd?.cost || 0, cmp.cost, { lowerIsBetter: true }) : null;
+                        const dProfit = cmp ? computeDelta(pd?.profit || 0, cmp.profit) : null;
                         return (
                           <tr key={product.id} onClick={() => onProductClick(product)}
                             className="hover:bg-muted/50 cursor-pointer transition-colors">
@@ -461,6 +470,15 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                             <td className={cn("px-3 py-3 text-end text-sm font-semibold", (pd?.profit || 0) >= 0 ? 'text-primary' : 'text-destructive')}>
                               {formatCurrency(pd?.profit || 0, language)}
                             </td>
+                            {compareEnabled && (
+                              <td className="px-3 py-3 text-end">
+                                <div className="flex flex-col items-end gap-1">
+                                  {dRev && <DeltaChip delta={dRev} format="currency" />}
+                                  {dCost && <DeltaChip delta={dCost} format="currency" lowerIsBetter />}
+                                  {dProfit && <DeltaChip delta={dProfit} format="currency" />}
+                                </div>
+                              </td>
+                            )}
                             <td className="px-3 py-3 text-center text-sm">
                               <span className="font-semibold text-foreground">{activeFeatures}</span>
                               <span className="text-muted-foreground">/{featureCount}</span>
