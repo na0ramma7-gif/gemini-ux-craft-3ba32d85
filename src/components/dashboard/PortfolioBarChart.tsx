@@ -5,25 +5,49 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { BarChart3, Target, TrendingUp, DollarSign } from 'lucide-react';
 import { Portfolio } from '@/types';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { computeWindowMetrics, computeDelta } from '@/lib/compare';
+import DeltaChip from '@/components/compare/DeltaChip';
+import CompareLegend from '@/components/compare/CompareLegend';
 
 interface Props {
   onPortfolioClick?: (portfolio: Portfolio) => void;
 }
 
 const PortfolioBarChart = ({ onPortfolioClick }: Props) => {
-  const { state, t, language, dateFilter } = useApp();
+  const { state, t, language, dateFilter, compareSelection } = useApp();
   const dept = useHierarchicalMetrics(state, dateFilter);
+  const compareEnabled = dateFilter.compareEnabled;
+  const portfolioFilter = compareSelection.portfolioIds;
 
   const data = useMemo(() => {
-    return dept.portfolioMetrics.map(pm => {
+    const filterIds = portfolioFilter.length > 0 ? new Set(portfolioFilter) : null;
+    const cmpWindow = compareEnabled
+      ? { startDate: dateFilter.compareStartDate, endDate: dateFilter.compareEndDate }
+      : null;
+    return dept.portfolioMetrics
+      .filter(pm => !filterIds || filterIds.has(pm.portfolioId))
+      .map(pm => {
       const target = pm.target;
       const achieved = pm.revenue;
       const remaining = Math.max(0, target - achieved);
       const pct = pm.achievementPct;
       const portfolio = state.portfolios.find(p => p.id === pm.portfolioId)!;
-      return { name: pm.portfolioName, target, achieved, remaining, pct, portfolio };
+
+      // Compute comparison revenue for this single portfolio if Compare is ON.
+      let cmpAchieved = 0;
+      let delta = null as ReturnType<typeof computeDelta> | null;
+      if (cmpWindow) {
+        const m = computeWindowMetrics(state, cmpWindow, {
+          portfolioIds: [pm.portfolioId],
+          productIds: [],
+          featureIds: [],
+        });
+        cmpAchieved = m.revenue;
+        delta = computeDelta(achieved, cmpAchieved);
+      }
+      return { name: pm.portfolioName, target, achieved, remaining, pct, portfolio, cmpAchieved, delta };
     }).sort((a, b) => b.target - a.target);
-  }, [dept, state.portfolios]);
+  }, [dept, state, portfolioFilter, compareEnabled, dateFilter.compareStartDate, dateFilter.compareEndDate]);
 
   const totals = useMemo(() => {
     const totalTarget = data.reduce((s, d) => s + d.target, 0);
@@ -43,9 +67,12 @@ const PortfolioBarChart = ({ onPortfolioClick }: Props) => {
   return (
     <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-6">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <BarChart3 className="w-5 h-5 text-primary" />
-        <h3 className="text-foreground font-semibold">{t('portfolios')} — {t('targetVsAchieved')}</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-primary" />
+          <h3 className="text-foreground font-semibold">{t('portfolios')} — {t('targetVsAchieved')}</h3>
+        </div>
+        {compareEnabled && <CompareLegend />}
       </div>
 
       {/* Summary Cards */}
@@ -108,6 +135,12 @@ const PortfolioBarChart = ({ onPortfolioClick }: Props) => {
                     <span>{t('achieved')}: <span className="font-semibold text-foreground">{formatCurrency(d.achieved, language)}</span></span>
                     <span>{t('targetYear')}: <span className="font-medium">{formatCurrency(d.target, language)}</span></span>
                     <span>{t('remaining')}: <span className="font-medium text-foreground">{formatCurrency(d.remaining, language)}</span></span>
+                    {compareEnabled && d.delta && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span>{t('comparison')}: <span className="font-medium text-foreground">{formatCurrency(d.cmpAchieved, language)}</span></span>
+                        <DeltaChip delta={d.delta} format="currency" />
+                      </span>
+                    )}
                   </div>
                 </div>
               </TooltipTrigger>

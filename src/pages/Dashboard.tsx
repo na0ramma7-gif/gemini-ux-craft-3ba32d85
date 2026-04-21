@@ -17,6 +17,10 @@ import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { TrendingUp, TrendingDown, Target, Package, DollarSign, Receipt, BarChart3, Settings2, Layers, Activity, Plus } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
+import CompareControls from '@/components/compare/CompareControls';
+import CompareEmptyState from '@/components/compare/CompareEmptyState';
+import KPIDelta from '@/components/compare/KPIDelta';
+import { useCompareMetrics } from '@/hooks/useCompareMetrics';
 
 export type PipelineHorizon = 6 | 9 | 12;
 
@@ -27,6 +31,7 @@ interface DashboardProps {
 const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
   const { state, t, language, setView, setSelected, dateFilter } = useApp();
   const dept = useHierarchicalMetrics(state, dateFilter);
+  const compare = useCompareMetrics({ scope: 'dashboard' });
   const [scenario, setScenario] = useState<ScenarioType>('baseline');
   const [horizon, setHorizon] = useState<PipelineHorizon>(9);
   const [showPortfolioForm, setShowPortfolioForm] = useState(false);
@@ -69,6 +74,14 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
         </div>
       </div>
 
+      {/* Compare controls — visible only when Compare is ON */}
+      <CompareControls scope="dashboard" />
+
+      {/* Compare validation / no-data banner */}
+      {compare.active && (
+        <CompareEmptyState validation={compare.validation} dataState={compare.dataState} />
+      )}
+
       {/* 1. Executive Summary KPIs — Department Level */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <KPICard
@@ -84,6 +97,15 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
             status: trend.achievePct >= 70 ? 'positive' : 'negative',
             remaining: formatCurrency(Math.max(0, dept.target - dept.revenue), language)
           }}
+          extra={
+            compare.active ? (
+              <KPIDelta
+                comparisonFormatted={formatCurrency(compare.comparison.revenue, language)}
+                delta={compare.delta.revenue}
+                format="currency"
+              />
+            ) : undefined
+          }
         />
         <KPICard
           title={t('totalCost')}
@@ -98,6 +120,16 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
             status: 'positive',
             remaining: formatCurrency(dept.cost * 0.18, language)
           }}
+          extra={
+            compare.active ? (
+              <KPIDelta
+                comparisonFormatted={formatCurrency(compare.comparison.cost, language)}
+                delta={compare.delta.cost}
+                lowerIsBetter
+                format="currency"
+              />
+            ) : undefined
+          }
         />
         <KPICard
           title={t('netProfit')}
@@ -105,6 +137,15 @@ const Dashboard = ({ onPortfolioClick }: DashboardProps) => {
           subtitle={`${t('margin')}: ${dept.margin.toFixed(1)}%`}
           icon={dept.profit >= 0 ? <TrendingUp className="w-5 h-5 text-profit" /> : <TrendingDown className="w-5 h-5 text-destructive" />}
           variant={dept.profit >= 0 ? 'green' : 'red'}
+          extra={
+            compare.active ? (
+              <KPIDelta
+                comparisonFormatted={formatCurrency(compare.comparison.profit, language)}
+                delta={compare.delta.profit}
+                format="currency"
+              />
+            ) : undefined
+          }
         />
         <KPICard
           title={t('targetVsAchieved')}

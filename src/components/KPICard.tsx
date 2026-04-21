@@ -16,9 +16,11 @@ interface KPICardProps {
   };
   compareValue?: string;
   compareLabel?: string;
+  /** Optional slot rendered between value and progress (used for Compare deltas). */
+  extra?: ReactNode;
 }
 
-const KPICard = ({ title, value, subtitle, icon, variant = 'blue', progress, compareValue, compareLabel }: KPICardProps) => {
+const KPICard = ({ title, value, subtitle, icon, variant = 'blue', progress, compareValue, compareLabel, extra }: KPICardProps) => {
   const borderColors = {
     green: 'border-s-success',
     red: 'border-s-destructive',
@@ -45,6 +47,7 @@ const KPICard = ({ title, value, subtitle, icon, variant = 'blue', progress, com
               <span className="font-semibold">{compareValue}</span>
             </div>
           )}
+          {extra}
           {progress && (
             <div className="space-y-2 mt-3">
               <div className="bg-primary-foreground/10 rounded-lg p-2.5">
@@ -76,7 +79,7 @@ const KPICard = ({ title, value, subtitle, icon, variant = 'blue', progress, com
           <span className="font-semibold text-foreground">{compareValue}</span>
         </div>
       )}
-      
+      {extra}
       {progress && (
         <div className="pt-3 mt-3 border-t border-border">
           <div className="flex justify-between text-xs mb-1.5">
