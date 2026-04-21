@@ -972,6 +972,27 @@ export const TRANSLATIONS = {
     resetDefaults: 'إعادة التعيين',
     months: 'شهر',
     type: 'النوع',
+
+    // Forecast — scenario configuration (Department dashboard)
+    forecastConfigDesc: 'حدد كيفية توقع كل سيناريو للإيرادات. تنطبق القيم على البطاقات والرسم البياني والتلميح.',
+    growthMode: 'وضع النمو',
+    compound: 'مركب',
+    linear: 'خطي',
+    monthlyGrowthRate: 'معدل النمو الشهري (%)',
+    revenueAdjustment: 'تعديل الإيرادات (%)',
+    pipelineConversionRate: 'معدل التحويل (%)',
+    rampFactor: 'تسارع / تباطؤ (%)',
+    advancedSettings: 'إعدادات متقدمة',
+    riskBuffer: 'احتياطي المخاطر (%)',
+    monthlyCap: 'الحد الشهري (ر.س)',
+    oneTimeSpike: 'قفزة لمرة واحدة',
+    off: 'إيقاف',
+    resetScenario: 'إعادة الضبط',
+    base: 'الأساس',
+    adjusted: 'بعد التعديل',
+    converted: 'بعد التحويل',
+    appliedGrowth: 'النمو المطبق',
+    appliedConversion: 'التحويل',
     
     // Additional UI labels
     activeReleases: 'الإصدارات النشطة',
