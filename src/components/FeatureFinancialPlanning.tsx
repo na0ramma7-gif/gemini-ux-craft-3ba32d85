@@ -1213,26 +1213,143 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               </div>
             </div>
 
-            {/* Right: Live Summary */}
-            <div className="p-5 bg-secondary/20 space-y-3 overflow-y-auto">
+            {/* Right: Live Summary + Insights (sticky on desktop) */}
+            <aside className="space-y-3 min-[1100px]:sticky min-[1100px]:top-0 self-start">
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">{t('financialSummary')}</h4>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="text-xs font-medium text-muted-foreground mb-1">{t('plannedRevenue')}</div>
-                <div className="text-xl font-bold text-emerald-600">{formatCurrency(editMonthSummary.editPlannedRev, language)}</div>
+
+              {/* Revenue card with variance */}
+              <div className="bg-card rounded-xl border border-border p-4 [font-variant-numeric:tabular-nums]">
+                <div className="text-[11px] font-medium text-muted-foreground uppercase">{t('plannedRevenue')}</div>
+                <div className="text-lg font-bold text-emerald-600">{formatCurrency(editMonthSummary.editPlannedRev, language)}</div>
+                <div className="mt-2 text-[11px] text-muted-foreground uppercase">{t('actualRevenue')}</div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className="text-base font-semibold text-emerald-700">{formatCurrency(editMonthSummary.editActualRev, language)}</div>
+                  {editMonthSummary.editPlannedRev > 0 && (() => {
+                    const v = ((editMonthSummary.editActualRev - editMonthSummary.editPlannedRev) / editMonthSummary.editPlannedRev) * 100;
+                    const positive = v >= 0;
+                    return (
+                      <span className={cn("text-[11px] font-semibold flex items-center gap-0.5",
+                        positive ? "text-emerald-600" : "text-destructive")}>
+                        {positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        {positive ? '+' : ''}{v.toFixed(1)}%
+                      </span>
+                    );
+                  })()}
+                </div>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="text-xs font-medium text-muted-foreground mb-1">{t('totalCost')}</div>
-                <div className="text-xl font-bold text-destructive">{formatCurrency(editMonthSummary.totalCost, language)}</div>
+
+              {/* Cost card */}
+              <div className="bg-card rounded-xl border border-border p-4 [font-variant-numeric:tabular-nums]">
+                <div className="text-[11px] font-medium text-muted-foreground uppercase">{t('totalCost')}</div>
+                <div className="text-lg font-bold text-destructive">{formatCurrency(editMonthSummary.totalCost, language)}</div>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="text-xs font-medium text-muted-foreground mb-1">{t('netProfit')}</div>
-                <div className={cn("text-xl font-bold", editMonthSummary.profit >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(editMonthSummary.profit, language)}</div>
+
+              {/* Profit + margin combined */}
+              <div className="bg-card rounded-xl border border-border p-4 [font-variant-numeric:tabular-nums]">
+                <div className="text-[11px] font-medium text-muted-foreground uppercase">{t('netProfit')}</div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className={cn("text-lg font-bold", editMonthSummary.profit >= 0 ? "text-primary" : "text-destructive")}>
+                    {formatCurrency(editMonthSummary.profit, language)}
+                  </div>
+                  <div className={cn("text-sm font-semibold", editMonthSummary.margin >= 0 ? "text-primary" : "text-destructive")}>
+                    {editMonthSummary.margin.toFixed(1)}%
+                  </div>
+                </div>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
-                <div className="text-xs font-medium text-muted-foreground mb-1">{t('profitMargin')}</div>
-                <div className={cn("text-xl font-bold", editMonthSummary.margin >= 0 ? "text-primary" : "text-destructive")}>{editMonthSummary.margin.toFixed(1)}%</div>
-              </div>
-            </div>
+
+              {/* Cost-zero warning */}
+              {editMonthSummary.totalCost === 0 && (
+                <div className="flex items-start gap-2 text-[11px] bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-md px-3 py-2">
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{t('noCostsWarning')}</span>
+                </div>
+              )}
+
+              {/* Insights */}
+              {(() => {
+                const monthIdx = editMonthIdx;
+                const year = selectedYear;
+                const sumMonth = (y: number, mi: number) => {
+                  const mk = `${y}-${String(mi + 1).padStart(2, '0')}`;
+                  let rev = 0;
+                  state.revenueLines.filter(l => l.featureId === feature.id && l.month === mk).forEach(l => {
+                    rev += (l.rate || 0) * (l.actualTransactions || 0);
+                  });
+                  return rev;
+                };
+                // Prior month
+                const prevMi = monthIdx === 0 ? 11 : monthIdx - 1;
+                const prevYear = monthIdx === 0 ? year - 1 : year;
+                const prevRev = sumMonth(prevYear, prevMi);
+                const currRev = editMonthSummary.editActualRev;
+                const yoyRev = sumMonth(year - 1, monthIdx);
+                const yoyExists = state.revenueLines.some(l => l.featureId === feature.id && l.month === `${year - 1}-${String(monthIdx + 1).padStart(2, '0')}`);
+                const prevExists = state.revenueLines.some(l => l.featureId === feature.id && l.month === `${prevYear}-${String(prevMi + 1).padStart(2, '0')}`);
+                const monthLabel = (y: number, mi: number) => `${(language === 'ar' ? MONTHS_FULL_AR : MONTHS_FULL_EN)[mi]} ${y}`;
+                // Top cost category (current month draft)
+                const md = yearData[monthIdx];
+                const catTotals: { cat: string; amount: number }[] = [];
+                let resourceCost = 0;
+                md.resources.forEach(a => { const r = state.resources.find(res => res.id === a.resourceId); if (r) resourceCost += r.costRate * (a.utilization / 100); });
+                if (resourceCost > 0) catTotals.push({ cat: t('resources'), amount: resourceCost });
+                Object.entries(md.costs).forEach(([cat, items]) => {
+                  const sum = (items as CostItem[]).reduce((s, i) => s + (i.planned || 0), 0);
+                  if (sum > 0) catTotals.push({ cat, amount: sum });
+                });
+                catTotals.sort((a, b) => b.amount - a.amount);
+                const topCat = catTotals[0];
+
+                const renderDelta = (curr: number, prev: number, exists: boolean, label: string, prevLabel: string) => {
+                  if (!exists || prev === 0) {
+                    return (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
+                        <span className="flex-1">{label}</span>
+                        <span className="italic">{t('noPriorData')}</span>
+                      </div>
+                    );
+                  }
+                  const pct = ((curr - prev) / prev) * 100;
+                  const up = pct >= 0;
+                  return (
+                    <div className="flex items-center gap-2 text-xs">
+                      {up ? <TrendingUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <TrendingDown className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                      <span className="text-muted-foreground flex-1 truncate">{label}</span>
+                      <span className={cn("font-semibold tabular-nums", up ? "text-emerald-600" : "text-destructive")}>
+                        {up ? '+' : ''}{pct.toFixed(0)}%
+                      </span>
+                    </div>
+                  );
+                };
+
+                const prevProfit = prevRev; // simplistic; cost data per past month not loaded here
+                return (
+                  <div className="bg-card rounded-xl border border-border p-4 space-y-2.5">
+                    <h5 className="text-[11px] font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <Lightbulb className="w-3.5 h-3.5 text-primary" /> {t('insightsTitle')}
+                    </h5>
+                    {renderDelta(currRev, prevRev, prevExists, `${t('revenueVsLastMonth')} (${monthLabel(prevYear, prevMi)})`, monthLabel(prevYear, prevMi))}
+                    {renderDelta(editMonthSummary.profit, prevProfit, prevExists, t('profitVsLastMonth'), monthLabel(prevYear, prevMi))}
+                    {renderDelta(currRev, yoyRev, yoyExists, `${t('revenueVsLastYear')} (${monthLabel(year - 1, monthIdx)})`, monthLabel(year - 1, monthIdx))}
+                    {topCat ? (
+                      <div className="flex items-center gap-2 text-xs">
+                        <Receipt className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span className="text-muted-foreground flex-1 truncate">{t('topCostCategory')}: {topCat.cat}</span>
+                        <span className="font-semibold text-foreground">
+                          {currRev > 0 ? `${((topCat.amount / currRev) * 100).toFixed(0)}%` : formatCurrency(topCat.amount, language)}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
+                        <span className="flex-1">{t('topCostCategory')}</span>
+                        <span className="italic">{t('noPriorData')}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </aside>
           </div>
 
           <DialogFooter className="px-6 py-4 border-t border-border">
