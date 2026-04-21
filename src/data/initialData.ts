@@ -1,6 +1,6 @@
-import { AppState } from '@/types';
+import { AppState, RevenueService, RevenueLine } from '@/types';
 
-export const INITIAL_STATE: AppState = {
+const RAW_INITIAL_STATE: AppState = {
   department: { 
     id: 1, 
     name: 'Business Efficiency', 
@@ -266,4 +266,75 @@ export const INITIAL_STATE: AppState = {
   documents: [],
   strategicObjectives: [],
   language: 'en',
+  // Subscription/Service revenue model.
+  // Seeded as one "Legacy Revenue" service per feature (rate=1) so legacy
+  // monthly amounts migrate 1:1 (plannedTx = expected, actualTx = actual).
+  // This preserves all existing roll-up totals exactly.
+  revenueServices: [],
+  revenueLines: [],
 };
+
+/**
+ * Migrate legacy revenuePlan/revenueActual into the subscription/service
+ * revenue model. For each feature that has any revenue rows, we create a
+ * single "Legacy Revenue" service (rate = 1 SAR) so existing monthly
+ * amounts map 1:1 to plannedTransactions / actualTransactions. Rolling
+ * up `rate × transactions` reproduces the exact same totals — KPIs,
+ * charts, compare and forecast see no change.
+ */
+function migrateLegacyRevenue(state: AppState): AppState {
+  const featureIds = new Set<number>();
+  state.revenuePlan.forEach(r => featureIds.add(r.featureId));
+  state.revenueActual.forEach(r => featureIds.add(r.featureId));
+
+  const services: RevenueService[] = [];
+  const lines: RevenueLine[] = [];
+  let serviceId = 1;
+  let lineId = 1;
+
+  // Map: featureId -> serviceId for the legacy service.
+  const legacyServiceFor = new Map<number, number>();
+  Array.from(featureIds)
+    .sort((a, b) => a - b)
+    .forEach(fid => {
+      const sid = serviceId++;
+      legacyServiceFor.set(fid, sid);
+      services.push({ id: sid, featureId: fid, name: 'Legacy Revenue', defaultRate: 1 });
+    });
+
+  // Combine plan + actual by (featureId, month).
+  const monthMap = new Map<string, { planned: number; actual: number }>();
+  state.revenuePlan.forEach(r => {
+    const k = `${r.featureId}|${r.month}`;
+    const cur = monthMap.get(k) ?? { planned: 0, actual: 0 };
+    cur.planned += r.expected;
+    monthMap.set(k, cur);
+  });
+  state.revenueActual.forEach(r => {
+    const k = `${r.featureId}|${r.month}`;
+    const cur = monthMap.get(k) ?? { planned: 0, actual: 0 };
+    cur.actual += r.actual;
+    monthMap.set(k, cur);
+  });
+
+  const ts = new Date().toISOString();
+  monthMap.forEach((v, k) => {
+    const [fidStr, month] = k.split('|');
+    const fid = Number(fidStr);
+    const sid = legacyServiceFor.get(fid)!;
+    lines.push({
+      id: lineId++,
+      featureId: fid,
+      serviceId: sid,
+      month,
+      rate: 1,
+      plannedTransactions: v.planned,
+      actualTransactions: v.actual,
+      updatedAt: ts,
+    });
+  });
+
+  return { ...state, revenueServices: services, revenueLines: lines };
+}
+
+export const INITIAL_STATE: AppState = migrateLegacyRevenue(RAW_INITIAL_STATE);

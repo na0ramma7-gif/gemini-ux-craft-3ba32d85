@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Feature } from '@/types';
+import { Feature, RevenueLine, RevenueService } from '@/types';
+import { toast } from 'sonner';
 import FeatureForecast from '@/components/FeatureForecast';
 import { formatCurrency, cn } from '@/lib/utils';
 import { parseMoney, parsePercent } from '@/lib/validation';
@@ -21,7 +22,7 @@ import {
 import {
   ArrowLeft, ArrowRight, Plus, Trash2, DollarSign, Users, TrendingUp, TrendingDown,
   FileText, Save, ChevronDown, ChevronRight, UserPlus, Lightbulb, AlertTriangle,
-  BarChart3, PieChart, Pencil, Target, Receipt,
+  BarChart3, PieChart, Pencil, Target, Receipt, Tag,
 } from 'lucide-react';
 import KPICard from '@/components/KPICard';
 import {
@@ -29,24 +30,36 @@ import {
   ResponsiveContainer, Legend,
 } from 'recharts';
 
-interface MonthlyRevenue { featureId: number; planned: number; actual: number; }
 interface CostItem { id: string; name: string; planned: number; actual: number; notes: string; }
 interface ResourceAlloc { resourceId: number; utilization: number; }
-interface MonthData { revenues: MonthlyRevenue[]; costs: Record<string, CostItem[]>; resources: ResourceAlloc[]; }
+interface MonthData { costs: Record<string, CostItem[]>; resources: ResourceAlloc[]; }
 interface FeatureFinancialPlanningProps { feature: Feature; onClose: () => void; }
 
 const COST_CATEGORIES = ['Infrastructure', 'Licensing', 'Marketing', 'Other'];
 const MONTHS_SHORT_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'] as const;
 const uid = () => Math.random().toString(36).slice(2, 9);
+const monthKeyOf = (year: number, monthIdx: number) =>
+  `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
+
+/** Local draft for revenue line editing inside the month dialog. */
+interface RevenueLineDraft {
+  key: string;            // local key (uid)
+  id?: number;            // existing line id, when editing
+  serviceId: number | null;
+  rate: number;
+  plannedTransactions: number;
+  actualTransactions: number;
+  notes?: string;
+}
 
 const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanningProps) => {
-  const { state, t, language, isRTL } = useApp();
+  const { state, t, language, isRTL, addRevenueService, upsertRevenueLines } = useApp();
   const [tab, setTab] = useState('profile');
   const [selectedYear, setSelectedYear] = useState(2025);
 
   const [yearData, setYearData] = useState<Record<number, MonthData>>(() => {
     const d: Record<number, MonthData> = {};
-    for (let i = 0; i < 12; i++) d[i] = { revenues: [], costs: {}, resources: [] };
+    for (let i = 0; i < 12; i++) d[i] = { costs: {}, resources: [] };
     return d;
   });
 
@@ -60,8 +73,10 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   const [expandedMonths, setExpandedMonths] = useState<number[]>([]);
   const [editMonthOpen, setEditMonthOpen] = useState(false);
   const [editMonthIdx, setEditMonthIdx] = useState<number>(0);
-  const [editPlannedRev, setEditPlannedRev] = useState(0);
-  const [editActualRev, setEditActualRev] = useState(0);
+  // Revenue line drafts being edited inside the month dialog.
+  const [editLines, setEditLines] = useState<RevenueLineDraft[]>([]);
+  // Inline "+ New service" input state per draft row.
+  const [newServiceFor, setNewServiceFor] = useState<Record<string, string>>({});
   const [editCostCatsOpen, setEditCostCatsOpen] = useState<string[]>([]);
   const [resourceSelectorOpen, setResourceSelectorOpen] = useState(false);
   const [resourceSelectorMonth, setResourceSelectorMonth] = useState<number>(0);
@@ -86,20 +101,50 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     [state.resources, productResourceIds],
   );
 
+  // ── Revenue derived from the global subscription/service lines ──
+  // monthlyRevenue[i] = { planned, actual } for month i of selectedYear.
+  const featureLines = useMemo(
+    () => state.revenueLines.filter(l => l.featureId === feature.id),
+    [state.revenueLines, feature.id],
+  );
+  const featureServices = useMemo(
+    () => state.revenueServices.filter(s => s.featureId === feature.id),
+    [state.revenueServices, feature.id],
+  );
+  const monthlyRevenue = useMemo(() => {
+    const out: { planned: number; actual: number; lineCount: number; lastUpdated?: string }[] = Array.from(
+      { length: 12 },
+      () => ({ planned: 0, actual: 0, lineCount: 0 }),
+    );
+    featureLines.forEach(l => {
+      const [y, m] = l.month.split('-').map(Number);
+      if (y !== selectedYear) return;
+      const i = m - 1;
+      if (i < 0 || i > 11) return;
+      out[i].planned += l.rate * (l.plannedTransactions || 0);
+      out[i].actual += l.rate * (l.actualTransactions || 0);
+      out[i].lineCount += 1;
+      if (!out[i].lastUpdated || l.updatedAt > (out[i].lastUpdated as string)) {
+        out[i].lastUpdated = l.updatedAt;
+      }
+    });
+    return out;
+  }, [featureLines, selectedYear]);
+
   const monthlySummaries = useMemo(() =>
     Array.from({ length: 12 }, (_, i) => {
       const md = yearData[i];
-      const plannedRev = md.revenues.reduce((s, r) => s + r.planned, 0);
-      const actualRev = md.revenues.reduce((s, r) => s + r.actual, 0);
+      const plannedRev = monthlyRevenue[i].planned;
+      const actualRev = monthlyRevenue[i].actual;
       let plannedCost = 0;
       let actualCost = 0;
       Object.values(md.costs).forEach(items => items.forEach(item => { plannedCost += item.planned; actualCost += item.actual; }));
       let resourceCost = 0;
       md.resources.forEach(a => { const r = state.resources.find(res => res.id === a.resourceId); if (r) resourceCost += r.costRate * (a.utilization / 100); });
       plannedCost += resourceCost;
-      return { month: i, label: `${t(MONTHS_SHORT_KEYS[i])} ${selectedYear}`, plannedRev, actualRev, plannedCost, actualCost, netProfit: plannedRev - plannedCost, resourceCost };
+      return { month: i, label: `${t(MONTHS_SHORT_KEYS[i])} ${selectedYear}`, plannedRev, actualRev, plannedCost, actualCost, netProfit: plannedRev - plannedCost, resourceCost, lineCount: monthlyRevenue[i].lineCount, lastUpdated: monthlyRevenue[i].lastUpdated };
     })
-  , [yearData, selectedYear, state.resources, t]);
+  , [yearData, selectedYear, state.resources, t, monthlyRevenue]);
 
   const totals = useMemo(() => {
     const r = monthlySummaries.reduce((a, m) => ({ plannedRev: a.plannedRev + m.plannedRev, actualRev: a.actualRev + m.actualRev, plannedCost: a.plannedCost + m.plannedCost, actualCost: a.actualCost + m.actualCost }), { plannedRev: 0, actualRev: 0, plannedCost: 0, actualCost: 0 });
@@ -136,9 +181,17 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     let totalCost = 0;
     Object.values(md.costs).forEach(items => items.forEach(i => { totalCost += i.planned; }));
     md.resources.forEach(a => { const r = state.resources.find(res => res.id === a.resourceId); if (r) totalCost += r.costRate * (a.utilization / 100); });
+    const editPlannedRev = editLines.reduce((s, l) => s + (l.rate || 0) * (l.plannedTransactions || 0), 0);
+    const editActualRev = editLines.reduce((s, l) => s + (l.rate || 0) * (l.actualTransactions || 0), 0);
     const profit = editPlannedRev - totalCost;
-    return { totalCost, profit, margin: editPlannedRev > 0 ? (profit / editPlannedRev) * 100 : 0 };
-  }, [yearData, editMonthIdx, editPlannedRev, state.resources]);
+    return {
+      totalCost,
+      profit,
+      margin: editPlannedRev > 0 ? (profit / editPlannedRev) * 100 : 0,
+      editPlannedRev,
+      editActualRev,
+    };
+  }, [yearData, editMonthIdx, editLines, state.resources]);
 
   const toggleMonth = (idx: number) => setExpandedMonths(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
 
@@ -147,23 +200,100 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   }, []);
 
   const openMonthEditor = (monthIdx: number) => {
-    const md = yearData[monthIdx];
-    const rev = md.revenues.find(r => r.featureId === feature.id);
+    const mk = monthKeyOf(selectedYear, monthIdx);
+    const existing = featureLines.filter(l => l.month === mk);
     setEditMonthIdx(monthIdx);
-    setEditPlannedRev(rev?.planned || 0);
-    setEditActualRev(rev?.actual || 0);
+    setEditLines(
+      existing.map(l => ({
+        key: uid(),
+        id: l.id,
+        serviceId: l.serviceId,
+        rate: l.rate,
+        plannedTransactions: l.plannedTransactions,
+        actualTransactions: l.actualTransactions,
+        notes: l.notes,
+      })),
+    );
+    setNewServiceFor({});
     setEditCostCatsOpen([]);
     setEditMonthOpen(true);
   };
 
-  const saveMonthRevenue = () => {
-    updateMonthData(editMonthIdx, md => {
-      const existing = md.revenues.findIndex(r => r.featureId === feature.id);
-      const newRevs = [...md.revenues];
-      if (existing >= 0) newRevs[existing] = { ...newRevs[existing], planned: editPlannedRev, actual: editActualRev };
-      else if (editPlannedRev > 0 || editActualRev > 0) newRevs.push({ featureId: feature.id, planned: editPlannedRev, actual: editActualRev });
-      return { ...md, revenues: newRevs };
+  // ── Draft helpers ──
+  const addDraftLine = () => {
+    setEditLines(prev => [
+      ...prev,
+      { key: uid(), serviceId: null, rate: 0, plannedTransactions: 0, actualTransactions: 0 },
+    ]);
+  };
+  const updateDraftLine = (key: string, updates: Partial<RevenueLineDraft>) => {
+    setEditLines(prev => prev.map(l => (l.key === key ? { ...l, ...updates } : l)));
+  };
+  const removeDraftLine = (key: string) => {
+    setEditLines(prev => prev.filter(l => l.key !== key));
+  };
+  const pickService = (key: string, serviceId: number) => {
+    const svc = featureServices.find(s => s.id === serviceId);
+    if (!svc) return;
+    updateDraftLine(key, { serviceId, rate: svc.defaultRate });
+  };
+  const createServiceInline = (key: string, name: string, rate: number) => {
+    const res = addRevenueService(feature.id, name, Number.isFinite(rate) ? rate : 0);
+    if (res.ok === false) {
+      toast.error(res.error);
+      return;
+    }
+    updateDraftLine(key, { serviceId: res.service.id, rate: res.service.defaultRate });
+    setNewServiceFor(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
     });
+  };
+
+  const saveMonthRevenue = () => {
+    // Pre-validate locally for clearer messages
+    const seen = new Set<number>();
+    for (const l of editLines) {
+      if (l.serviceId == null) {
+        toast.error(t('serviceNameRequired'));
+        return;
+      }
+      if (seen.has(l.serviceId)) {
+        toast.error(t('duplicateServiceInMonth'));
+        return;
+      }
+      seen.add(l.serviceId);
+      if (!Number.isFinite(l.rate) || l.rate < 0) {
+        toast.error(t('rateInvalid'));
+        return;
+      }
+      if (
+        !Number.isInteger(l.plannedTransactions) || l.plannedTransactions < 0 ||
+        !Number.isInteger(l.actualTransactions) || l.actualTransactions < 0
+      ) {
+        toast.error(t('txInvalid'));
+        return;
+      }
+    }
+    const mk = monthKeyOf(selectedYear, editMonthIdx);
+    const res = upsertRevenueLines(
+      feature.id,
+      mk,
+      editLines.map(l => ({
+        id: l.id,
+        serviceId: l.serviceId as number,
+        rate: l.rate,
+        plannedTransactions: l.plannedTransactions,
+        actualTransactions: l.actualTransactions,
+        notes: l.notes,
+      })),
+    );
+    if (res.ok === false) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success(t('save'));
     setEditMonthOpen(false);
   };
 
@@ -199,9 +329,20 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
   const revenueEntries = useMemo(() => {
     const entries: any[] = [];
-    Object.entries(yearData).forEach(([ms, md]) => md.revenues.forEach(r => entries.push({ id: Date.now() + parseInt(ms), featureId: r.featureId, month: parseInt(ms), year: selectedYear, planned: r.planned, actual: r.actual })));
+    monthlyRevenue.forEach((mr, mi) => {
+      if (mr.planned > 0 || mr.actual > 0) {
+        entries.push({
+          id: `rev-${selectedYear}-${mi}`,
+          featureId: feature.id,
+          month: mi,
+          year: selectedYear,
+          planned: mr.planned,
+          actual: mr.actual,
+        });
+      }
+    });
     return entries;
-  }, [yearData, selectedYear]);
+  }, [monthlyRevenue, selectedYear, feature.id]);
 
   const costEntries = useMemo(() => {
     const entries: any[] = [];
@@ -366,6 +507,11 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                           {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                           {ms.label}
                           {!hasData && <span className="text-xs text-muted-foreground font-normal ml-1">—</span>}
+                          {ms.lineCount > 0 && (
+                            <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full font-medium">
+                              {ms.lineCount} {t('items')}
+                            </span>
+                          )}
                         </div>
                         <div className="text-sm font-medium text-emerald-600 text-end">{ms.plannedRev > 0 ? formatCurrency(ms.plannedRev, language) : '—'}</div>
                         <div className="text-sm font-medium text-emerald-700 text-end">{ms.actualRev > 0 ? formatCurrency(ms.actualRev, language) : '—'}</div>
@@ -384,28 +530,37 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
                       {isExpanded && (
                         <div className="bg-secondary/5 border-t border-border/50 px-6 py-4 space-y-4">
-                          {yearData[ms.month].revenues.length > 0 && (
+                          {(() => {
+                            const mk = monthKeyOf(selectedYear, ms.month);
+                            const lines = featureLines.filter(l => l.month === mk);
+                            if (lines.length === 0) return null;
+                            return (
                             <div>
                               <h6 className="text-xs font-semibold text-emerald-600 uppercase mb-2">{t('revenue')}</h6>
                               <div className="rounded-lg border border-border overflow-hidden">
-                                <div className="grid grid-cols-3 bg-secondary/30 px-3 py-2">
-                                  <span className="text-xs font-semibold text-muted-foreground">{t('feature')}</span>
-                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('planned')}</span>
-                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('actual')}</span>
+                                <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] bg-secondary/30 px-3 py-2 gap-2">
+                                  <span className="text-xs font-semibold text-muted-foreground">{t('serviceName')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('transactionRate')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('plannedTx')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('plannedRevenue')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('actualRevenue')}</span>
                                 </div>
-                                {yearData[ms.month].revenues.map((rev, idx) => {
-                                  const feat = productFeatures.find(f => f.id === rev.featureId);
+                                {lines.map(line => {
+                                  const svc = featureServices.find(s => s.id === line.serviceId);
                                   return (
-                                    <div key={idx} className="grid grid-cols-3 px-3 py-2 border-t border-border/50">
-                                      <span className="text-sm text-foreground">{feat?.name || feature.name}</span>
-                                      <span className="text-sm text-end font-medium text-foreground">{formatCurrency(rev.planned, language)}</span>
-                                      <span className="text-sm text-end font-medium text-emerald-600">{formatCurrency(rev.actual, language)}</span>
+                                    <div key={line.id} className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] px-3 py-2 border-t border-border/50 gap-2">
+                                      <span className="text-sm text-foreground truncate">{svc?.name || t('legacyRevenue')}</span>
+                                      <span className="text-sm text-end text-muted-foreground">{formatCurrency(line.rate, language)}</span>
+                                      <span className="text-sm text-end text-muted-foreground">{line.plannedTransactions.toLocaleString()}</span>
+                                      <span className="text-sm text-end font-medium text-foreground">{formatCurrency(line.rate * line.plannedTransactions, language)}</span>
+                                      <span className="text-sm text-end font-medium text-emerald-600">{formatCurrency(line.rate * line.actualTransactions, language)}</span>
                                     </div>
                                   );
                                 })}
                               </div>
                             </div>
-                          )}
+                            );
+                          })()}
                           {(Object.values(yearData[ms.month].costs).some(items => items.length > 0) || yearData[ms.month].resources.length > 0) && (
                             <div>
                               <h6 className="text-xs font-semibold text-destructive uppercase mb-2">{t('costCategories')}</h6>
@@ -588,28 +743,161 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] min-h-0 max-h-[calc(90vh-140px)]">
             <div className="p-6 space-y-5 overflow-y-auto border-e border-border">
-              {/* Revenue */}
+              {/* Revenue Lines (subscription / service × rate × transactions) */}
               <div className="bg-card rounded-xl border border-border p-4">
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('revenue')}
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('planned')} (SAR)</label>
-                    <Input type="number" min={0} step="0.01" value={editPlannedRev || ''} placeholder="0" onChange={e => setEditPlannedRev(parseMoney(e.target.value))} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('actual')} (SAR)</label>
-                    <Input type="number" min={0} step="0.01" value={editActualRev || ''} placeholder="0" onChange={e => setEditActualRev(parseMoney(e.target.value))} />
-                  </div>
+                <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('revenueLines')}
+                  </h4>
+                  <Button size="sm" variant="outline" onClick={addDraftLine}>
+                    <Plus className="w-3.5 h-3.5 me-1.5" /> {t('addRevenueLine')}
+                  </Button>
                 </div>
-                {(editPlannedRev > 0 || editActualRev > 0) && (
-                  <div className={cn("mt-3 px-3 py-2 rounded-lg border text-xs font-semibold",
-                    editActualRev - editPlannedRev >= 0
-                      ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
-                      : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400"
-                  )}>
-                    {t('revenueVariance')}: {editActualRev - editPlannedRev >= 0 ? '+' : ''}{formatCurrency(editActualRev - editPlannedRev, language)}
+                <p className="text-xs text-muted-foreground mb-3">{t('revenueLinesDesc')}</p>
+
+                {editLines.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-6 border border-dashed border-border rounded-lg">
+                    {t('noRevenueLinesYet')}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-secondary/50">
+                        <tr>
+                          <th className="px-2 py-2 text-start text-xs font-semibold text-muted-foreground min-w-[180px]">{t('serviceName')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground w-28">{t('transactionRate')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground w-24">{t('plannedTx')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-muted-foreground w-24">{t('actualTx')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 w-28">{t('plannedRevenue')}</th>
+                          <th className="px-2 py-2 text-end text-xs font-semibold text-emerald-700 w-28">{t('actualRevenue')}</th>
+                          <th className="px-2 py-2 w-10" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {editLines.map(line => {
+                          const newName = newServiceFor[line.key];
+                          const isCreating = newName !== undefined;
+                          const plannedRev = (line.rate || 0) * (line.plannedTransactions || 0);
+                          const actualRev = (line.rate || 0) * (line.actualTransactions || 0);
+                          return (
+                            <tr key={line.key} className="hover:bg-secondary/30 align-top">
+                              <td className="px-2 py-1.5">
+                                {isCreating ? (
+                                  <div className="flex gap-1.5 items-center">
+                                    <Input
+                                      autoFocus
+                                      className="h-8 text-xs"
+                                      placeholder={t('serviceName')}
+                                      value={newName}
+                                      onChange={e => setNewServiceFor(prev => ({ ...prev, [line.key]: e.target.value }))}
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') { e.preventDefault(); createServiceInline(line.key, newName, line.rate); }
+                                        if (e.key === 'Escape') setNewServiceFor(prev => { const n = { ...prev }; delete n[line.key]; return n; });
+                                      }}
+                                    />
+                                    <Button size="sm" variant="default" className="h-8 px-2 text-xs"
+                                      onClick={() => createServiceInline(line.key, newName, line.rate)}>
+                                      {t('save')}
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Select
+                                    value={line.serviceId != null ? String(line.serviceId) : ''}
+                                    onValueChange={v => {
+                                      if (v === '__new__') {
+                                        setNewServiceFor(prev => ({ ...prev, [line.key]: '' }));
+                                      } else {
+                                        pickService(line.key, parseInt(v, 10));
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue placeholder={t('selectService')} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {featureServices.length === 0 && (
+                                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                                          {t('serviceCatalog')} —
+                                        </div>
+                                      )}
+                                      {featureServices.map(s => (
+                                        <SelectItem key={s.id} value={String(s.id)}>
+                                          <span className="flex items-center gap-1.5">
+                                            <Tag className="w-3 h-3 text-muted-foreground" />
+                                            {s.name}
+                                            <span className="text-[10px] text-muted-foreground">
+                                              · {formatCurrency(s.defaultRate, language)}
+                                            </span>
+                                          </span>
+                                        </SelectItem>
+                                      ))}
+                                      <SelectItem value="__new__">
+                                        <span className="flex items-center gap-1.5 text-primary">
+                                          <Plus className="w-3 h-3" /> {t('newService')}
+                                        </span>
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <Input
+                                  type="number" min={0} step="0.01"
+                                  className="h-8 text-xs text-end"
+                                  value={line.rate || ''}
+                                  placeholder="0"
+                                  onChange={e => updateDraftLine(line.key, { rate: parseMoney(e.target.value) })}
+                                />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <Input
+                                  type="number" min={0} step="1"
+                                  className="h-8 text-xs text-end"
+                                  value={line.plannedTransactions || ''}
+                                  placeholder="0"
+                                  onChange={e => updateDraftLine(line.key, { plannedTransactions: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+                                />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <Input
+                                  type="number" min={0} step="1"
+                                  className="h-8 text-xs text-end"
+                                  value={line.actualTransactions || ''}
+                                  placeholder="0"
+                                  onChange={e => updateDraftLine(line.key, { actualTransactions: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+                                />
+                              </td>
+                              <td className="px-2 py-1.5 text-end font-semibold text-foreground">
+                                {formatCurrency(plannedRev, language)}
+                              </td>
+                              <td className="px-2 py-1.5 text-end font-semibold text-emerald-600">
+                                {formatCurrency(actualRev, language)}
+                              </td>
+                              <td className="px-2 py-1.5 text-center">
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive/60 hover:text-destructive"
+                                  onClick={() => removeDraftLine(line.key)}>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-secondary/30">
+                        <tr>
+                          <td className="px-2 py-2 text-xs font-semibold text-muted-foreground" colSpan={4}>
+                            {t('total')}
+                          </td>
+                          <td className="px-2 py-2 text-end text-xs font-bold text-foreground">
+                            {formatCurrency(editMonthSummary.editPlannedRev, language)}
+                          </td>
+                          <td className="px-2 py-2 text-end text-xs font-bold text-emerald-600">
+                            {formatCurrency(editMonthSummary.editActualRev, language)}
+                          </td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
                   </div>
                 )}
               </div>
@@ -747,7 +1035,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">{t('financialSummary')}</h4>
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="text-xs font-medium text-muted-foreground mb-1">{t('plannedRevenue')}</div>
-                <div className="text-xl font-bold text-emerald-600">{formatCurrency(editPlannedRev, language)}</div>
+                <div className="text-xl font-bold text-emerald-600">{formatCurrency(editMonthSummary.editPlannedRev, language)}</div>
               </div>
               <div className="bg-card rounded-xl border border-border p-4">
                 <div className="text-xs font-medium text-muted-foreground mb-1">{t('totalCost')}</div>
