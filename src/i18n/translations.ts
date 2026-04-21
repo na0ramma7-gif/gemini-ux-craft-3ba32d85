@@ -338,6 +338,7 @@ export const TRANSLATIONS = {
     actual2: 'Actual',
     variance: 'Variance',
     monthlyFinancialPlanning: 'Monthly Financial Planning',
+    insightLastMonth: 'last month',
     forecastByService: 'Forecast by Service',
     totalProjected: 'Total projected',
     avgMonthly: 'Avg / month',
