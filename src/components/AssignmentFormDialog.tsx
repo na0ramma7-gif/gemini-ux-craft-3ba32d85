@@ -169,6 +169,22 @@ const AssignmentFormDialog = ({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2" noValidate>
+            {allowResourceSelection && !resourceId && (
+              <FormField control={form.control} name="resourceId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('resource') || 'Resource'} *</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl><SelectTrigger><SelectValue placeholder={t('selectResource') || 'Select resource'} /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {state.resources.map(r => (
+                        <SelectItem key={r.id} value={String(r.id)}>{r.name} — {r.role}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
             {!portfolioLocked && (
             <FormField control={form.control} name="portfolioId" render={({ field }) => (
               <FormItem>
