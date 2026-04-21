@@ -27,6 +27,8 @@ const EMPTY_COMPARE_SELECTION: CompareSelectionState = {
   featureIds: [],
 };
 
+export type LookupKey = 'strategicObjective' | 'businessValue';
+
 interface AppContextType {
   state: AppState;
   setState: React.Dispatch<React.SetStateAction<AppState>>;
@@ -75,6 +77,10 @@ interface AppContextType {
   addProduct: (product: Omit<Product, 'id'>) => Product;
   addRelease: (release: Omit<Release, 'id'>) => void;
   updateRelease: (releaseId: number, updates: Partial<Release>) => void;
+
+  // Lookup catalogs (reusable controlled-vocabulary values)
+  lookups: Record<LookupKey, string[]>;
+  addLookupValue: (key: LookupKey, value: string) => string | null;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
