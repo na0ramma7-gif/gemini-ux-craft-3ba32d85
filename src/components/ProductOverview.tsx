@@ -1,29 +1,21 @@
 import { useMemo, useState, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Product, LifecycleStage } from '@/types';
+import { Product } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
   User, Target, TrendingUp, Activity, Zap, BarChart3, Pencil, Upload, X,
-  DollarSign, Package, Star, Shield, Lightbulb, Plus, Check,
+  DollarSign, Package, Star, Lightbulb,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer, Tooltip,
 } from 'recharts';
+import EditProductProfileDialog from '@/components/EditProductProfileDialog';
 
 interface Props {
   product: Product;
@@ -36,21 +28,6 @@ const LIFECYCLE_COLORS: Record<string, string> = {
   Mature: 'bg-accent/10 text-accent',
   Sunset: 'bg-warning/10 text-warning',
 };
-
-const LIFECYCLE_STAGES: LifecycleStage[] = ['Ideation', 'Development', 'Growth', 'Mature', 'Sunset'];
-
-const PRESET_CAPABILITIES = [
-  'User Authentication', 'License Application', 'Payment Processing', 'Document Verification',
-  'Status Tracking', 'Dashboard Analytics', 'Notification Engine', 'Compliance Checks',
-  'Auto-Renewal', 'Reporting', 'API Integration', 'Data Export', 'Audit Trail',
-  'Multi-language Support', 'Role Management', 'Workflow Engine',
-];
-
-const PRESET_METRICS = [
-  'Revenue Growth', 'Transaction Volume', 'Processing Time', 'User Satisfaction',
-  'Adoption Rate', 'Renewal Rate', 'Compliance Score', 'Cost Reduction',
-  'Uptime SLA', 'Feature Velocity', 'Customer Retention', 'NPS Score',
-];
 
 const CAPABILITY_CATEGORIES: Record<string, string[]> = {
   'Core': ['User Authentication', 'License Application', 'Payment Processing', 'Auto-Renewal', 'Workflow Engine'],
@@ -66,9 +43,6 @@ const ProductOverview = ({ product }: Props) => {
     [dept, product.id],
   );
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editData, setEditData] = useState<Partial<Product>>({});
-  const [newCapability, setNewCapability] = useState('');
-  const [newMetric, setNewMetric] = useState('');
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const portfolio = state.portfolios.find(p => p.id === product.portfolioId);
@@ -103,22 +77,7 @@ const ProductOverview = ({ product }: Props) => {
     ];
   }, [health]);
 
-  const openEditModal = () => {
-    setEditData({
-      name: product.name, description: product.description, purpose: product.purpose,
-      status: product.status, lifecycleStage: product.lifecycleStage, owner: product.owner,
-      technicalOwner: product.technicalOwner, deliveryManager: product.deliveryManager,
-      strategicObjective: product.strategicObjective, businessValue: product.businessValue,
-      businessProblem: product.businessProblem,
-      capabilities: product.capabilities ? [...product.capabilities] : [],
-      successMetrics: product.successMetrics ? [...product.successMetrics] : [],
-    });
-    setNewCapability('');
-    setNewMetric('');
-    setShowEditModal(true);
-  };
-
-  const handleSave = () => { updateProduct(product.id, editData); setShowEditModal(false); };
+  const openEditModal = () => setShowEditModal(true);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -126,32 +85,6 @@ const ProductOverview = ({ product }: Props) => {
     const reader = new FileReader();
     reader.onloadend = () => { updateProduct(product.id, { logo: reader.result as string }); };
     reader.readAsDataURL(file);
-  };
-
-  const toggleCapability = (cap: string) => {
-    setEditData(prev => {
-      const caps = prev.capabilities || [];
-      return { ...prev, capabilities: caps.includes(cap) ? caps.filter(c => c !== cap) : [...caps, cap] };
-    });
-  };
-
-  const addCustomCapability = () => {
-    if (!newCapability.trim()) return;
-    setEditData(prev => ({ ...prev, capabilities: [...(prev.capabilities || []), newCapability.trim()] }));
-    setNewCapability('');
-  };
-
-  const toggleMetric = (metric: string) => {
-    setEditData(prev => {
-      const metrics = prev.successMetrics || [];
-      return { ...prev, successMetrics: metrics.includes(metric) ? metrics.filter(m => m !== metric) : [...metrics, metric] };
-    });
-  };
-
-  const addCustomMetric = () => {
-    if (!newMetric.trim()) return;
-    setEditData(prev => ({ ...prev, successMetrics: [...(prev.successMetrics || []), newMetric.trim()] }));
-    setNewMetric('');
   };
 
   // Group capabilities by category
@@ -346,129 +279,12 @@ const ProductOverview = ({ product }: Props) => {
         </div>
       )}
 
-      {/* Edit Product Profile Modal — simplified */}
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Edit Product Profile</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            {/* Essential fields */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('name')}</Label>
-                <Input value={editData.name || ''} onChange={e => setEditData(prev => ({ ...prev, name: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('owner')}</Label>
-                <Input value={editData.owner || ''} onChange={e => setEditData(prev => ({ ...prev, owner: e.target.value }))} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('status')}</Label>
-                <Select value={editData.status} onValueChange={v => setEditData(prev => ({ ...prev, status: v as Product['status'] }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Development">Development</SelectItem>
-                    <SelectItem value="Planned">Planned</SelectItem>
-                    <SelectItem value="Archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('lifecycleStage')}</Label>
-                <Select value={editData.lifecycleStage || ''} onValueChange={v => setEditData(prev => ({ ...prev, lifecycleStage: v as LifecycleStage }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LIFECYCLE_STAGES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Ownership */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('technicalOwner')}</Label>
-                <Input value={editData.technicalOwner || ''} onChange={e => setEditData(prev => ({ ...prev, technicalOwner: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('deliveryManager')}</Label>
-                <Input value={editData.deliveryManager || ''} onChange={e => setEditData(prev => ({ ...prev, deliveryManager: e.target.value }))} />
-              </div>
-            </div>
-
-            {/* Short text fields */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t('description')} <span className="text-muted-foreground">(1-2 lines)</span></Label>
-              <Input value={editData.description || ''} onChange={e => setEditData(prev => ({ ...prev, description: e.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t('purpose')} <span className="text-muted-foreground">(1-2 lines)</span></Label>
-              <Input value={editData.purpose || ''} onChange={e => setEditData(prev => ({ ...prev, purpose: e.target.value }))} />
-            </div>
-
-            {/* Optional strategic — short inputs */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t('strategicObjective')} <span className="text-muted-foreground">(optional)</span></Label>
-              <Input value={editData.strategicObjective || ''} onChange={e => setEditData(prev => ({ ...prev, strategicObjective: e.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t('businessValueLabel')} <span className="text-muted-foreground">(optional)</span></Label>
-              <Input value={editData.businessValue || ''} onChange={e => setEditData(prev => ({ ...prev, businessValue: e.target.value }))} />
-            </div>
-
-            {/* Capabilities — tag selector */}
-            <div className="space-y-2">
-              <Label className="text-xs">Capabilities</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {PRESET_CAPABILITIES.map(cap => (
-                  <button key={cap} onClick={() => toggleCapability(cap)}
-                    className={cn("px-2.5 py-1 rounded-full text-xs font-medium border transition-colors",
-                      (editData.capabilities || []).includes(cap)
-                        ? 'bg-primary/10 text-primary border-primary/30'
-                        : 'bg-secondary text-muted-foreground border-transparent hover:border-border'
-                    )}>
-                    {(editData.capabilities || []).includes(cap) && <Check className="w-3 h-3 inline me-1" />}
-                    {cap}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input value={newCapability} onChange={e => setNewCapability(e.target.value)} placeholder="Add custom capability..." className="h-8 text-xs" onKeyDown={e => e.key === 'Enter' && addCustomCapability()} />
-                <Button size="sm" variant="outline" className="h-8" onClick={addCustomCapability}><Plus className="w-3.5 h-3.5" /></Button>
-              </div>
-            </div>
-
-            {/* Success Metrics — tag selector */}
-            <div className="space-y-2">
-              <Label className="text-xs">Success Metrics</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {PRESET_METRICS.map(metric => (
-                  <button key={metric} onClick={() => toggleMetric(metric)}
-                    className={cn("px-2.5 py-1 rounded-full text-xs font-medium border transition-colors",
-                      (editData.successMetrics || []).includes(metric)
-                        ? 'bg-primary/10 text-primary border-primary/30'
-                        : 'bg-secondary text-muted-foreground border-transparent hover:border-border'
-                    )}>
-                    {(editData.successMetrics || []).includes(metric) && <Check className="w-3 h-3 inline me-1" />}
-                    {metric}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input value={newMetric} onChange={e => setNewMetric(e.target.value)} placeholder="Add custom metric..." className="h-8 text-xs" onKeyDown={e => e.key === 'Enter' && addCustomMetric()} />
-                <Button size="sm" variant="outline" className="h-8" onClick={addCustomMetric}><Plus className="w-3.5 h-3.5" /></Button>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setShowEditModal(false)}>{t('cancel')}</Button>
-            <Button size="sm" onClick={handleSave}>{t('saveChanges')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Product Profile Modal */}
+      <EditProductProfileDialog
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        product={product}
+      />
     </div>
   );
 };
