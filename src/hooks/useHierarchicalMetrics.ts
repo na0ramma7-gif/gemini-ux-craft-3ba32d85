@@ -122,8 +122,10 @@ function computeProductMetrics(
   const productCosts = state.costs.filter(c => c.productId === product.id);
   const cost = computeCostForMonths(productCosts, monthKeys);
 
+  // Target = sum of feature Target Revenue for the active window (no multiplier).
+  // Feature level is the single source of truth.
+  const target = planned;
   const profit = revenue - cost;
-  const target = annualPlanned * 1.35;
   const achievementPct = target > 0 ? Math.round((revenue / target) * 100) : 0;
 
   return {
@@ -159,8 +161,9 @@ function computePortfolioMetrics(portfolio: Portfolio, productMetrics: ProductMe
   const planned = pm.reduce((s, p) => s + p.planned, 0);
   const cost = pm.reduce((s, p) => s + p.cost, 0);
   const annualPlanned = pm.reduce((s, p) => s + p.annualPlanned, 0);
+  // Roll-up: Portfolio target = sum of product targets (= sum of feature targets in window).
+  const target = planned;
   const profit = revenue - cost;
-  const target = annualPlanned * 1.35;
   const achievementPct = target > 0 ? Math.round((revenue / target) * 100) : 0;
 
   return {
@@ -226,8 +229,9 @@ export function useHierarchicalMetrics(
     const planned = allPortfolioMetrics.reduce((s, p) => s + p.planned, 0);
     const cost = allPortfolioMetrics.reduce((s, p) => s + p.cost, 0);
     const annualPlanned = allPortfolioMetrics.reduce((s, p) => s + p.annualPlanned, 0);
+    // Roll-up: Department target = sum of portfolio targets.
+    const target = planned;
     const profit = revenue - cost;
-    const target = annualPlanned * 1.35;
     const achievementPct = target > 0 ? Math.round((revenue / target) * 100) : 0;
 
     return {
