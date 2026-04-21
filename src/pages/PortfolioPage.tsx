@@ -63,10 +63,13 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 };
 
 const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps) => {
-  const { state, updatePortfolio, t, language, isRTL, dateFilter, compareSelection } = useApp();
+  const { state, updatePortfolio, deleteAssignment, t, language, isRTL, dateFilter, compareSelection } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignResourceId, setAssignResourceId] = useState<number | null>(null);
+  const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const products = useMemo(() => state.products.filter(p => p.portfolioId === portfolio.id), [state.products, portfolio.id]);
