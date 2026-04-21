@@ -17,6 +17,9 @@ import {
   FolderOpen, X,
 } from 'lucide-react';
 import { formatDate, cn } from '@/lib/utils';
+import { z } from 'zod';
+import { toast } from 'sonner';
+import { nameField, longText, optionalText, personField, dateField } from '@/lib/validation';
 
 interface Props {
   product: Product;
@@ -49,6 +52,16 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const uid = () => Math.floor(Math.random() * 100000);
+
+const docSchema = z.object({
+  title: nameField('Title', { min: 2, max: 120 }),
+  type: z.string().min(1, 'Document type is required'),
+  description: longText('Description', 1000),
+  version: optionalText('Version', 20),
+  effectiveDate: dateField('Effective Date', false),
+  owner: personField('Owner', false),
+  fileName: z.string().min(1, 'A file must be selected'),
+});
 
 const ProductDocumentation = ({ product }: Props) => {
   const { state, setState, t, language } = useApp();
@@ -106,7 +119,16 @@ const ProductDocumentation = ({ product }: Props) => {
   };
 
   const handleUpload = () => {
-    if (!formTitle || !formFileName) return;
+    const result = docSchema.safeParse({
+      title: formTitle, type: formType, description: formDescription,
+      version: formVersion, effectiveDate: formEffectiveDate, owner: formOwner,
+      fileName: formFileName,
+    });
+    if (!result.success) {
+      const first = result.error.issues[0];
+      toast.error(first?.message || 'Please correct the highlighted fields');
+      return;
+    }
     const newDoc: Document = {
       id: uid(),
       title: formTitle,
@@ -124,6 +146,7 @@ const ProductDocumentation = ({ product }: Props) => {
       tags: formTags.length > 0 ? formTags : undefined,
     };
     setState(prev => ({ ...prev, documents: [...prev.documents, newDoc] }));
+    toast.success(`Document "${formTitle}" uploaded`);
     setShowUploadModal(false);
     resetForm();
   };
@@ -146,6 +169,16 @@ const ProductDocumentation = ({ product }: Props) => {
 
   const handleEditSave = () => {
     if (!editingDoc) return;
+    const result = docSchema.safeParse({
+      title: formTitle, type: formType, description: formDescription,
+      version: formVersion, effectiveDate: formEffectiveDate, owner: formOwner,
+      fileName: editingDoc.name,
+    });
+    if (!result.success) {
+      const first = result.error.issues[0];
+      toast.error(first?.message || 'Please correct the highlighted fields');
+      return;
+    }
     setState(prev => ({
       ...prev,
       documents: prev.documents.map(d =>
@@ -163,6 +196,7 @@ const ProductDocumentation = ({ product }: Props) => {
           : d
       ),
     }));
+    toast.success(`Document "${formTitle}" updated`);
     setShowEditModal(false);
     setEditingDoc(null);
     resetForm();
