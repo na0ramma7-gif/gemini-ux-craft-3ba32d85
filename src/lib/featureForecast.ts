@@ -258,21 +258,152 @@ export const getServiceGrowthRate = (
   return found ? found.growthRate : scenario.defaultGrowthRate;
 };
 
+// ── Hijri / Ramadan lookup ────────────────────────────────────
+
+/**
+ * Hardcoded Gregorian month (0..11) in which Ramadan PRIMARILY falls per year.
+ * Ramadan straddles two Gregorian months; we pick the month that contains
+ * the majority (≥ 15) of Ramadan days. Source: Umm al-Qura calendar.
+ */
+export const RAMADAN_GREGORIAN_MONTH: Record<number, number> = {
+  2024: 2,  // Mar 2024
+  2025: 1,  // Feb / Mar 2025 — majority in Mar (idx 2)? Actually Mar 1–29 → use 2
+  2026: 1,  // Feb 2026
+  2027: 1,  // Feb 2027
+  2028: 0,  // Jan 2028
+  2029: 0,  // Jan 2029
+  2030: 11, // Dec 2029 / Jan 2030 — majority in Jan but for year=2030 use Jan(0)
+};
+// Corrected: 2025 Ramadan = Mar 1 → idx 2; 2026 = Feb 17 → idx 1.
+RAMADAN_GREGORIAN_MONTH[2025] = 2;
+
+export const getRamadanMonth = (
+  scenario: ForecastScenario,
+  year: number,
+): number => {
+  if (typeof scenario.ramadanMonthOverride === 'number') {
+    return Math.max(0, Math.min(11, scenario.ramadanMonthOverride));
+  }
+  return RAMADAN_GREGORIAN_MONTH[year] ?? 2;
+};
+
+// ── Seasonal presets ──────────────────────────────────────────
+
+/**
+ * Returns a 12-element multiplier array (Jan..Dec) for a preset.
+ * Multipliers center around 1.0; sum is approximately 12 so annual totals
+ * are roughly preserved relative to the Simple-mode projection.
+ */
+export const buildSeasonalMultipliers = (
+  preset: SeasonalPresetId,
+  custom: number[] | undefined,
+  ramadanMonthIdx: number,
+): number[] => {
+  if (preset === 'flat') return Array(12).fill(1);
+  if (preset === 'custom') {
+    if (Array.isArray(custom) && custom.length === 12) {
+      return custom.map(n => (Number.isFinite(n) && n >= 0 ? n : 1));
+    }
+    return Array(12).fill(1);
+  }
+  if (preset === 'summer') {
+    // Reduced Jun (5), Jul (6), Aug (7).
+    const m = Array(12).fill(1.05);
+    m[5] = 0.75; m[6] = 0.7; m[7] = 0.75;
+    return m;
+  }
+  if (preset === 'yearEnd') {
+    const m = Array(12).fill(0.96);
+    m[10] = 1.25; m[11] = 1.4; // Nov, Dec
+    return m;
+  }
+  if (preset === 'backToSchool') {
+    const m = Array(12).fill(0.97);
+    m[7] = 1.25; m[8] = 1.3; // Aug, Sep
+    return m;
+  }
+  if (preset === 'ramadan') {
+    // Dip in Ramadan month, rebound in the month after Eid (Ramadan + 1).
+    const m = Array(12).fill(1.02);
+    m[ramadanMonthIdx] = 0.65;
+    m[(ramadanMonthIdx + 1) % 12] = 1.25;
+    return m;
+  }
+  return Array(12).fill(1);
+};
+
+/**
+ * Convenience: get the multipliers for a given service in a scenario for
+ * a particular calendar year (used for Ramadan auto-detect).
+ */
+export const getServiceSeasonalMultipliers = (
+  scenario: ForecastScenario,
+  serviceId: number,
+  year: number,
+): number[] => {
+  const sa = scenario.services.find(s => s.serviceId === serviceId);
+  const preset: SeasonalPresetId = sa?.pattern ?? 'flat';
+  const ramadan = getRamadanMonth(scenario, year);
+  return buildSeasonalMultipliers(preset, sa?.customPattern, ramadan);
+};
+
 /**
  * Compound projection of a service's monthly transactions over `horizon`.
  * Month 0 is the FIRST forecast month (already grown from baseTx).
+ *
+ * Phase B additions:
+ *  - When `mode === 'seasonal'`, applies a 12-month multiplier (looked up by
+ *    the Gregorian month of the forecast slot).
+ *  - When `mode === 'matrix'`, applies any per-cell override; subsequent
+ *    months continue compounding growth from the override value
+ *    (override-wins-then-resume semantics).
  */
+export interface ProjectServiceOptions {
+  /** Forecast mode for this projection. */
+  mode?: ForecastMode;
+  /** First forecast month as a Date (year + 0-indexed month). */
+  forecastStartDate?: Date;
+  /** 12-element multiplier array, indexed by calendar month (Jan..Dec). */
+  seasonalMultipliers?: (year: number) => number[];
+  /** monthIndex → tx override for THIS service. */
+  overridesByMonth?: Map<number, number>;
+}
+
 export const projectService = (
   baseline: ServiceBaselineInput,
   growthRate: number,
   horizon: number,
+  opts: ProjectServiceOptions = {},
 ): ProjectedService => {
   const g = growthRate / 100;
   const monthly: ProjectedServiceMonth[] = [];
   let totalTx = 0;
   let totalRevenue = 0;
+  const start = opts.forecastStartDate ?? new Date();
+  // Track the rolling "current" tx so overrides become the new growth base.
+  let currentTx = Math.max(0, baseline.baseTx);
   for (let i = 0; i < horizon; i++) {
-    const tx = Math.max(0, baseline.baseTx) * Math.pow(1 + g, i + 1);
+    const date = new Date(start.getFullYear(), start.getMonth() + i, 1);
+    const calMonth = date.getMonth();
+    const calYear = date.getFullYear();
+
+    const overrideTx = opts.overridesByMonth?.get(i);
+    let tx: number;
+    if (overrideTx != null && Number.isFinite(overrideTx)) {
+      tx = Math.max(0, overrideTx);
+      currentTx = tx; // new baseline for compounding
+    } else {
+      currentTx = currentTx * (1 + g);
+      tx = currentTx;
+      if (opts.mode === 'seasonal' && opts.seasonalMultipliers) {
+        const mults = opts.seasonalMultipliers(calYear);
+        const mult = mults[calMonth] ?? 1;
+        tx = tx * mult;
+        // NB: we do NOT reset currentTx — seasonal swing should not bleed
+        // into next month's compounded baseline. Only overrides re-baseline.
+      }
+    }
+
     const revenue = tx * baseline.rate;
     const sanityFlag =
       baseline.highestHistoricalTx > 0 && tx > 3 * baseline.highestHistoricalTx;
@@ -304,9 +435,27 @@ export const projectForecast = (
   costBaseline: CostBaselineInput,
   scenario: ForecastScenario,
   horizon: number,
+  forecastStartDate: Date = new Date(),
 ): ForecastProjection => {
+  const overridesByService = new Map<number, Map<number, number>>();
+  if (scenario.mode === 'matrix' && scenario.cellOverrides) {
+    for (const o of scenario.cellOverrides) {
+      if (!overridesByService.has(o.serviceId)) {
+        overridesByService.set(o.serviceId, new Map());
+      }
+      overridesByService.get(o.serviceId)!.set(o.monthIndex, o.tx);
+    }
+  }
   const services = serviceBaselines.map(b =>
-    projectService(b, getServiceGrowthRate(scenario, b.serviceId), horizon),
+    projectService(b, getServiceGrowthRate(scenario, b.serviceId), horizon, {
+      mode: scenario.mode,
+      forecastStartDate,
+      seasonalMultipliers:
+        scenario.mode === 'seasonal'
+          ? (year: number) => getServiceSeasonalMultipliers(scenario, b.serviceId, year)
+          : undefined,
+      overridesByMonth: overridesByService.get(b.serviceId),
+    }),
   );
 
   const cg = scenario.costGrowthRate / 100;
