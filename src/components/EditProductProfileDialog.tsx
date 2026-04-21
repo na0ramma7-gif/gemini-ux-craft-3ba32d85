@@ -165,12 +165,10 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     if (!s.lifecycleStage) e.lifecycleStage = 'Please select a lifecycle stage';
 
     const desc = s.description.trim();
-    if (!desc) e.description = 'Description is required';
-    else if (desc.length > MAX.description) e.description = `Description cannot exceed ${MAX.description} characters`;
+    if (desc.length > MAX.description) e.description = `Description cannot exceed ${MAX.description} characters`;
 
     const purp = s.purpose.trim();
-    if (!purp) e.purpose = 'Purpose is required';
-    else if (purp.length > MAX.purpose) e.purpose = `Purpose cannot exceed ${MAX.purpose} characters`;
+    if (purp.length > MAX.purpose) e.purpose = `Purpose cannot exceed ${MAX.purpose} characters`;
 
     if (s.strategicObjective.trim().length > MAX.strategic)
       e.strategicObjective = `Strategic objective cannot exceed ${MAX.strategic} characters`;
@@ -463,7 +461,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
             {/* Description (textarea, full width) */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <Label htmlFor="pp-desc" className="text-xs">Feature Description *</Label>
+                <Label htmlFor="pp-desc" className="text-xs">Description</Label>
                 <Counter value={data.description} max={MAX.description} />
               </div>
               <Textarea
@@ -482,7 +480,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
             {/* Purpose */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <Label htmlFor="pp-purpose" className="text-xs">Purpose *</Label>
+                <Label htmlFor="pp-purpose" className="text-xs">Purpose</Label>
                 <Counter value={data.purpose} max={MAX.purpose} />
               </div>
               <Textarea
