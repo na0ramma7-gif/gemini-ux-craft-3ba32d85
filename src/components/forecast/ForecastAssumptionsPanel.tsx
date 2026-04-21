@@ -30,23 +30,36 @@ import { Copy, Trash2, RotateCcw, Pencil, AlertCircle } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import {
   FeatureForecastSettings,
+  ForecastMode,
   ForecastScenarioId,
   MAX_SCENARIOS,
+  SeasonalPresetId,
   ServiceBaselineInput,
   TONE_CLASSES,
+  buildSeasonalMultipliers,
+  getRamadanMonth,
   getServiceGrowthRate,
   projectForecast,
 } from '@/lib/featureForecast';
 import {
+  clearAllCellOverrides,
+  clearCellOverride,
   duplicateScenario,
   deleteScenario,
   renameScenario,
   resetScenarioToDefaults,
   resetServiceGrowth,
+  scenarioHasOverrides,
+  setCellOverride,
+  setCellOverridesBulk,
+  setRamadanMonthOverride,
+  setScenarioMode,
   setServiceGrowth,
+  setServicePattern,
   updateScenario,
 } from '@/hooks/useFeatureForecastSettings';
 import { useApp } from '@/context/AppContext';
+import ForecastMatrixGrid from '@/components/forecast/ForecastMatrixGrid';
 
 interface Props {
   open: boolean;
@@ -55,6 +68,7 @@ interface Props {
   serviceBaselines: ServiceBaselineInput[];
   costBaseline: { baseMonthlyCost: number; hasCostData: boolean };
   onApply: (next: FeatureForecastSettings) => void;
+  forecastStartDate: Date;
 }
 
 const ForecastAssumptionsPanel = ({
@@ -64,6 +78,7 @@ const ForecastAssumptionsPanel = ({
   serviceBaselines,
   costBaseline,
   onApply,
+  forecastStartDate,
 }: Props) => {
   const { t, language } = useApp();
   const [draft, setDraft] = useState<FeatureForecastSettings>(initialSettings);
@@ -72,6 +87,7 @@ const ForecastAssumptionsPanel = ({
   const [renameValue, setRenameValue] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<ForecastScenarioId | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [pendingModeSwitch, setPendingModeSwitch] = useState<ForecastMode | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -86,8 +102,8 @@ const ForecastAssumptionsPanel = ({
   );
 
   const projection = useMemo(
-    () => projectForecast(serviceBaselines, costBaseline, activeScenario, draft.horizon),
-    [serviceBaselines, costBaseline, activeScenario, draft.horizon],
+    () => projectForecast(serviceBaselines, costBaseline, activeScenario, draft.horizon, forecastStartDate),
+    [serviceBaselines, costBaseline, activeScenario, draft.horizon, forecastStartDate],
   );
 
   const dirty = useMemo(
@@ -124,6 +140,26 @@ const ForecastAssumptionsPanel = ({
 
   const updateActive = (patch: any) => {
     setDraft(d => updateScenario(d, activeId, patch));
+  };
+
+  const requestModeSwitch = (next: ForecastMode) => {
+    if (next === activeScenario.mode) return;
+    // Warn only when overrides would be lost (Matrix → other) or when leaving
+    // Seasonal would lose patterns. Per spec, the warning text is generic.
+    const wouldLoseOverrides =
+      activeScenario.mode === 'matrix' && scenarioHasOverrides(draft, activeId);
+    if (wouldLoseOverrides) {
+      setPendingModeSwitch(next);
+    } else {
+      setDraft(d => setScenarioMode(d, activeId, next));
+    }
+  };
+
+  const confirmModeSwitch = () => {
+    if (pendingModeSwitch) {
+      setDraft(d => setScenarioMode(d, activeId, pendingModeSwitch));
+      setPendingModeSwitch(null);
+    }
   };
 
   const handleResetScenario = () => {
