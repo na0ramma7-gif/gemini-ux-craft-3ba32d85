@@ -4,6 +4,7 @@ import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Portfolio, Product } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import KPICard from '@/components/KPICard';
+import ProductFormDialog from '@/components/ProductFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import {
   ArrowLeft, ArrowRight, LayoutGrid, Package, Users, DollarSign, Target,
-  Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3,
+  Upload, X, TrendingUp, Activity, User, Pencil, Save, BarChart3, Plus,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -59,6 +60,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
   const { state, updatePortfolio, t, language, isRTL, dateFilter } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showProductForm, setShowProductForm] = useState(false);
   const [editData, setEditData] = useState<Partial<Portfolio>>({});
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -446,7 +448,12 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
 
             {/* PRODUCTS TAB */}
             <TabsContent value="products" className="mt-0 space-y-4">
-              <h3 className="text-foreground">{t('allProducts')}</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-foreground">{t('allProducts')}</h3>
+                <Button size="sm" onClick={() => setShowProductForm(true)}>
+                  <Plus className="w-4 h-4 me-1.5" />{t('addProduct')}
+                </Button>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {products.map(product => (
                   <div key={product.id} onClick={() => onProductClick(product)}
@@ -577,6 +584,14 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ProductFormDialog
+        open={showProductForm}
+        onOpenChange={setShowProductForm}
+        portfolioId={portfolio.id}
+        portfolioName={portfolio.name}
+        onCreated={(p) => onProductClick(p)}
+      />
     </div>
   );
 };
