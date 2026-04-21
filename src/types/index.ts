@@ -202,6 +202,33 @@ export interface RevenueActual {
   actual: number;
 }
 
+/**
+ * Per-feature catalog of subscription/service definitions.
+ * Reusable across months. Names are unique per feature (case-insensitive).
+ */
+export interface RevenueService {
+  id: number;
+  featureId: number;
+  name: string;
+  defaultRate: number; // SAR per transaction
+}
+
+/**
+ * A monthly revenue line for a feature, driven by Rate × Transactions.
+ * Planned/Actual revenue are computed values (rate * plannedTransactions / actualTransactions).
+ */
+export interface RevenueLine {
+  id: number;
+  featureId: number;
+  serviceId: number;        // ref RevenueService.id
+  month: string;            // 'YYYY-MM'
+  rate: number;             // SAR per transaction (may override service default)
+  plannedTransactions: number;
+  actualTransactions: number;
+  notes?: string;
+  updatedAt: string;        // ISO
+}
+
 export type DocumentLevel = 'product' | 'release';
 export type DocumentType = 'BRD' | 'PRD' | 'Technical Design' | 'Architecture' | 'Test Cases' | 'UAT Evidence' | 'Release Notes' | 'API Documentation' | 'User Manual' | 'Operational Runbook' | 'Risk / Compliance' | 'Other';
 export type DocumentTag = 'Business' | 'Technical' | 'Testing' | 'Compliance' | 'Operations';
@@ -236,6 +263,10 @@ export interface AppState {
   costs: Cost[];
   revenuePlan: RevenuePlan[];
   revenueActual: RevenueActual[];
+  /** Per-feature reusable subscription/service catalog. */
+  revenueServices: RevenueService[];
+  /** Per-feature, per-month subscription revenue lines (Rate × Transactions). */
+  revenueLines: RevenueLine[];
   documents: Document[];
   strategicObjectives: StrategicObjective[];
   language: 'en' | 'ar';
