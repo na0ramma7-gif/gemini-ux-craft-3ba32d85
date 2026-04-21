@@ -208,52 +208,82 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     const mk = monthKeyOf(selectedYear, monthIdx);
     const existing = featureLines.filter(l => l.month === mk);
     setEditMonthIdx(monthIdx);
+    // Auto-render one row per service. Pre-fill from existing lines if present.
+    const byService = new Map<number, RevenueLine>();
+    existing.forEach(l => byService.set(l.serviceId, l));
     setEditLines(
-      existing.map(l => ({
-        key: uid(),
-        id: l.id,
-        serviceId: l.serviceId,
-        rate: l.rate,
-        plannedTransactions: l.plannedTransactions,
-        actualTransactions: l.actualTransactions,
-        notes: l.notes,
-      })),
+      featureServices.map(s => {
+        const l = byService.get(s.id);
+        return {
+          key: uid(),
+          id: l?.id,
+          serviceId: s.id,
+          rate: l?.rate ?? s.defaultRate,
+          plannedTransactions: l?.plannedTransactions ?? 0,
+          actualTransactions: l?.actualTransactions ?? 0,
+          notes: l?.notes,
+        };
+      }),
     );
-    setNewServiceFor({});
+    setNewServiceName('');
+    setNewServiceRate(0);
+    setEditingServiceId(null);
     setEditCostCatsOpen([]);
     setEditMonthOpen(true);
   };
 
+  // Keep editLines in sync with the service catalog while the dialog is open.
+  // When a new service is created, a fresh empty row appears automatically.
+  // When a service is deleted, its row is removed.
+  useEffect(() => {
+    if (!editMonthOpen) return;
+    setEditLines(prev => {
+      const byServiceId = new Map(prev.map(l => [l.serviceId as number, l]));
+      return featureServices.map(s => {
+        const existing = byServiceId.get(s.id);
+        if (existing) return existing;
+        return {
+          key: uid(),
+          serviceId: s.id,
+          rate: s.defaultRate,
+          plannedTransactions: 0,
+          actualTransactions: 0,
+        };
+      });
+    });
+  }, [featureServices, editMonthOpen]);
+
   // ── Draft helpers ──
-  const addDraftLine = () => {
-    setEditLines(prev => [
-      ...prev,
-      { key: uid(), serviceId: null, rate: 0, plannedTransactions: 0, actualTransactions: 0 },
-    ]);
-  };
   const updateDraftLine = (key: string, updates: Partial<RevenueLineDraft>) => {
     setEditLines(prev => prev.map(l => (l.key === key ? { ...l, ...updates } : l)));
   };
-  const removeDraftLine = (key: string) => {
-    setEditLines(prev => prev.filter(l => l.key !== key));
+
+  // ── Service catalog actions (Step 1) ──
+  const handleAddService = () => {
+    const res = addRevenueService(feature.id, newServiceName, Number.isFinite(newServiceRate) ? newServiceRate : 0);
+    if (res.ok === false) { toast.error(res.error); return; }
+    toast.success(t('serviceAdded'));
+    setNewServiceName('');
+    setNewServiceRate(0);
   };
-  const pickService = (key: string, serviceId: number) => {
-    const svc = featureServices.find(s => s.id === serviceId);
-    if (!svc) return;
-    updateDraftLine(key, { serviceId, rate: svc.defaultRate });
+  const startEditService = (id: number) => {
+    const s = featureServices.find(x => x.id === id);
+    if (!s) return;
+    setEditingServiceId(id);
+    setEditingServiceName(s.name);
+    setEditingServiceRate(s.defaultRate);
   };
-  const createServiceInline = (key: string, name: string, rate: number) => {
-    const res = addRevenueService(feature.id, name, Number.isFinite(rate) ? rate : 0);
-    if (res.ok === false) {
-      toast.error(res.error);
-      return;
-    }
-    updateDraftLine(key, { serviceId: res.service.id, rate: res.service.defaultRate });
-    setNewServiceFor(prev => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
+  const saveEditService = () => {
+    if (editingServiceId == null) return;
+    const res = updateRevenueService(editingServiceId, { name: editingServiceName, defaultRate: editingServiceRate });
+    if (res.ok === false) { toast.error(res.error); return; }
+    toast.success(t('serviceUpdated'));
+    setEditingServiceId(null);
+  };
+  const handleDeleteService = (id: number) => {
+    if (!window.confirm(t('deleteServiceConfirm'))) return;
+    deleteRevenueService(id);
+    toast.success(t('serviceDeleted'));
   };
 
   const saveMonthRevenue = () => {
