@@ -423,25 +423,23 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
               <ErrorMsg k="purpose" />
             </div>
 
-            {/* Strategic Objective */}
+            {/* Strategic Alignment (linked objectives) */}
             <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="pp-so" className="text-xs">
-                  Strategic Objective <span className="text-muted-foreground">(optional)</span>
-                </Label>
-                <Counter value={data.strategicObjective} max={MAX.strategic} />
-              </div>
-              <Textarea
-                id="pp-so"
-                ref={(el) => { fieldRefs.current.strategicObjective = el; }}
-                rows={2}
-                value={data.strategicObjective}
-                maxLength={MAX.strategic}
-                onChange={e => setField('strategicObjective', e.target.value)}
-                onBlur={() => { setField('strategicObjective', data.strategicObjective.trim()); blur('strategicObjective'); }}
-                className={errClasses('strategicObjective')}
-              />
-              <ErrorMsg k="strategicObjective" />
+              <Label className="text-xs">{t('strategicAlignment')} <span className="text-muted-foreground">(optional)</span></Label>
+              {portfolioObjectives.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t('noObjectivesForPortfolio')}</p>
+              ) : (
+                <MultiSelect
+                  options={portfolioObjectives.map(o => ({
+                    value: String(o.id), label: o.title, description: o.description,
+                  }))}
+                  value={data.strategicObjectiveIds.map(String)}
+                  onChange={(vals) => setField('strategicObjectiveIds',
+                    vals.map(v => Number(v)).filter(n => !Number.isNaN(n)))}
+                  placeholder={t('selectStrategicObjectives')}
+                  searchPlaceholder="Search objectives…"
+                />
+              )}
             </div>
 
             {/* Business Value */}
