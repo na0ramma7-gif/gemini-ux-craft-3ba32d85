@@ -11,6 +11,12 @@ import FeatureFormDialog from '@/components/FeatureFormDialog';
 import ReleaseFormDialog from '@/components/ReleaseFormDialog';
 import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, getFeatureEffectiveStatus, cn } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
+import { useCompareMetrics } from '@/hooks/useCompareMetrics';
+import CompareControls from '@/components/compare/CompareControls';
+import CompareEmptyState from '@/components/compare/CompareEmptyState';
+import KPIDelta from '@/components/compare/KPIDelta';
+import DeltaChip from '@/components/compare/DeltaChip';
+import { computeWindowMetrics, computeDelta } from '@/lib/compare';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -52,7 +58,7 @@ interface ProductPageProps {
 }
 
 const ProductPage = ({ product, onBack }: ProductPageProps) => {
-  const { state, addFeature, updateFeature, deleteFeature, addRelease, updateRelease, t, language, isRTL, dateFilter } = useApp();
+  const { state, addFeature, updateFeature, deleteFeature, addRelease, updateRelease, t, language, isRTL, dateFilter, compareSelection } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('list');
   const [showAddModal, setShowAddModal] = useState(false);
