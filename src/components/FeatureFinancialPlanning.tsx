@@ -915,12 +915,25 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
               {/* STEP 2 — Monthly Transactions per service */}
               <div className="bg-card rounded-xl border border-border p-4">
-                <div className="mb-2">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('monthlyTransactions')}
-                    <span className="text-[11px] font-normal text-muted-foreground">· Step 2</span>
-                  </h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">{t('monthlyTransactionsDesc')}</p>
+                <div className="mb-2 flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-emerald-600" /> {t('monthlyTransactions')}
+                      <span className="text-[11px] font-normal text-muted-foreground">· {t('step2')}</span>
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t('monthlyTransactionsDesc')}</p>
+                  </div>
+                  {editLines.length > 0 && (
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 accent-primary"
+                        checked={hideInactive}
+                        onChange={e => setHideInactive(e.target.checked)}
+                      />
+                      {t('hideInactive')}
+                    </label>
+                  )}
                 </div>
 
                 {editLines.length === 0 ? (
