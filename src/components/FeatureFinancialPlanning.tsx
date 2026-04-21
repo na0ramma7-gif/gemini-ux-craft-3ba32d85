@@ -1366,6 +1366,57 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
       {/* RESOURCE SELECTOR DIALOG */}
       <Dialog open={resourceSelectorOpen} onOpenChange={setResourceSelectorOpen}>
+        {/* Delete-service confirmation (when service has historical lines) */}
+      </Dialog>
+      <AlertDialog open={confirmDeleteServiceId != null} onOpenChange={(open) => { if (!open) setConfirmDeleteServiceId(null); }}>
+        <AlertDialogContent>
+          {(() => {
+            const svc = state.revenueServices.find(s => s.id === confirmDeleteServiceId);
+            if (!svc) return null;
+            const monthsWithData = new Set(state.revenueLines.filter(l => l.serviceId === svc.id).map(l => l.month)).size;
+            const typedOk = confirmDeleteTypedName.trim() === svc.name;
+            return (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5" />
+                    {t('deleteServiceWithHistoryTitle')} ({monthsWithData})
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t('deleteServiceWithHistoryBody')}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {t('typeNameToConfirm')}: <span className="font-semibold text-foreground">{svc.name}</span>
+                  </label>
+                  <Input
+                    value={confirmDeleteTypedName}
+                    onChange={e => setConfirmDeleteTypedName(e.target.value)}
+                    placeholder={svc.name}
+                  />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel autoFocus>{t('cancel')}</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={!typedOk}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+                    onClick={() => {
+                      deleteRevenueService(svc.id);
+                      toast.success(t('serviceDeleted'));
+                      setConfirmDeleteServiceId(null);
+                      setConfirmDeleteTypedName('');
+                    }}
+                  >
+                    {t('delete') || 'Delete'} {svc.name}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </>
+            );
+          })()}
+        </AlertDialogContent>
+      </AlertDialog>
+      <Dialog open={resourceSelectorOpen} onOpenChange={setResourceSelectorOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-primary" /> {t('selectResources')}</DialogTitle>
