@@ -6,7 +6,7 @@
 //   - Reads cost baseline from `costEntries` prop (Financial Planning workspace).
 //   - Per-feature scenarios live in localStorage via `useFeatureForecastSettings`.
 //   - The Assumptions Panel edits a DRAFT and only commits on Apply.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Feature } from '@/types';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -34,13 +34,12 @@ import {
   ChevronUp,
   AlertTriangle,
   DollarSign,
-  Pencil,
 } from 'lucide-react';
 import {
   ForecastScenario,
   ServiceBaselineInput,
   TONE_CLASSES,
-  getServiceGrowthRate,
+  materialiseLegacyScenario,
   projectForecast,
 } from '@/lib/featureForecast';
 import { useFeatureForecastSettings } from '@/hooks/useFeatureForecastSettings';
@@ -56,9 +55,10 @@ interface FeatureForecastProps {
 
 const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForecastProps) => {
   const { state, t, language } = useApp();
-  const { settings, setActiveScenario, applyDraft } = useFeatureForecastSettings(feature.id);
+  const { settings, setActiveScenario, applyDraft, replaceSettings } = useFeatureForecastSettings(feature.id);
   const [showAssumptions, setShowAssumptions] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [migrationDismissed, setMigrationDismissed] = useState(false);
 
   const activeScenario: ForecastScenario =
     settings.scenarios.find(s => s.id === settings.activeScenarioId) ?? settings.scenarios[0];
@@ -223,8 +223,7 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
             {t('forecast')} — {feature.name}
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {activeScenario.name} · {settings.horizon} {t('months')} · {activeScenario.defaultGrowthRate}%{' '}
-            {t('revenue')} / {activeScenario.costGrowthRate}% {t('cost')}
+            {activeScenario.name} · {settings.horizon} {t('months')} · {activeScenario.costGrowthRate}% {t('cost')}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
