@@ -25,15 +25,18 @@ interface PortfolioFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: (portfolio: Portfolio) => void;
+  /** When provided, the dialog is in edit mode and saves to this portfolio. */
+  portfolio?: Portfolio | null;
 }
 
-const PortfolioFormDialog = ({ open, onOpenChange, onCreated }: PortfolioFormDialogProps) => {
-  const { addPortfolio, t, state } = useApp();
+const PortfolioFormDialog = ({ open, onOpenChange, onCreated, portfolio }: PortfolioFormDialogProps) => {
+  const { addPortfolio, updatePortfolio, t, state } = useApp();
+  const isEdit = !!portfolio;
 
   const schema = z.object({
     name: nameField('Name'),
     code: codeField('Code', { min: 2, max: 8 }).refine(
-      v => !state.portfolios.some(p => p.code.trim().toUpperCase() === v),
+      v => !state.portfolios.some(p => p.id !== portfolio?.id && p.code.trim().toUpperCase() === v),
       { message: M.duplicate('Code') },
     ),
     description: longText('Description', 1000),
@@ -58,9 +61,36 @@ const PortfolioFormDialog = ({ open, onOpenChange, onCreated }: PortfolioFormDia
     },
   });
 
-  useEffect(() => { if (open) form.reset(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!open) return;
+    if (portfolio) {
+      form.reset({
+        name: portfolio.name ?? '',
+        code: portfolio.code ?? '',
+        description: portfolio.description ?? '',
+        priority: portfolio.priority ?? 'Medium',
+        purpose: portfolio.purpose ?? '',
+        strategicObjective: portfolio.strategicObjective ?? '',
+        businessValue: portfolio.businessValue ?? '',
+        owner: portfolio.owner ?? '',
+        technicalLead: portfolio.technicalLead ?? '',
+        businessStakeholder: portfolio.businessStakeholder ?? '',
+      });
+    } else {
+      form.reset();
+    }
+  }, [open, portfolio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onSubmit = (values: FormValues) => {
+    if (isEdit && portfolio) {
+      updatePortfolio(portfolio.id, {
+        ...values,
+        description: values.description || '',
+      } as Partial<Portfolio>);
+      toast.success(`Portfolio "${values.name}" updated`);
+      onOpenChange(false);
+      return;
+    }
     const created = addPortfolio({
       ...values,
       description: values.description || '',
@@ -74,8 +104,10 @@ const PortfolioFormDialog = ({ open, onOpenChange, onCreated }: PortfolioFormDia
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t('addPortfolio')}</DialogTitle>
-          <DialogDescription>Create a new portfolio with full profile details.</DialogDescription>
+          <DialogTitle>{isEdit ? t('editPortfolioProfile') : t('addPortfolio')}</DialogTitle>
+          <DialogDescription>
+            {isEdit ? 'Update portfolio profile details.' : 'Create a new portfolio with full profile details.'}
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
