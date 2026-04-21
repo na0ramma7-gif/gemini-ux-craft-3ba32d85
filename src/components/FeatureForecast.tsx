@@ -340,51 +340,6 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
         />
       </div>
 
-      {/* Per-service baseline + assumptions */}
-      {hasAnyServices && (
-        <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
-          <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-primary" />
-            {t('perServiceBaseline')}
-          </h4>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <th className="text-start py-2 ps-1">{t('service')}</th>
-                  <th className="text-end py-2">{t('rate')}</th>
-                  <th className="text-end py-2">{t('forecast')} {t('transactionsShort')}</th>
-                  <th className="text-end py-2">{t('forecast')} {t('revenue')}</th>
-                  <th className="text-end py-2 pe-1">{t('shareOfTotal')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {projection.services.map(s => {
-                  const share = projection.totalRevenue > 0 ? (s.totalRevenue / projection.totalRevenue) * 100 : 0;
-                  return (
-                    <tr key={s.serviceId} className="border-b border-border/50">
-                      <td className="py-2 ps-1 font-medium text-foreground">
-                        {s.serviceName}
-                      </td>
-                      <td className="py-2 text-end tabular-nums text-muted-foreground">
-                        {formatCurrency(s.defaultRate, language)}
-                      </td>
-                      <td className="py-2 text-end tabular-nums text-foreground">
-                        {Math.round(s.totalTx).toLocaleString()}
-                      </td>
-                      <td className="py-2 text-end tabular-nums font-medium text-foreground">
-                        {formatCurrency(Math.round(s.totalRevenue), language)}
-                      </td>
-                      <td className="py-2 pe-1 text-end text-muted-foreground tabular-nums">{share.toFixed(1)}%</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <ChartCard title={t('revenueForecast')}>
@@ -395,29 +350,6 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
             <Tooltip content={<CustomTooltip />} />
             <Line type="monotone" dataKey="actualRevenue" stroke="hsl(var(--revenue))" strokeWidth={2} dot={false} name={`${t('actual')} ${t('revenue')}`} connectNulls={false} />
             <Line type="monotone" dataKey="forecastRevenue" stroke={tone.hex} strokeWidth={2} strokeDasharray="6 3" strokeOpacity={0.85} dot={false} name={`${t('forecast')} ${t('revenue')}`} connectNulls={false} />
-            <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
-          </LineChart>
-        </ChartCard>
-        <ChartCard title={t('costForecast')}>
-          <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-            <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip content={<CustomTooltip />} />
-            <Line type="monotone" dataKey="actualCost" stroke="hsl(var(--cost))" strokeWidth={2} dot={false} name={`${t('actual')} ${t('cost')}`} connectNulls={false} />
-            <Line type="monotone" dataKey="forecastCost" stroke="hsl(var(--cost))" strokeWidth={2} strokeDasharray="6 3" strokeOpacity={0.7} dot={false} name={`${t('forecast')} ${t('cost')}`} connectNulls={false} />
-            <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
-          </LineChart>
-        </ChartCard>
-        <ChartCard title={t('profitProjection')}>
-          <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-            <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip content={<CustomTooltip />} />
-            <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
-            <Line type="monotone" dataKey="actualProfit" stroke="hsl(var(--profit))" strokeWidth={2} dot={false} name={`${t('actual')} ${t('netProfit')}`} connectNulls={false} />
-            <Line type="monotone" dataKey="forecastProfit" stroke="hsl(var(--profit))" strokeWidth={2} strokeDasharray="6 3" strokeOpacity={0.7} dot={false} name={`${t('forecast')} ${t('netProfit')}`} connectNulls={false} />
             <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
           </LineChart>
         </ChartCard>
