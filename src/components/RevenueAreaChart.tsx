@@ -36,9 +36,9 @@ const RevenueAreaChart = () => {
         if (r.month === monthKey) actual += r.actual;
       });
 
-      const target = planned * 1.35;
-
-      return { name: label, planned, actual, target: Math.round(target) };
+      // Target = sum of feature Target Revenue (no multiplier).
+      // Feature level is the single source of truth.
+      return { name: label, planned, actual, target: Math.round(planned) };
     });
   }, [state, dateFilter]);
 
