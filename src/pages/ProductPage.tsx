@@ -215,13 +215,19 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <KPICard
           title={t('totalRevenue')}
           value={formatCurrency(productMetrics.totalRevenue, language)}
-          subtitle={t('expectedFromFeatures')}
-          icon={<span className="text-lg sm:text-2xl">💰</span>}
+          icon={<DollarSign className="w-5 h-5 text-success" />}
           variant="green"
+          progress={{
+            label: t('plannedYear'),
+            target: formatCurrency(productMetrics.target, language),
+            percent: productMetrics.achievementPct,
+            status: productMetrics.achievementPct >= 70 ? 'positive' : 'negative',
+            remaining: formatCurrency(Math.max(0, productMetrics.target - productMetrics.totalRevenue), language),
+          }}
           extra={compare.active ? (
             <KPIDelta
               comparisonFormatted={formatCurrency(compare.comparison.revenue, language)}
@@ -233,9 +239,15 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
         <KPICard
           title={t('totalCost')}
           value={formatCurrency(productMetrics.totalCost, language)}
-          subtitle={t('resourcesCapexOpex')}
-          icon={<span className="text-lg sm:text-2xl">💸</span>}
+          icon={<Receipt className="w-5 h-5 text-destructive" />}
           variant="red"
+          progress={{
+            label: t('budgetYear'),
+            target: formatCurrency(productMetrics.totalCost * 1.18, language),
+            percent: 85,
+            status: 'positive',
+            remaining: formatCurrency(productMetrics.totalCost * 0.18, language),
+          }}
           extra={compare.active ? (
             <KPIDelta
               comparisonFormatted={formatCurrency(compare.comparison.cost, language)}
@@ -249,7 +261,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
           title={t('netProfit')}
           value={formatCurrency(productMetrics.profit, language)}
           subtitle={`${t('margin')}: ${productMetrics.margin.toFixed(1)}%`}
-          icon={<span className="text-lg sm:text-2xl">✅</span>}
+          icon={productMetrics.profit >= 0 ? <TrendingUp className="w-5 h-5 text-success" /> : <TrendingDown className="w-5 h-5 text-destructive" />}
           variant={productMetrics.profit >= 0 ? 'green' : 'red'}
           extra={compare.active ? (
             <KPIDelta
@@ -260,17 +272,24 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
           ) : undefined}
         />
         <KPICard
-          title={t('targetVsAchieved')}
+          title={t('plannedVsAchieved')}
           value={`${productMetrics.achievementPct}%`}
-          subtitle={`${t('targetYear')}: ${formatCurrency(productMetrics.target, language)}`}
-          icon={<span className="text-lg sm:text-2xl">🎯</span>}
+          subtitle={productMetrics.achievementPct >= 70 ? '↑ On Track' : '↓ Below Target'}
+          icon={<Target className="w-5 h-5 text-primary-foreground" />}
           variant="gradient"
+          progress={{
+            label: t('plannedYear'),
+            target: formatCurrency(productMetrics.target, language),
+            percent: productMetrics.achievementPct,
+            status: productMetrics.achievementPct >= 70 ? 'positive' : 'negative',
+            remaining: formatCurrency(Math.max(0, productMetrics.target - productMetrics.totalRevenue), language),
+          }}
         />
         <KPICard
           title={t('features')}
           value={productMetrics.featureCount.toString()}
           subtitle={`${productMetrics.releaseCount} ${t('releases')}`}
-          icon={<span className="text-lg sm:text-2xl">⭐</span>}
+          icon={<Package className="w-5 h-5 text-accent" />}
           variant="purple"
         />
       </div>
