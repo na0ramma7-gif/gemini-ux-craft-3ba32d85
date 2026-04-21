@@ -113,6 +113,18 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     capabilities: product.capabilities ? [...product.capabilities] : [],
     successMetrics: product.successMetrics ? [...product.successMetrics] : [],
     strategicObjectiveIds: product.strategicObjectiveIds ? [...product.strategicObjectiveIds] : [],
+    healthStatus: (product.health?.status as ProductHealthStatus) ?? 'Healthy',
+    healthOverallScore: product.health?.overallScore != null ? String(product.health.overallScore) : '',
+    healthAdoption: product.health?.adoption != null ? String(product.health.adoption) : '',
+    healthStability: product.health?.stability != null ? String(product.health.stability) : '',
+    healthSatisfaction: product.health?.satisfaction != null ? String(product.health.satisfaction) : '',
+    healthOpsReadiness: product.health?.operationalReadiness != null ? String(product.health.operationalReadiness) : '',
+    healthNotes: product.health?.notes ?? '',
+    matAdoption: product.maturity?.adoption != null ? String(product.maturity.adoption) : '',
+    matRevenue: product.maturity?.revenuePerformance != null ? String(product.maturity.revenuePerformance) : '',
+    matEfficiency: product.maturity?.efficiency != null ? String(product.maturity.efficiency) : '',
+    matStability: product.maturity?.stability != null ? String(product.maturity.stability) : '',
+    matSatisfaction: product.maturity?.customerSatisfaction != null ? String(product.maturity.customerSatisfaction) : '',
   }), [product]);
 
   const [data, setData] = useState<FormState>(initial);
@@ -164,6 +176,20 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
       e.strategicObjective = `Strategic objective cannot exceed ${MAX.strategic} characters`;
     if (s.businessValue.trim().length > MAX.business)
       e.businessValue = `Business value cannot exceed ${MAX.business} characters`;
+
+    // Score range validation (0–100, integer or empty)
+    const scoreFields: (keyof FormState)[] = [
+      'healthOverallScore', 'healthAdoption', 'healthStability', 'healthSatisfaction', 'healthOpsReadiness',
+      'matAdoption', 'matRevenue', 'matEfficiency', 'matStability', 'matSatisfaction',
+    ];
+    scoreFields.forEach(k => {
+      const raw = String(s[k] ?? '').trim();
+      if (raw === '') return;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        (e as any)[k] = 'Enter a value between 0 and 100';
+      }
+    });
 
     return e;
   };
