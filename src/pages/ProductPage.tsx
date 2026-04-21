@@ -11,6 +11,12 @@ import FeatureFormDialog from '@/components/FeatureFormDialog';
 import ReleaseFormDialog from '@/components/ReleaseFormDialog';
 import { formatCurrency, formatDate, formatShortDate, getPriorityColor, getGanttBarColor, getFeatureEffectiveStatus, cn } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
+import { useCompareMetrics } from '@/hooks/useCompareMetrics';
+import CompareControls from '@/components/compare/CompareControls';
+import CompareEmptyState from '@/components/compare/CompareEmptyState';
+import KPIDelta from '@/components/compare/KPIDelta';
+import DeltaChip from '@/components/compare/DeltaChip';
+import { computeWindowMetrics, computeDelta } from '@/lib/compare';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -52,7 +58,7 @@ interface ProductPageProps {
 }
 
 const ProductPage = ({ product, onBack }: ProductPageProps) => {
-  const { state, addFeature, updateFeature, deleteFeature, addRelease, updateRelease, t, language, isRTL, dateFilter } = useApp();
+  const { state, addFeature, updateFeature, deleteFeature, addRelease, updateRelease, t, language, isRTL, dateFilter, compareSelection } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'list' | 'gantt'>('list');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -90,6 +96,24 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
     featureCount: features.length,
     releaseCount: releases.length,
   }), [sharedMetric, features.length, releases.length]);
+
+  // Compare-by-duration: scoped to this product (and optionally features).
+  const compare = useCompareMetrics({ scope: 'product', productId: product.id });
+
+  // Per-feature comparison metrics for the Financials revenue table.
+  const compareByFeatureId = useMemo(() => {
+    const map = new (globalThis.Map as MapConstructor)() as Map<number, { revenue: number; cost: number; profit: number }>;
+    if (!compare.active || !compare.comparisonWindow) return map;
+    features.forEach(f => {
+      const m = computeWindowMetrics(state, compare.comparisonWindow, {
+        portfolioIds: [],
+        productIds: [product.id],
+        featureIds: [f.id],
+      });
+      map.set(f.id, { revenue: m.revenue, cost: m.cost, profit: m.profit });
+    });
+    return map;
+  }, [compare.active, compare.comparisonWindow, features, state, product.id]);
 
   // Gantt chart calculations
   const ganttData = useMemo(() => {
@@ -173,6 +197,15 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
         </div>
       </div>
 
+      {/* Compare controls (visible only when Compare is ON) */}
+      <CompareControls scope="product" productId={product.id} />
+      {compare.active && (
+        <CompareEmptyState validation={compare.validation} dataState={compare.dataState} />
+      )}
+      {!compare.active && compare.validation && !compare.validation.ok && (
+        <CompareEmptyState validation={compare.validation} />
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
         <KPICard
@@ -181,6 +214,13 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
           subtitle={t('expectedFromFeatures')}
           icon={<span className="text-lg sm:text-2xl">💰</span>}
           variant="green"
+          extra={compare.active ? (
+            <KPIDelta
+              comparisonFormatted={formatCurrency(compare.comparison.revenue, language)}
+              delta={compare.delta.revenue}
+              format="currency"
+            />
+          ) : undefined}
         />
         <KPICard
           title={t('totalCost')}
@@ -188,6 +228,14 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
           subtitle={t('resourcesCapexOpex')}
           icon={<span className="text-lg sm:text-2xl">💸</span>}
           variant="red"
+          extra={compare.active ? (
+            <KPIDelta
+              comparisonFormatted={formatCurrency(compare.comparison.cost, language)}
+              delta={compare.delta.cost}
+              lowerIsBetter
+              format="currency"
+            />
+          ) : undefined}
         />
         <KPICard
           title={t('netProfit')}
@@ -195,6 +243,13 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
           subtitle={`${t('margin')}: ${productMetrics.margin.toFixed(1)}%`}
           icon={<span className="text-lg sm:text-2xl">✅</span>}
           variant={productMetrics.profit >= 0 ? 'green' : 'red'}
+          extra={compare.active ? (
+            <KPIDelta
+              comparisonFormatted={formatCurrency(compare.comparison.profit, language)}
+              delta={compare.delta.profit}
+              format="currency"
+            />
+          ) : undefined}
         />
         <KPICard
           title={t('targetVsAchieved')}
@@ -555,6 +610,9 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                         <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('actual')}</th>
                         <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('cost')}</th>
                         <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('variance')}</th>
+                        {compare.active && (
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-end text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('vsCompare')}</th>
+                        )}
                         <th className="px-3 sm:px-4 py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium text-muted-foreground uppercase">{t('actions')}</th>
                       </tr>
                     </thead>
@@ -566,6 +624,8 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                         state.revenueActual.filter(r => r.featureId === feature.id).forEach(r => actual += r.actual);
                         const cost = expected * 0.6;
                         const variance = actual - expected;
+                        const cmp = compareByFeatureId.get(feature.id);
+                        const revDelta = cmp ? computeDelta(actual, cmp.revenue) : null;
                         return (
                           <tr key={feature.id} className="hover:bg-secondary/50">
                             <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium text-foreground text-xs sm:text-sm">{feature.name}</td>
@@ -580,6 +640,15 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                                 {variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}
                               </span>
                             </td>
+                            {compare.active && (
+                              <td className="px-3 sm:px-4 py-2 sm:py-3 text-end">
+                                {revDelta ? (
+                                  <DeltaChip delta={revDelta} format="currency" />
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </td>
+                            )}
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
                               <Button size="sm" className="text-xs h-7" onClick={() => setSelectedFeatureForFinancials(feature)}>
                                 {t('planFinancials')}
