@@ -905,6 +905,12 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                     <Plus className="w-4 h-4 me-1.5" /> {t('addService')}
                   </Button>
                 </div>
+                {showRateChangeNote && (
+                  <div className="mt-3 flex items-start gap-2 text-[11px] text-muted-foreground bg-muted/40 border border-border rounded-md px-3 py-2">
+                    <Lightbulb className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                    <span>{t('rateChangeNote')}</span>
+                  </div>
+                )}
               </div>
 
               {/* STEP 2 — Monthly Transactions per service */}
