@@ -448,7 +448,6 @@ export const TRANSLATIONS = {
     monthlyCap: 'Monthly Cap (SAR)',
     oneTimeSpike: 'One-time Spike',
     off: 'Off',
-    month: 'Month',
     resetScenario: 'Reset to preset',
     base: 'Base',
     adjusted: 'Adjusted',
