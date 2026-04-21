@@ -54,6 +54,23 @@ export interface ProductMaturity {
   customerSatisfaction?: number;
 }
 
+export type EngagementLevel = 'Low' | 'Medium' | 'High';
+export type UsageTrend = 'Increasing' | 'Stable' | 'Declining';
+
+/**
+ * User-maintained product usage / user behavior indicators.
+ * All values entered manually per product. Transactions are explicitly yearly.
+ */
+export interface ProductUsage {
+  numberOfUsers?: number;            // total active users
+  yearlyTransactions?: number;       // total transactions for the year
+  activeUsersPct?: number;           // 0-100
+  repeatUsagePct?: number;           // 0-100
+  engagementLevel?: EngagementLevel;
+  usageTrend?: UsageTrend;
+  updatedAt?: string;                // ISO date, set automatically on save
+}
+
 export interface Product {
   id: number;
   portfolioId: number;
@@ -85,6 +102,8 @@ export interface Product {
   health?: ProductHealth;
   /** User-defined maturity scores driving the radar chart. */
   maturity?: ProductMaturity;
+  /** User-defined product usage / user behavior indicators. */
+  usage?: ProductUsage;
 }
 
 export type StrategicObjectiveStatus = 'Active' | 'Archived';
