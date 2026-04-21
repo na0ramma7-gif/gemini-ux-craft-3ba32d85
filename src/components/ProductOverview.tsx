@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Product, LifecycleStage } from '@/types';
+import { Product } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
@@ -28,21 +28,6 @@ const LIFECYCLE_COLORS: Record<string, string> = {
   Mature: 'bg-accent/10 text-accent',
   Sunset: 'bg-warning/10 text-warning',
 };
-
-const LIFECYCLE_STAGES: LifecycleStage[] = ['Ideation', 'Development', 'Growth', 'Mature', 'Sunset'];
-
-const PRESET_CAPABILITIES = [
-  'User Authentication', 'License Application', 'Payment Processing', 'Document Verification',
-  'Status Tracking', 'Dashboard Analytics', 'Notification Engine', 'Compliance Checks',
-  'Auto-Renewal', 'Reporting', 'API Integration', 'Data Export', 'Audit Trail',
-  'Multi-language Support', 'Role Management', 'Workflow Engine',
-];
-
-const PRESET_METRICS = [
-  'Revenue Growth', 'Transaction Volume', 'Processing Time', 'User Satisfaction',
-  'Adoption Rate', 'Renewal Rate', 'Compliance Score', 'Cost Reduction',
-  'Uptime SLA', 'Feature Velocity', 'Customer Retention', 'NPS Score',
-];
 
 const CAPABILITY_CATEGORIES: Record<string, string[]> = {
   'Core': ['User Authentication', 'License Application', 'Payment Processing', 'Auto-Renewal', 'Workflow Engine'],
