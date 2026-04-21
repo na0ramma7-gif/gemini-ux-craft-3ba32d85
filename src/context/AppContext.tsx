@@ -109,6 +109,41 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const [compareSelection, setCompareSelection] = useState<CompareSelectionState>(EMPTY_COMPARE_SELECTION);
 
+  // Lookup catalogs: seeded from existing portfolio values, extended at runtime.
+  const [extraLookups, setExtraLookups] = useState<Record<LookupKey, string[]>>({
+    strategicObjective: [],
+    businessValue: [],
+  });
+
+  const lookups = useMemo<Record<LookupKey, string[]>>(() => {
+    const collect = (key: LookupKey) => {
+      const seen = new globalThis.Map<string, string>();
+      const push = (v?: string) => {
+        const t = (v ?? '').trim();
+        if (!t) return;
+        const k = t.toLowerCase();
+        if (!seen.has(k)) seen.set(k, t);
+      };
+      state.portfolios.forEach(p => push(p[key]));
+      extraLookups[key].forEach(push);
+      return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+    };
+    return {
+      strategicObjective: collect('strategicObjective'),
+      businessValue: collect('businessValue'),
+    };
+  }, [state.portfolios, extraLookups]);
+
+  const addLookupValue = (key: LookupKey, value: string): string | null => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const lower = trimmed.toLowerCase();
+    const existing = lookups[key].find(v => v.toLowerCase() === lower);
+    if (existing) return existing;
+    setExtraLookups(prev => ({ ...prev, [key]: [...prev[key], trimmed] }));
+    return trimmed;
+  };
+
   // Reset entity selection whenever Compare is toggled OFF so a clean
   // re-enable starts from "All" rather than stale chips.
   useEffect(() => {
@@ -337,7 +372,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         addPortfolio,
         addProduct,
         addRelease,
-        updateRelease
+        updateRelease,
+        lookups,
+        addLookupValue,
       }}
     >
       {children}
