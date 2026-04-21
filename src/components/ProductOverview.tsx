@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   User, Target, TrendingUp, Activity, Zap, BarChart3, Pencil, Upload, X,
   Package, Lightbulb, AlertTriangle, CheckCircle2, AlertCircle,
+  Users, Repeat, ArrowUpRight, ArrowRight, ArrowDownRight, Gauge,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
