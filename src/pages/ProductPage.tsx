@@ -238,13 +238,6 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
           value={formatCurrency(productMetrics.totalCost, language)}
           icon={<Receipt className="w-5 h-5 text-destructive" />}
           variant="red"
-          progress={{
-            label: t('budgetYear'),
-            target: formatCurrency(productMetrics.totalCost * 1.18, language),
-            percent: 85,
-            status: 'positive',
-            remaining: formatCurrency(productMetrics.totalCost * 0.18, language),
-          }}
           extra={compare.active ? (
             <KPIDelta
               comparisonFormatted={formatCurrency(compare.comparison.cost, language)}

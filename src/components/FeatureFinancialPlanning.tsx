@@ -258,7 +258,11 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         const achieved = totals.actualRev;
         const achievementPct = planned > 0 ? Math.round((achieved / planned) * 100) : 0;
         const remaining = Math.max(0, planned - achieved);
-        const budgetTotal = totals.plannedCost * 1.18;
+        // Feature-level planned cost IS real (from Financial Planning grid),
+        // so show real budget consumption % instead of a hardcoded value.
+        const budgetTotal = totals.plannedCost;
+        const costUsedPct = budgetTotal > 0 ? Math.round((totals.actualCost / budgetTotal) * 100) : 0;
+        const budgetRemaining = Math.max(0, budgetTotal - totals.actualCost);
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             <KPICard
@@ -279,13 +283,14 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
               value={formatCurrency(totals.actualCost, language)}
               icon={<Receipt className="w-5 h-5 text-destructive" />}
               variant="red"
-              progress={{
+              progress={budgetTotal > 0 ? {
                 label: t('budgetYear'),
                 target: formatCurrency(budgetTotal, language),
-                percent: 85,
-                status: 'positive',
-                remaining: formatCurrency(Math.max(0, budgetTotal - totals.actualCost), language),
-              }}
+                percent: costUsedPct,
+                // For cost, lower-is-better: under budget = positive
+                status: costUsedPct <= 100 ? 'positive' : 'negative',
+                remaining: formatCurrency(budgetRemaining, language),
+              } : undefined}
             />
             <KPICard
               title={t('netProfit')}
