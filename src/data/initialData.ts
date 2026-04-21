@@ -311,6 +311,30 @@ const PRODUCT_SERVICE_CATALOG: Record<number, Array<{ name: string; rate: number
     { name: 'Audit Report',       rate: 350, share: 0.30 },
     { name: 'Lifecycle Service',  rate: 90,  share: 0.20 },
   ],
+  // Practitioner Verification
+  5: [
+    { name: 'Credential Verification', rate: 35,  share: 0.65 },
+    { name: 'Bulk Verification Pack',  rate: 200, share: 0.25 },
+    { name: 'API Access Fee',          rate: 5,   share: 0.10 },
+  ],
+  // Practitioner Directory
+  6: [
+    { name: 'Directory Listing',  rate: 60,  share: 0.55 },
+    { name: 'Featured Profile',   rate: 250, share: 0.30 },
+    { name: 'Profile Analytics',  rate: 25,  share: 0.15 },
+  ],
+  // Claims Management
+  7: [
+    { name: 'Claim Submission',   rate: 45,  share: 0.50 },
+    { name: 'Adjudication Fee',   rate: 90,  share: 0.35 },
+    { name: 'Appeal Processing',  rate: 150, share: 0.15 },
+  ],
+  // Policy Management
+  8: [
+    { name: 'Policy Issuance',    rate: 220, share: 0.55 },
+    { name: 'Endorsement',        rate: 80,  share: 0.30 },
+    { name: 'Renewal Notice',     rate: 20,  share: 0.15 },
+  ],
 };
 
 /** Default catalog if a product isn't listed above. */
