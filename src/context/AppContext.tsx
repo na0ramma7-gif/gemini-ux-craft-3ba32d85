@@ -343,6 +343,69 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  // ─── Strategic Objectives ───
+  const addStrategicObjective: AppContextType['addStrategicObjective'] = (obj) => {
+    const title = (obj.title ?? '').trim();
+    if (!title) return { ok: false, error: 'Objective title is required' };
+    const lower = title.toLowerCase();
+    const dup = state.strategicObjectives.some(
+      o => o.portfolioId === obj.portfolioId && o.title.trim().toLowerCase() === lower,
+    );
+    if (dup) return { ok: false, error: 'Objective already exists in this portfolio' };
+    const newId = Math.max(...state.strategicObjectives.map(o => o.id), 0) + 1;
+    const objective: StrategicObjective = {
+      id: newId,
+      portfolioId: obj.portfolioId,
+      title,
+      description: obj.description?.trim() || undefined,
+      status: obj.status ?? 'Active',
+    };
+    setState(prev => ({ ...prev, strategicObjectives: [...prev.strategicObjectives, objective] }));
+    return { ok: true, objective };
+  };
+
+  const updateStrategicObjective: AppContextType['updateStrategicObjective'] = (id, updates) => {
+    const current = state.strategicObjectives.find(o => o.id === id);
+    if (!current) return { ok: false, error: 'Objective not found' };
+    let nextTitle = current.title;
+    if (typeof updates.title === 'string') {
+      const t = updates.title.trim();
+      if (!t) return { ok: false, error: 'Objective title is required' };
+      const lower = t.toLowerCase();
+      const dup = state.strategicObjectives.some(
+        o => o.id !== id && o.portfolioId === current.portfolioId && o.title.trim().toLowerCase() === lower,
+      );
+      if (dup) return { ok: false, error: 'Objective already exists in this portfolio' };
+      nextTitle = t;
+    }
+    setState(prev => ({
+      ...prev,
+      strategicObjectives: prev.strategicObjectives.map(o =>
+        o.id === id
+          ? {
+              ...o,
+              title: nextTitle,
+              description: 'description' in updates ? (updates.description?.trim() || undefined) : o.description,
+              status: updates.status ?? o.status,
+            }
+          : o,
+      ),
+    }));
+    return { ok: true };
+  };
+
+  const deleteStrategicObjective: AppContextType['deleteStrategicObjective'] = (id) => {
+    setState(prev => ({
+      ...prev,
+      strategicObjectives: prev.strategicObjectives.filter(o => o.id !== id),
+      products: prev.products.map(p =>
+        p.strategicObjectiveIds && p.strategicObjectiveIds.includes(id)
+          ? { ...p, strategicObjectiveIds: p.strategicObjectiveIds.filter(x => x !== id) }
+          : p,
+      ),
+    }));
+  };
+
   return (
     <AppContext.Provider
       value={{
