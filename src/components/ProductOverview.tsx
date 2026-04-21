@@ -92,22 +92,7 @@ const ProductOverview = ({ product }: Props) => {
     ];
   }, [health]);
 
-  const openEditModal = () => {
-    setEditData({
-      name: product.name, description: product.description, purpose: product.purpose,
-      status: product.status, lifecycleStage: product.lifecycleStage, owner: product.owner,
-      technicalOwner: product.technicalOwner, deliveryManager: product.deliveryManager,
-      strategicObjective: product.strategicObjective, businessValue: product.businessValue,
-      businessProblem: product.businessProblem,
-      capabilities: product.capabilities ? [...product.capabilities] : [],
-      successMetrics: product.successMetrics ? [...product.successMetrics] : [],
-    });
-    setNewCapability('');
-    setNewMetric('');
-    setShowEditModal(true);
-  };
-
-  const handleSave = () => { updateProduct(product.id, editData); setShowEditModal(false); };
+  const openEditModal = () => setShowEditModal(true);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -115,32 +100,6 @@ const ProductOverview = ({ product }: Props) => {
     const reader = new FileReader();
     reader.onloadend = () => { updateProduct(product.id, { logo: reader.result as string }); };
     reader.readAsDataURL(file);
-  };
-
-  const toggleCapability = (cap: string) => {
-    setEditData(prev => {
-      const caps = prev.capabilities || [];
-      return { ...prev, capabilities: caps.includes(cap) ? caps.filter(c => c !== cap) : [...caps, cap] };
-    });
-  };
-
-  const addCustomCapability = () => {
-    if (!newCapability.trim()) return;
-    setEditData(prev => ({ ...prev, capabilities: [...(prev.capabilities || []), newCapability.trim()] }));
-    setNewCapability('');
-  };
-
-  const toggleMetric = (metric: string) => {
-    setEditData(prev => {
-      const metrics = prev.successMetrics || [];
-      return { ...prev, successMetrics: metrics.includes(metric) ? metrics.filter(m => m !== metric) : [...metrics, metric] };
-    });
-  };
-
-  const addCustomMetric = () => {
-    if (!newMetric.trim()) return;
-    setEditData(prev => ({ ...prev, successMetrics: [...(prev.successMetrics || []), newMetric.trim()] }));
-    setNewMetric('');
   };
 
   // Group capabilities by category
