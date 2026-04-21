@@ -5,15 +5,15 @@ import StatusBadge from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Resource, ResourceSkill, SkillProficiency } from '@/types';
 import { ArrowLeft, User, Plus, Edit, Trash2, Clock, Briefcase, Star, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import ResourceFormDialog from '@/components/ResourceFormDialog';
+import AssignmentFormDialog from '@/components/AssignmentFormDialog';
 
 interface ResourceProfilePageProps {
   resource: Resource;
@@ -21,7 +21,7 @@ interface ResourceProfilePageProps {
 }
 
 const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => {
-  const { state, updateResource, deleteResource, addAssignment, updateAssignment, deleteAssignment, t, language } = useApp();
+  const { state, updateResource, deleteResource, deleteAssignment, t, language } = useApp();
   const [activeTab, setActiveTab] = useState('info');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -32,9 +32,6 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
   const [newSkillProficiency, setNewSkillProficiency] = useState<SkillProficiency>('Intermediate');
   const [skillSearch, setSkillSearch] = useState('');
 
-  const defaultResource = { name: resource.name, employeeId: resource.employeeId || '', role: resource.role, location: resource.location || 'On-site' as 'On-site' | 'Offshore', category: resource.category || 'Technical' as 'Technical' | 'Business' | 'Operation', lineManager: resource.lineManager || '', costRate: resource.costRate, capacity: resource.capacity, status: resource.status };
-  const [editForm, setEditForm] = useState(defaultResource);
-  const [newAssignment, setNewAssignment] = useState({ resourceId: resource.id, portfolioId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
 
   const assignments = useMemo(() => state.assignments.filter(a => a.resourceId === resource.id), [state.assignments, resource.id]);
   const totalUtilization = assignments.reduce((sum, a) => sum + a.utilization, 0);
@@ -44,36 +41,13 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
   // Get fresh resource data from state
   const currentResource = state.resources.find(r => r.id === resource.id) || resource;
 
-  const handleUpdateResource = () => {
-    if (!editForm.name || !editForm.role) return;
-    updateResource(resource.id, editForm);
-    setShowEditModal(false);
-  };
-
   const handleDeleteResource = () => {
     deleteResource(resource.id);
     setDeleteResourceConfirm(false);
     onBack();
   };
 
-  const handleAssignment = () => {
-    if (!newAssignment.productId) return;
-    if (editingAssignmentId) {
-      updateAssignment(editingAssignmentId, newAssignment);
-      setEditingAssignmentId(null);
-    } else {
-      addAssignment({ ...newAssignment, resourceId: resource.id });
-    }
-    setNewAssignment({ resourceId: resource.id, portfolioId: 0, productId: 0, releaseId: 0, startDate: '', endDate: '', utilization: 50 });
-    setShowAssignModal(false);
-  };
-
-  const openEditAssignment = (a: typeof assignments[0]) => {
-    const product = state.products.find(p => p.id === a.productId);
-    setEditingAssignmentId(a.id);
-    setNewAssignment({ resourceId: resource.id, portfolioId: product?.portfolioId || 0, productId: a.productId, releaseId: a.releaseId, startDate: a.startDate, endDate: a.endDate, utilization: a.utilization });
-    setShowAssignModal(true);
-  };
+  const openEditAssignment = (a: typeof assignments[0]) => { setEditingAssignmentId(a.id); setShowAssignModal(true); };
 
   const handleDeleteAssignment = (id: number) => { deleteAssignment(id); setDeleteConfirmId(null); };
 
@@ -173,7 +147,7 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
           </div>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => { setEditForm({ name: currentResource.name, employeeId: currentResource.employeeId || '', role: currentResource.role, location: currentResource.location || 'On-site', category: currentResource.category || 'Technical', lineManager: currentResource.lineManager || '', costRate: currentResource.costRate, capacity: currentResource.capacity, status: currentResource.status }); setShowEditModal(true); }}>
+          <Button size="sm" variant="outline" onClick={() => setShowEditModal(true)}>
             <Edit className="w-4 h-4 me-1.5" />{t('edit')}
           </Button>
           <Button size="sm" variant="destructive" onClick={() => setDeleteResourceConfirm(true)}>
@@ -315,142 +289,15 @@ const ResourceProfilePage = ({ resource, onBack }: ResourceProfilePageProps) => 
       </Tabs>
 
       {/* Edit Resource Modal */}
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('editResource')}</DialogTitle>
-            <DialogDescription>{t('editResourceDesc')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('employeeId')}</label>
-                <Input value={editForm.employeeId} onChange={(e) => setEditForm({ ...editForm, employeeId: e.target.value })} placeholder={t('enterEmployeeId')} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('name')}</label>
-                <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder={t('enterName')} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('role')}</label>
-                <Input value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} placeholder={t('enterRole')} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('lineManager')}</label>
-                <Input value={editForm.lineManager} onChange={(e) => setEditForm({ ...editForm, lineManager: e.target.value })} placeholder={t('enterLineManager')} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('location')}</label>
-                <Select value={editForm.location} onValueChange={(value: 'On-site' | 'Offshore') => setEditForm({ ...editForm, location: value })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="On-site">{t('onSite')}</SelectItem>
-                    <SelectItem value="Offshore">{t('offshore')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('category')}</label>
-                <Select value={editForm.category} onValueChange={(value: 'Technical' | 'Business' | 'Operation') => setEditForm({ ...editForm, category: value })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Technical">{t('technical')}</SelectItem>
-                    <SelectItem value="Business">{t('business')}</SelectItem>
-                    <SelectItem value="Operation">{t('operation')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('costRateMonthly')}</label>
-                <Input type="number" value={editForm.costRate} onChange={(e) => setEditForm({ ...editForm, costRate: parseInt(e.target.value) || 0 })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('capacityHrsWeek')}</label>
-                <Input type="number" value={editForm.capacity} onChange={(e) => setEditForm({ ...editForm, capacity: parseInt(e.target.value) || 40 })} />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('status')}</label>
-              <Select value={editForm.status} onValueChange={(value: 'Active' | 'Inactive') => setEditForm({ ...editForm, status: value })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Active">{t('active')}</SelectItem>
-                  <SelectItem value="Inactive">{t('inactive')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditModal(false)}>{t('cancel')}</Button>
-            <Button onClick={handleUpdateResource}>{t('save')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ResourceFormDialog open={showEditModal} onOpenChange={setShowEditModal} resource={currentResource} />
 
       {/* Add/Edit Assignment Modal */}
-      <Dialog open={showAssignModal} onOpenChange={(open) => { setShowAssignModal(open); if (!open) setEditingAssignmentId(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingAssignmentId ? t('editAssignment') : t('addAssignment')}</DialogTitle>
-            <DialogDescription>{t('assignToProduct')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('portfolio')}</label>
-              <Select value={newAssignment.portfolioId?.toString() || ''} onValueChange={(value) => setNewAssignment({ ...newAssignment, portfolioId: parseInt(value), productId: 0, releaseId: 0 })}>
-                <SelectTrigger><SelectValue placeholder={t('selectPortfolio')} /></SelectTrigger>
-                <SelectContent>
-                  {state.portfolios.map(portfolio => <SelectItem key={portfolio.id} value={portfolio.id.toString()}>{portfolio.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('product')}</label>
-              <Select value={newAssignment.productId?.toString() || ''} onValueChange={(value) => setNewAssignment({ ...newAssignment, productId: parseInt(value), releaseId: 0 })}>
-                <SelectTrigger><SelectValue placeholder={t('selectProduct')} /></SelectTrigger>
-                <SelectContent>
-                  {state.products.filter(p => !newAssignment.portfolioId || p.portfolioId === newAssignment.portfolioId).map(product => <SelectItem key={product.id} value={product.id.toString()}>{product.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('release')}</label>
-              <Select value={newAssignment.releaseId?.toString() || ''} onValueChange={(value) => setNewAssignment({ ...newAssignment, releaseId: parseInt(value) })}>
-                <SelectTrigger><SelectValue placeholder={t('selectReleasePlaceholder')} /></SelectTrigger>
-                <SelectContent>
-                  {state.releases.filter(r => r.productId === newAssignment.productId).map(release => (
-                    <SelectItem key={release.id} value={release.id.toString()}>{release.version} - {release.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('startDate')}</label>
-                <Input type="date" value={newAssignment.startDate} onChange={(e) => setNewAssignment({ ...newAssignment, startDate: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('endDate')}</label>
-                <Input type="date" value={newAssignment.endDate} onChange={(e) => setNewAssignment({ ...newAssignment, endDate: e.target.value })} />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('allocation')} (%)</label>
-              <Input type="number" min="0" max="100" value={newAssignment.utilization} onChange={(e) => setNewAssignment({ ...newAssignment, utilization: parseInt(e.target.value) || 0 })} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowAssignModal(false); setEditingAssignmentId(null); }}>{t('cancel')}</Button>
-            <Button onClick={handleAssignment}>{editingAssignmentId ? t('save') : t('assign')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AssignmentFormDialog
+        open={showAssignModal}
+        onOpenChange={(o) => { setShowAssignModal(o); if (!o) setEditingAssignmentId(null); }}
+        resourceId={resource.id}
+        assignment={editingAssignmentId ? assignments.find(a => a.id === editingAssignmentId) || null : null}
+      />
 
       {/* Delete Assignment Confirmation */}
       <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>

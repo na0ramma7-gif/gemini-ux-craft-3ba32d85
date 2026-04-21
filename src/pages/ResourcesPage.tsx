@@ -1,28 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { formatCurrency, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import StatusBadge from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+import ResourceFormDialog from '@/components/ResourceFormDialog';
 import { Resource } from '@/types';
-import { Users, Plus, BarChart3 } from 'lucide-react';
+import { Users, Plus } from 'lucide-react';
 
 interface ResourcesPageProps {
   onResourceClick: (resource: Resource) => void;
 }
 
 const ResourcesPage = ({ onResourceClick }: ResourcesPageProps) => {
-  const { state, addResource, t, language } = useApp();
+  const { state, t } = useApp();
   const [showAddResourceModal, setShowAddResourceModal] = useState(false);
-
-  const defaultResource = { name: '', employeeId: '', role: '', location: 'On-site' as 'On-site' | 'Offshore', category: 'Technical' as 'Technical' | 'Business' | 'Operation', lineManager: '', costRate: 0, capacity: 40, status: 'Active' as 'Active' | 'Inactive' };
-  const [newResource, setNewResource] = useState(defaultResource);
 
   const getUtilization = (resourceId: number): number => {
     return state.assignments.filter(a => a.resourceId === resourceId).reduce((sum, a) => sum + a.utilization, 0);
@@ -35,27 +26,9 @@ const ResourcesPage = ({ onResourceClick }: ResourcesPageProps) => {
     })).sort((a, b) => b.utilization - a.utilization);
   }, [state]);
 
-  const handleAddResource = () => {
-    if (!newResource.name || !newResource.role) return;
-    addResource(newResource);
-    setNewResource(defaultResource);
-    setShowAddResourceModal(false);
-  };
-
   const totalResources = state.resources.length;
   const avgUtilization = utilizationData.length > 0 ? Math.round(utilizationData.reduce((s, u) => s + u.utilization, 0) / utilizationData.length) : 0;
   const avgAvailableCapacity = Math.max(0, 100 - avgUtilization);
-
-  // Allocation by product
-  const allocationByProduct = useMemo(() => {
-    const map: Record<string, number> = {};
-    state.assignments.forEach(a => {
-      const product = state.products.find(p => p.id === a.productId);
-      const name = product?.name || 'N/A';
-      map[name] = (map[name] || 0) + a.utilization;
-    });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [state.assignments, state.products]);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -92,8 +65,6 @@ const ResourcesPage = ({ onResourceClick }: ResourcesPageProps) => {
           <div className="text-xs text-muted-foreground mt-1">{t('acrossAllResources')}</div>
         </div>
       </div>
-
-
 
       {/* Resource Directory */}
       <div className="bg-card rounded-xl shadow-card overflow-hidden">
@@ -140,84 +111,7 @@ const ResourcesPage = ({ onResourceClick }: ResourcesPageProps) => {
         </div>
       </div>
 
-      {/* Add Resource Modal */}
-      <Dialog open={showAddResourceModal} onOpenChange={setShowAddResourceModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('addNewResource')}</DialogTitle>
-            <DialogDescription>{t('addTeamMember')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('employeeId')}</label>
-                <Input value={newResource.employeeId} onChange={(e) => setNewResource({ ...newResource, employeeId: e.target.value })} placeholder={t('enterEmployeeId')} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('name')}</label>
-                <Input value={newResource.name} onChange={(e) => setNewResource({ ...newResource, name: e.target.value })} placeholder={t('enterName')} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('role')}</label>
-                <Input value={newResource.role} onChange={(e) => setNewResource({ ...newResource, role: e.target.value })} placeholder={t('enterRole')} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('lineManager')}</label>
-                <Input value={newResource.lineManager} onChange={(e) => setNewResource({ ...newResource, lineManager: e.target.value })} placeholder={t('enterLineManager')} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('location')}</label>
-                <Select value={newResource.location} onValueChange={(value: 'On-site' | 'Offshore') => setNewResource({ ...newResource, location: value })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="On-site">{t('onSite')}</SelectItem>
-                    <SelectItem value="Offshore">{t('offshore')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('category')}</label>
-                <Select value={newResource.category} onValueChange={(value: 'Technical' | 'Business' | 'Operation') => setNewResource({ ...newResource, category: value })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Technical">{t('technical')}</SelectItem>
-                    <SelectItem value="Business">{t('business')}</SelectItem>
-                    <SelectItem value="Operation">{t('operation')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('costRateMonthly')}</label>
-                <Input type="number" value={newResource.costRate} onChange={(e) => setNewResource({ ...newResource, costRate: parseInt(e.target.value) || 0 })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">{t('capacityHrsWeek')}</label>
-                <Input type="number" value={newResource.capacity} onChange={(e) => setNewResource({ ...newResource, capacity: parseInt(e.target.value) || 40 })} />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">{t('status')}</label>
-              <Select value={newResource.status} onValueChange={(value: 'Active' | 'Inactive') => setNewResource({ ...newResource, status: value })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Active">{t('active')}</SelectItem>
-                  <SelectItem value="Inactive">{t('inactive')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddResourceModal(false)}>{t('cancel')}</Button>
-            <Button onClick={handleAddResource}>{t('addResource')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ResourceFormDialog open={showAddResourceModal} onOpenChange={setShowAddResourceModal} />
     </div>
   );
 };
