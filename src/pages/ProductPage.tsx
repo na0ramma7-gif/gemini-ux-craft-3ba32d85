@@ -297,6 +297,13 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
               <Package className="w-4 h-4 me-1 sm:me-2" />
               {t('releases')}
             </TabsTrigger>
+            <TabsTrigger
+              value="resources"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap"
+            >
+              <Users className="w-4 h-4 me-1 sm:me-2" />
+              {t('resources')}
+            </TabsTrigger>
             <TabsTrigger 
               value="financials"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap"
