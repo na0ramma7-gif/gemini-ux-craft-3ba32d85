@@ -544,7 +544,7 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                     size="sm"
                     onClick={() => {
                       setEditingAssignmentId(null);
-                      setAssignResourceId(state.resources[0].id);
+                      setAssignResourceId(0);
                       setAssignDialogOpen(true);
                     }}
                   >
@@ -604,16 +604,17 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                   </tbody>
                 </table>
               </div>
-              {assignDialogOpen && assignResourceId !== null && (
+              {assignDialogOpen && (
                 <AssignmentFormDialog
                   open={assignDialogOpen}
                   onOpenChange={(o) => {
                     setAssignDialogOpen(o);
                     if (!o) { setEditingAssignmentId(null); setAssignResourceId(null); }
                   }}
-                  resourceId={assignResourceId}
+                  resourceId={assignResourceId && assignResourceId > 0 ? assignResourceId : undefined}
                   assignment={editingAssignmentId ? state.assignments.find(a => a.id === editingAssignmentId) ?? null : null}
                   lockedPortfolioId={portfolio.id}
+                  allowResourceSelection
                 />
               )}
             </TabsContent>
