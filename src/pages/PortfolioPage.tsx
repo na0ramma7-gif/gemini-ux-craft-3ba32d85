@@ -18,6 +18,7 @@ import CompareControls from '@/components/compare/CompareControls';
 import CompareEmptyState from '@/components/compare/CompareEmptyState';
 import KPIDelta from '@/components/compare/KPIDelta';
 import DeltaChip from '@/components/compare/DeltaChip';
+import ServiceBreakdownTable from '@/components/compare/ServiceBreakdownTable';
 import { useCompareMetrics } from '@/hooks/useCompareMetrics';
 import { computeWindowMetrics, computeDelta } from '@/lib/compare';
 import {
