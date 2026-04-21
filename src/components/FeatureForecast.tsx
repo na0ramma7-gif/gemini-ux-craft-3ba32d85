@@ -485,10 +485,10 @@ const SummaryCard = ({
   );
 };
 
-const ChartCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
-    <h4 className="text-sm font-semibold text-foreground mb-3">{title}</h4>
-    <div className="h-52">
+const ChartCard = ({ title, children, tall }: { title: string; children: React.ReactNode; tall?: boolean }) => (
+  <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-6">
+    <h4 className="text-sm font-semibold text-foreground mb-4 text-center">{title}</h4>
+    <div className={tall ? 'h-96' : 'h-52'}>
       <ResponsiveContainer width="100%" height="100%">
         {children as any}
       </ResponsiveContainer>
