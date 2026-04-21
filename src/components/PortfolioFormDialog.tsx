@@ -112,7 +112,14 @@ const PortfolioFormDialog = ({ open, onOpenChange, onCreated, portfolio }: Portf
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2" noValidate>
+          <form
+            onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              const first = Object.values(errors)[0] as { message?: string } | undefined;
+              toast.error(first?.message || 'Please fix the highlighted fields before saving.');
+            })}
+            className="space-y-4 py-2"
+            noValidate
+          >
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem className="sm:col-span-2">
