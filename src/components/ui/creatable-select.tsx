@@ -2,9 +2,9 @@ import { useState, useMemo } from 'react';
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+  CommandSeparator,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -47,8 +47,9 @@ export const CreatableSelect = ({
     () => new Set(options.map(o => o.toLowerCase())),
     [options],
   );
-  const exactMatch = trimmed && lowerOptions.has(trimmed.toLowerCase());
+  const exactMatch = !!trimmed && lowerOptions.has(trimmed.toLowerCase());
   const canCreate = trimmed.length >= minLength && !exactMatch;
+  const tooShort = trimmed.length > 0 && trimmed.length < minLength;
 
   const handleCreate = () => {
     if (trimmed.length < minLength) {
@@ -99,8 +100,23 @@ export const CreatableSelect = ({
             maxLength={maxLength}
           />
           <CommandList>
-            <CommandEmpty>
-              {trimmed.length === 0 ? emptyText : `No match for "${trimmed}"`}
+            <CommandEmpty className="py-3 px-2 text-sm">
+              {trimmed.length === 0 ? (
+                <span className="text-muted-foreground">{emptyText}</span>
+              ) : canCreate ? (
+                <button
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); handleCreate(); }}
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="truncate">Create "{trimmed}"</span>
+                </button>
+              ) : tooShort ? (
+                <span className="text-muted-foreground">Type at least {minLength} characters…</span>
+              ) : (
+                <span className="text-muted-foreground">"{trimmed}" already exists</span>
+              )}
             </CommandEmpty>
             {options.length > 0 && (
               <CommandGroup>
@@ -126,19 +142,28 @@ export const CreatableSelect = ({
               </CommandGroup>
             )}
           </CommandList>
-          {canCreate && (
-            <div className="border-t p-2 space-y-1">
+          {/* Always-visible footer so users discover the "Add new" affordance even before typing */}
+          <div className="border-t p-2">
+            {canCreate ? (
               <button
                 type="button"
                 onClick={handleCreate}
-                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm font-medium text-primary hover:bg-accent"
               >
                 <Plus className="h-4 w-4" />
                 <span className="truncate">{addNewLabel} "{trimmed}"</span>
               </button>
-              {error && <p className="px-2 text-xs text-destructive">{error}</p>}
-            </div>
-          )}
+            ) : (
+              <p className="px-2 py-1 text-xs text-muted-foreground">
+                {trimmed.length === 0
+                  ? `Type a new value, then click ${addNewLabel.toLowerCase()}`
+                  : exactMatch
+                  ? 'Already in the list'
+                  : `At least ${minLength} characters required`}
+              </p>
+            )}
+            {error && <p className="px-2 pt-1 text-xs text-destructive">{error}</p>}
+          </div>
         </Command>
       </PopoverContent>
     </Popover>
