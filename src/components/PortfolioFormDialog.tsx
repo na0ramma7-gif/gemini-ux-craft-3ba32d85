@@ -175,24 +175,6 @@ const PortfolioFormDialog = ({ open, onOpenChange, onCreated, portfolio }: Portf
               </FormItem>
             )} />
 
-            <FormField control={form.control} name="strategicObjective" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Strategic Objective</FormLabel>
-                <FormControl>
-                  <CreatableSelect
-                    value={field.value || ''}
-                    onChange={field.onChange}
-                    options={lookups.strategicObjective}
-                    onCreate={(v) => addLookupValue('strategicObjective', v)}
-                    placeholder="Select a strategic objective…"
-                    addNewLabel="Add new objective"
-                    maxLength={500}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-
             <FormField control={form.control} name="businessValue" render={({ field }) => (
               <FormItem>
                 <FormLabel>Business Value</FormLabel>
