@@ -80,6 +80,11 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
   const initialRef = useRef<FormState | null>(null);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
 
+  const portfolioObjectives = useMemo(
+    () => state.strategicObjectives.filter(o => o.portfolioId === product.portfolioId),
+    [state.strategicObjectives, product.portfolioId],
+  );
+
   const initial: FormState = useMemo(() => ({
     name: product.name ?? '',
     owner: product.owner ?? '',
