@@ -30,24 +30,36 @@ import {
   ResponsiveContainer, Legend,
 } from 'recharts';
 
-interface MonthlyRevenue { featureId: number; planned: number; actual: number; }
 interface CostItem { id: string; name: string; planned: number; actual: number; notes: string; }
 interface ResourceAlloc { resourceId: number; utilization: number; }
-interface MonthData { revenues: MonthlyRevenue[]; costs: Record<string, CostItem[]>; resources: ResourceAlloc[]; }
+interface MonthData { costs: Record<string, CostItem[]>; resources: ResourceAlloc[]; }
 interface FeatureFinancialPlanningProps { feature: Feature; onClose: () => void; }
 
 const COST_CATEGORIES = ['Infrastructure', 'Licensing', 'Marketing', 'Other'];
 const MONTHS_SHORT_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'] as const;
 const uid = () => Math.random().toString(36).slice(2, 9);
+const monthKeyOf = (year: number, monthIdx: number) =>
+  `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
+
+/** Local draft for revenue line editing inside the month dialog. */
+interface RevenueLineDraft {
+  key: string;            // local key (uid)
+  id?: number;            // existing line id, when editing
+  serviceId: number | null;
+  rate: number;
+  plannedTransactions: number;
+  actualTransactions: number;
+  notes?: string;
+}
 
 const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanningProps) => {
-  const { state, t, language, isRTL } = useApp();
+  const { state, t, language, isRTL, addRevenueService, upsertRevenueLines } = useApp();
   const [tab, setTab] = useState('profile');
   const [selectedYear, setSelectedYear] = useState(2025);
 
   const [yearData, setYearData] = useState<Record<number, MonthData>>(() => {
     const d: Record<number, MonthData> = {};
-    for (let i = 0; i < 12; i++) d[i] = { revenues: [], costs: {}, resources: [] };
+    for (let i = 0; i < 12; i++) d[i] = { costs: {}, resources: [] };
     return d;
   });
 
