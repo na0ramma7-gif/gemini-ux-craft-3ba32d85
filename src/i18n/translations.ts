@@ -901,6 +901,9 @@ export const TRANSLATIONS = {
     month: 'الشهر',
     addEntry: 'إضافة إدخال',
     alreadyAdded: 'مضاف مسبقاً',
+    noProductResources: 'لا توجد موارد مخصصة حالياً لهذا المنتج',
+    noProductResourcesDesc: 'قم بتعيين الموارد للمنتج أولاً لاستخدامها في تخطيط تكلفة الميزة.',
+    invalidResourceAssignment: 'هذا المورد لم يعد معيّناً للمنتج الحالي',
     
     // Global date filter
     primaryPeriod: 'الفترة',
