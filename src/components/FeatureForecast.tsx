@@ -275,6 +275,32 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
     });
   }, [state, feature.productId]);
 
+  // Per-service baseline driving the forecast (historical totals by service for THIS feature).
+  const perServiceBaseline = useMemo(() => {
+    const lines = state.revenueLines.filter(l => l.featureId === feature.id);
+    const byId = new Map<number, { planned: number; actual: number; lines: number }>();
+    lines.forEach(l => {
+      const cur = byId.get(l.serviceId) ?? { planned: 0, actual: 0, lines: 0 };
+      cur.planned += l.rate * (l.plannedTransactions || 0);
+      cur.actual += l.rate * (l.actualTransactions || 0);
+      cur.lines += 1;
+      byId.set(l.serviceId, cur);
+    });
+    const totalActual = Array.from(byId.values()).reduce((s, v) => s + v.actual, 0);
+    return Array.from(byId.entries())
+      .map(([id, v]) => {
+        const svc = state.revenueServices.find(s => s.id === id);
+        return {
+          name: svc?.name ?? 'Unknown',
+          planned: v.planned,
+          actual: v.actual,
+          lines: v.lines,
+          share: totalActual > 0 ? (v.actual / totalActual) * 100 : 0,
+        };
+      })
+      .sort((a, b) => b.actual - a.actual);
+  }, [state.revenueLines, state.revenueServices, feature.id]);
+
   const handleOverride = useCallback((monthKey: string, field: 'revenue' | 'cost', value: number) => {
     setManualOverrides(prev => ({ ...prev, [monthKey]: { ...prev[monthKey], [field]: value } }));
   }, []);
@@ -441,6 +467,38 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
           <div className="text-base font-bold text-primary">{summary.margin.toFixed(1)}%</div>
         </div>
       </div>
+
+      {/* Per-service baseline driving this forecast */}
+      {perServiceBaseline.length > 0 && (
+        <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
+          <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-primary" />
+            {t('perServiceBaseline')}
+          </h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <th className="text-start py-2 ps-1">{t('service')}</th>
+                  <th className="text-end py-2">{t('plannedRevenue')}</th>
+                  <th className="text-end py-2">{t('actualRevenue')}</th>
+                  <th className="text-end py-2 pe-1">{t('shareOfTotal')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {perServiceBaseline.map(r => (
+                  <tr key={r.name} className="border-b border-border/50">
+                    <td className="py-2 ps-1 font-medium text-foreground">{r.name}</td>
+                    <td className="py-2 text-end text-muted-foreground">{formatCurrency(r.planned, language)}</td>
+                    <td className="py-2 text-end font-semibold text-foreground">{formatCurrency(r.actual, language)}</td>
+                    <td className="py-2 pe-1 text-end text-muted-foreground">{r.share.toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">

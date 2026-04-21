@@ -11,6 +11,8 @@ import {
   classifyDataState,
   CompareDataState,
   CompareValidation,
+  ServiceBreakdownRow,
+  computeServiceBreakdown,
 } from '@/lib/compare';
 import { DateWindow } from '@/lib/utils';
 
@@ -42,6 +44,10 @@ export interface UseCompareMetricsResult {
   };
   validation: CompareValidation;
   dataState: CompareDataState;
+  /** Per-service revenue breakdown for the current window. */
+  currentServices: ServiceBreakdownRow[];
+  /** Per-service revenue breakdown for the comparison window (empty when off). */
+  comparisonServices: ServiceBreakdownRow[];
 }
 
 /**
@@ -92,6 +98,11 @@ export function useCompareMetrics(opts: UseCompareMetricsOptions): UseCompareMet
       ? computeWindowMetrics(state, comparisonWindow, selection)
       : { ...current, revenue: 0, cost: 0, profit: 0, margin: 0, hasData: false };
 
+    const currentServices = computeServiceBreakdown(state, primaryWindow, selection);
+    const comparisonServices = comparisonWindow
+      ? computeServiceBreakdown(state, comparisonWindow, selection)
+      : [];
+
     const validation = validateCompareWindows(primaryWindow, comparisonWindow);
     const active = !!comparisonWindow && validation.ok;
 
@@ -110,6 +121,8 @@ export function useCompareMetrics(opts: UseCompareMetricsOptions): UseCompareMet
       },
       validation,
       dataState: active ? classifyDataState(current, comparison) : 'ok',
+      currentServices,
+      comparisonServices,
     };
   }, [state, dateFilter, compareSelection, opts.scope, opts.portfolioId, opts.productId, opts.selectionOverride]);
 }
