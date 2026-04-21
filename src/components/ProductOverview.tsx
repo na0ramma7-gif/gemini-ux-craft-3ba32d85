@@ -5,25 +5,17 @@ import StatusBadge from '@/components/StatusBadge';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
   User, Target, TrendingUp, Activity, Zap, BarChart3, Pencil, Upload, X,
-  DollarSign, Package, Star, Shield, Lightbulb, Plus, Check,
+  DollarSign, Package, Star, Lightbulb,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer, Tooltip,
 } from 'recharts';
+import EditProductProfileDialog from '@/components/EditProductProfileDialog';
 
 interface Props {
   product: Product;
