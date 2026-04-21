@@ -16,7 +16,6 @@ import CompareControls from '@/components/compare/CompareControls';
 import CompareEmptyState from '@/components/compare/CompareEmptyState';
 import KPIDelta from '@/components/compare/KPIDelta';
 import DeltaChip from '@/components/compare/DeltaChip';
-import ServiceBreakdownTable from '@/components/compare/ServiceBreakdownTable';
 import { computeWindowMetrics, computeDelta } from '@/lib/compare';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -211,13 +210,6 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
       {compare.active && (
         <CompareEmptyState validation={compare.validation} dataState={compare.dataState} />
       )}
-
-      {/* Per-service revenue breakdown for this product */}
-      <ServiceBreakdownTable
-        current={compare.currentServices}
-        comparison={compare.comparisonServices}
-        active={compare.active}
-      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
