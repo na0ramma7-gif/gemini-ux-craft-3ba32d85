@@ -599,7 +599,7 @@ export const TRANSLATIONS = {
     noCostBannerLong: 'No cost data available for forecast. Add costs in Financial Planning to see accurate profit and margin projections.',
     noServicesForForecast: 'No services with historical data yet. Add transactions in Financial Planning to enable per-service growth.',
     noServicesForForecastBanner: 'This feature has no service transactions yet. Forecast is empty until you record some history in Financial Planning.',
-    resetToDefault: 'Reset to default growth',
+    resetToDefaultGrowth: 'Reset to default growth',
 
     // Forecast — scenario configuration (Department dashboard)
     forecastConfigDesc: 'Configure how each scenario projects revenue. Values apply to the cards, chart and tooltip.',
