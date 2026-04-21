@@ -40,6 +40,20 @@ const UpcomingRevenueDrivers = ({ scenario, horizon, config, onProductClick }: U
 
         const projectedRevenue = Math.round(baseRevenue * multiplier);
 
+        // Top subscription/service driving this feature's revenue (by planned)
+        const byService = new Map<number, number>();
+        state.revenueLines
+          .filter(l => l.featureId === feature.id)
+          .forEach(l => {
+            const v = l.rate * (l.plannedTransactions || 0);
+            byService.set(l.serviceId, (byService.get(l.serviceId) ?? 0) + v);
+          });
+        let topServiceId: number | null = null;
+        let topServiceVal = 0;
+        byService.forEach((v, k) => { if (v > topServiceVal) { topServiceVal = v; topServiceId = k; } });
+        const topService = topServiceId != null ? state.revenueServices.find(s => s.id === topServiceId) : null;
+        const topShare = baseRevenue > 0 ? (topServiceVal / baseRevenue) * 100 : 0;
+
         return {
           id: feature.id,
           product: product?.name || '-',
@@ -49,6 +63,8 @@ const UpcomingRevenueDrivers = ({ scenario, horizon, config, onProductClick }: U
           startDate: feature.startDate,
           endDate: feature.endDate,
           projectedRevenue,
+          topServiceName: topService?.name ?? null,
+          topServiceShare: topShare,
         };
       })
       .filter(d => d.projectedRevenue > 0)
@@ -90,7 +106,15 @@ const UpcomingRevenueDrivers = ({ scenario, horizon, config, onProductClick }: U
                 onClick={() => d.productObj && onProductClick(d.productObj)}
               >
                 <td className="py-3 px-4 font-medium text-foreground">{d.product}</td>
-                <td className="py-3 px-4 text-muted-foreground">{d.feature}</td>
+                <td className="py-3 px-4 text-muted-foreground">
+                  <div>{d.feature}</div>
+                  {d.topServiceName && (
+                    <div className="text-[10px] text-muted-foreground/80 mt-0.5">
+                      {t('topService')}: <span className="font-medium text-foreground/80">{d.topServiceName}</span>
+                      {d.topServiceShare > 0 && <span className="ms-1">({d.topServiceShare.toFixed(0)}%)</span>}
+                    </div>
+                  )}
+                </td>
                 <td className="py-3 px-4">
                   <span className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">{d.portfolio}</span>
                 </td>
