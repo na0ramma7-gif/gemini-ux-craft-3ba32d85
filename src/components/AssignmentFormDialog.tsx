@@ -97,6 +97,7 @@ const AssignmentFormDialog = ({
     resolver: zodResolver(schema),
     mode: 'onBlur',
     defaultValues: {
+      resourceId: resourceId ? String(resourceId) : '',
       portfolioId: effectivePortfolioLockId ? String(effectivePortfolioLockId) : '',
       productId: lockedProductId ? String(lockedProductId) : '',
       releaseId: '0',
@@ -109,6 +110,7 @@ const AssignmentFormDialog = ({
     if (assignment) {
       const product = state.products.find(p => p.id === assignment.productId);
       form.reset({
+        resourceId: String(resourceId ?? assignment.resourceId ?? ''),
         portfolioId: String(effectivePortfolioLockId ?? product?.portfolioId ?? ''),
         productId: String(lockedProductId ?? assignment.productId ?? ''),
         releaseId: String(assignment.releaseId ?? '0'),
@@ -118,13 +120,14 @@ const AssignmentFormDialog = ({
       });
     } else {
       form.reset({
+        resourceId: resourceId ? String(resourceId) : '',
         portfolioId: effectivePortfolioLockId ? String(effectivePortfolioLockId) : '',
         productId: lockedProductId ? String(lockedProductId) : '',
         releaseId: '0',
         startDate: '', endDate: '', utilization: 50,
       });
     }
-  }, [open, assignment, effectivePortfolioLockId, lockedProductId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, assignment, effectivePortfolioLockId, lockedProductId, resourceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const portfolioId = form.watch('portfolioId');
   const productId = form.watch('productId');
@@ -140,7 +143,7 @@ const AssignmentFormDialog = ({
 
   const onSubmit = (values: FormValues) => {
     const payload: Omit<Assignment, 'id'> = {
-      resourceId,
+      resourceId: parseInt(values.resourceId, 10),
       productId: parseInt(values.productId, 10),
       releaseId: parseInt(values.releaseId, 10),
       startDate: values.startDate!,
