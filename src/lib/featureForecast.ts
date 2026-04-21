@@ -89,6 +89,7 @@ export const MAX_SCENARIOS = 5;
 
 /** Default scenarios bootstrap a fresh feature. */
 export const buildDefaultSettings = (): FeatureForecastSettings => ({
+  schemaVersion: 2,
   horizon: 12,
   activeScenarioId: 'baseline',
   scenarios: [
@@ -125,24 +126,63 @@ export const buildDefaultSettings = (): FeatureForecastSettings => ({
   ],
 });
 
+/** Normalize a parsed scenario, filling in Phase B fields with safe defaults. */
+const normalizeScenario = (raw: any): ForecastScenario => {
+  const mode: ForecastMode =
+    raw?.mode === 'seasonal' || raw?.mode === 'matrix' ? raw.mode : 'simple';
+  const services: ServiceAssumption[] = Array.isArray(raw?.services)
+    ? raw.services.map((s: any) => ({
+        serviceId: Number(s.serviceId),
+        growthRate: Number.isFinite(s.growthRate) ? s.growthRate : 5,
+        pattern: typeof s.pattern === 'string' ? (s.pattern as SeasonalPresetId) : 'flat',
+        customPattern:
+          Array.isArray(s.customPattern) && s.customPattern.length === 12
+            ? s.customPattern.map((n: any) => (Number.isFinite(n) ? n : 1))
+            : undefined,
+      }))
+    : [];
+  const cellOverrides: MatrixOverride[] = Array.isArray(raw?.cellOverrides)
+    ? raw.cellOverrides
+        .filter((c: any) => Number.isFinite(c?.serviceId) && Number.isFinite(c?.monthIndex) && Number.isFinite(c?.tx))
+        .map((c: any) => ({ serviceId: c.serviceId, monthIndex: c.monthIndex, tx: c.tx }))
+    : [];
+  return {
+    id: String(raw.id),
+    name: String(raw.name ?? 'Untitled'),
+    tone: ['neutral', 'success', 'warning', 'primary', 'accent'].includes(raw.tone)
+      ? raw.tone
+      : 'neutral',
+    mode,
+    services,
+    defaultGrowthRate: Number.isFinite(raw.defaultGrowthRate) ? raw.defaultGrowthRate : 5,
+    costGrowthRate: Number.isFinite(raw.costGrowthRate) ? raw.costGrowthRate : 2,
+    cellOverrides,
+    ramadanMonthOverride:
+      typeof raw.ramadanMonthOverride === 'number' ? raw.ramadanMonthOverride : null,
+    builtIn: !!raw.builtIn,
+  };
+};
+
 export const loadFeatureForecastSettings = (
   featureId: number,
 ): FeatureForecastSettings => {
   if (typeof window === 'undefined') return buildDefaultSettings();
   try {
-    const raw = window.localStorage.getItem(FEATURE_FORECAST_KEY(featureId));
+    // Try v2 first, then migrate from v1.
+    let raw = window.localStorage.getItem(FEATURE_FORECAST_KEY(featureId));
+    if (!raw) {
+      const legacy = window.localStorage.getItem(FEATURE_FORECAST_KEY_V1(featureId));
+      if (legacy) raw = legacy; // we'll re-save as v2 on next change
+    }
     if (!raw) return buildDefaultSettings();
     const parsed = JSON.parse(raw) as Partial<FeatureForecastSettings>;
     const defaults = buildDefaultSettings();
     const scenarios =
       Array.isArray(parsed.scenarios) && parsed.scenarios.length > 0
-        ? (parsed.scenarios as ForecastScenario[]).map(s => ({
-            ...s,
-            services: Array.isArray(s.services) ? s.services : [],
-            mode: 'simple' as const,
-          }))
+        ? parsed.scenarios.map(normalizeScenario)
         : defaults.scenarios;
     return {
+      schemaVersion: 2,
       scenarios,
       activeScenarioId:
         scenarios.find(s => s.id === parsed.activeScenarioId)?.id ?? scenarios[0].id,
