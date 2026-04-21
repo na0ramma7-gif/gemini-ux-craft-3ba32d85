@@ -525,28 +525,37 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
 
                       {isExpanded && (
                         <div className="bg-secondary/5 border-t border-border/50 px-6 py-4 space-y-4">
-                          {yearData[ms.month].revenues.length > 0 && (
+                          {(() => {
+                            const mk = monthKeyOf(selectedYear, ms.month);
+                            const lines = featureLines.filter(l => l.month === mk);
+                            if (lines.length === 0) return null;
+                            return (
                             <div>
                               <h6 className="text-xs font-semibold text-emerald-600 uppercase mb-2">{t('revenue')}</h6>
                               <div className="rounded-lg border border-border overflow-hidden">
-                                <div className="grid grid-cols-3 bg-secondary/30 px-3 py-2">
-                                  <span className="text-xs font-semibold text-muted-foreground">{t('feature')}</span>
-                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('planned')}</span>
-                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('actual')}</span>
+                                <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] bg-secondary/30 px-3 py-2 gap-2">
+                                  <span className="text-xs font-semibold text-muted-foreground">{t('serviceName')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('transactionRate')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('plannedTx')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('plannedRevenue')}</span>
+                                  <span className="text-xs font-semibold text-muted-foreground text-end">{t('actualRevenue')}</span>
                                 </div>
-                                {yearData[ms.month].revenues.map((rev, idx) => {
-                                  const feat = productFeatures.find(f => f.id === rev.featureId);
+                                {lines.map(line => {
+                                  const svc = featureServices.find(s => s.id === line.serviceId);
                                   return (
-                                    <div key={idx} className="grid grid-cols-3 px-3 py-2 border-t border-border/50">
-                                      <span className="text-sm text-foreground">{feat?.name || feature.name}</span>
-                                      <span className="text-sm text-end font-medium text-foreground">{formatCurrency(rev.planned, language)}</span>
-                                      <span className="text-sm text-end font-medium text-emerald-600">{formatCurrency(rev.actual, language)}</span>
+                                    <div key={line.id} className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] px-3 py-2 border-t border-border/50 gap-2">
+                                      <span className="text-sm text-foreground truncate">{svc?.name || t('legacyRevenue')}</span>
+                                      <span className="text-sm text-end text-muted-foreground">{formatCurrency(line.rate, language)}</span>
+                                      <span className="text-sm text-end text-muted-foreground">{line.plannedTransactions.toLocaleString()}</span>
+                                      <span className="text-sm text-end font-medium text-foreground">{formatCurrency(line.rate * line.plannedTransactions, language)}</span>
+                                      <span className="text-sm text-end font-medium text-emerald-600">{formatCurrency(line.rate * line.actualTransactions, language)}</span>
                                     </div>
                                   );
                                 })}
                               </div>
                             </div>
-                          )}
+                            );
+                          })()}
                           {(Object.values(yearData[ms.month].costs).some(items => items.length > 0) || yearData[ms.month].resources.length > 0) && (
                             <div>
                               <h6 className="text-xs font-semibold text-destructive uppercase mb-2">{t('costCategories')}</h6>
