@@ -11,6 +11,22 @@ export interface DateFilter {
   compareEndDate: Date;
 }
 
+/**
+ * Compare-mode entity selection. Empty arrays mean "All" for that
+ * dimension. Scoped per page by useCompareMetrics.
+ */
+export interface CompareSelectionState {
+  portfolioIds: number[];
+  productIds: number[];
+  featureIds: number[];
+}
+
+const EMPTY_COMPARE_SELECTION: CompareSelectionState = {
+  portfolioIds: [],
+  productIds: [],
+  featureIds: [],
+};
+
 interface AppContextType {
   state: AppState;
   setState: React.Dispatch<React.SetStateAction<AppState>>;
@@ -30,6 +46,10 @@ interface AppContextType {
   // Global Date Filter
   dateFilter: DateFilter;
   setDateFilter: React.Dispatch<React.SetStateAction<DateFilter>>;
+
+  // Compare selection (entities chosen while Compare is ON)
+  compareSelection: CompareSelectionState;
+  setCompareSelection: React.Dispatch<React.SetStateAction<CompareSelectionState>>;
   
   // Computed values
   metrics: {
@@ -80,6 +100,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     compareStartDate: new Date(2025, 0, 1),
     compareEndDate: new Date(2025, 11, 31),
   });
+
+  const [compareSelection, setCompareSelection] = useState<CompareSelectionState>(EMPTY_COMPARE_SELECTION);
+
+  // Reset entity selection whenever Compare is toggled OFF so a clean
+  // re-enable starts from "All" rather than stale chips.
+  useEffect(() => {
+    if (!dateFilter.compareEnabled) {
+      setCompareSelection(prev =>
+        prev.portfolioIds.length === 0 && prev.productIds.length === 0 && prev.featureIds.length === 0
+          ? prev
+          : EMPTY_COMPARE_SELECTION,
+      );
+    }
+  }, [dateFilter.compareEnabled]);
   
   const isRTL = language === 'ar';
   
@@ -281,6 +315,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         dateFilter,
         setDateFilter,
         metrics,
+        compareSelection,
+        setCompareSelection,
         updateAssignment,
         deleteAssignment,
         addAssignment,
