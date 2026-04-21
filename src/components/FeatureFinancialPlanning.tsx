@@ -594,9 +594,19 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                                 {yearData[editMonthIdx].resources.map(alloc => {
                                   const resource = state.resources.find(r => r.id === alloc.resourceId);
                                   if (!resource) return null;
+                                  const isInvalid = !productResourceIds.has(resource.id);
                                   return (
-                                    <tr key={alloc.resourceId} className="hover:bg-secondary/30">
-                                      <td className="px-3 py-2"><div className="font-medium text-foreground">{resource.name}</div><div className="text-xs text-muted-foreground">{resource.role}</div></td>
+                                    <tr key={alloc.resourceId} className={cn("hover:bg-secondary/30", isInvalid && "bg-destructive/5")}>
+                                      <td className="px-3 py-2">
+                                        <div className="font-medium text-foreground flex items-center gap-1.5">
+                                          {resource.name}
+                                          {isInvalid && <AlertTriangle className="w-3.5 h-3.5 text-destructive" />}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">{resource.role}</div>
+                                        {isInvalid && (
+                                          <div className="text-[11px] text-destructive mt-0.5">{t('invalidResourceAssignment')}</div>
+                                        )}
+                                      </td>
                                       <td className="px-3 py-2 text-end text-foreground">{formatCurrency(resource.costRate, language)}</td>
                                       <td className="px-3 py-2 text-center">
                                         <Input type="number" className="h-7 text-xs text-center w-16 mx-auto" value={alloc.utilization} min={0} max={100} step="1"
