@@ -160,3 +160,32 @@ export const uniqueAmong = <T extends { code?: string }>(
   );
   return (val: string) => !taken.has(norm(val)) || M.duplicate(label);
 };
+
+// ── Numeric input helpers (for inline numeric fields outside RHF) ──
+/** Parse + clamp a numeric input string. Returns 0 for invalid. */
+export const parseNumber = (
+  raw: string,
+  { min = -Infinity, max = Infinity, integer = false }: { min?: number; max?: number; integer?: boolean } = {},
+): number => {
+  const n = integer ? parseInt(raw, 10) : parseFloat(raw);
+  if (Number.isNaN(n) || !Number.isFinite(n)) return Math.max(min, Math.min(max, 0));
+  return Math.max(min, Math.min(max, n));
+};
+
+/** Clamp a number to [min,max] with NaN/Infinity guard. */
+export const clamp = (n: number, min: number, max: number): number => {
+  if (Number.isNaN(n) || !Number.isFinite(n)) return min;
+  return Math.max(min, Math.min(max, n));
+};
+
+/** Parse a money input: non-negative, finite, capped at 1e10. */
+export const parseMoney = (raw: string): number =>
+  parseNumber(raw, { min: 0, max: 1e10 });
+
+/** Parse a percent input: 0..100. */
+export const parsePercent = (raw: string): number =>
+  parseNumber(raw, { min: 0, max: 100 });
+
+/** Parse a growth rate input: -100..100 (allows negative growth). */
+export const parseGrowthRate = (raw: string): number =>
+  parseNumber(raw, { min: -100, max: 100 });
