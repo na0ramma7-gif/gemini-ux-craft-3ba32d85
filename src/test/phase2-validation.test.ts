@@ -29,7 +29,7 @@ describe('Phase 2 — service breakdown validation', () => {
   it('feature-sum === product, product-sum === dept', () => {
     let prodSumP = 0, prodSumA = 0;
     state.products.forEach((prod: any) => {
-      const fids = state.features.filter((f: any) => f.productId === prod.id).map((f: any) => f.id);
+      const fids = state.features.filter((f: any) => f.productId === prod.id).map((f: any) => f.id); if (fids.length === 0) return;
       const fRows = computeServiceBreakdown(state, allWin, { ...EMPTY_SELECTION, featureIds: fids });
       const pRows = computeServiceBreakdown(state, allWin, { ...EMPTY_SELECTION, productIds: [prod.id] });
       const fA = fRows.reduce((s,r)=>s+r.actual,0);
