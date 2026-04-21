@@ -7,6 +7,7 @@ import { Portfolio } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { CreatableSelect } from '@/components/ui/creatable-select';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -30,7 +31,7 @@ interface PortfolioFormDialogProps {
 }
 
 const PortfolioFormDialog = ({ open, onOpenChange, onCreated, portfolio }: PortfolioFormDialogProps) => {
-  const { addPortfolio, updatePortfolio, t, state } = useApp();
+  const { addPortfolio, updatePortfolio, t, state, lookups, addLookupValue } = useApp();
   const isEdit = !!portfolio;
 
   const schema = z.object({
@@ -41,9 +42,9 @@ const PortfolioFormDialog = ({ open, onOpenChange, onCreated, portfolio }: Portf
     ),
     description: longText('Description', 1000),
     priority: z.enum(['High', 'Medium', 'Low']),
-    purpose: longText('Purpose', 500),
-    strategicObjective: longText('Strategic Objective', 500),
-    businessValue: longText('Business Value', 500),
+      purpose: longText('Purpose', 500),
+      strategicObjective: optionalText('Strategic Objective', 500),
+      businessValue: optionalText('Business Value', 500),
     owner: personField('Owner', false),
     technicalLead: personField('Technical Lead', false),
     businessStakeholder: personField('Business Stakeholder', false),
@@ -177,7 +178,17 @@ const PortfolioFormDialog = ({ open, onOpenChange, onCreated, portfolio }: Portf
             <FormField control={form.control} name="strategicObjective" render={({ field }) => (
               <FormItem>
                 <FormLabel>Strategic Objective</FormLabel>
-                <FormControl><Textarea rows={2} maxLength={500} {...field} /></FormControl>
+                <FormControl>
+                  <CreatableSelect
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    options={lookups.strategicObjective}
+                    onCreate={(v) => addLookupValue('strategicObjective', v)}
+                    placeholder="Select a strategic objective…"
+                    addNewLabel="Add new objective"
+                    maxLength={500}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
@@ -185,7 +196,17 @@ const PortfolioFormDialog = ({ open, onOpenChange, onCreated, portfolio }: Portf
             <FormField control={form.control} name="businessValue" render={({ field }) => (
               <FormItem>
                 <FormLabel>Business Value</FormLabel>
-                <FormControl><Textarea rows={2} maxLength={500} {...field} /></FormControl>
+                <FormControl>
+                  <CreatableSelect
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    options={lookups.businessValue}
+                    onCreate={(v) => addLookupValue('businessValue', v)}
+                    placeholder="Select a business value…"
+                    addNewLabel="Add new value"
+                    maxLength={500}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
