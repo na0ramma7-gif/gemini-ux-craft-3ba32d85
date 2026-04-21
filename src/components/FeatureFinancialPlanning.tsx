@@ -287,9 +287,12 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   };
 
   const saveMonthRevenue = () => {
+    // Only persist rows that have any data; skip empty ones so unused services
+    // don't pollute the month.
+    const toPersist = editLines.filter(l => (l.plannedTransactions || 0) > 0 || (l.actualTransactions || 0) > 0);
     // Pre-validate locally for clearer messages
     const seen = new Set<number>();
-    for (const l of editLines) {
+    for (const l of toPersist) {
       if (l.serviceId == null) {
         toast.error(t('serviceNameRequired'));
         return;
@@ -299,7 +302,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
         return;
       }
       seen.add(l.serviceId);
-      if (!Number.isFinite(l.rate) || l.rate < 0) {
+      if (!Number.isFinite(l.rate) || l.rate <= 0) {
         toast.error(t('rateInvalid'));
         return;
       }
@@ -315,7 +318,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     const res = upsertRevenueLines(
       feature.id,
       mk,
-      editLines.map(l => ({
+      toPersist.map(l => ({
         id: l.id,
         serviceId: l.serviceId as number,
         rate: l.rate,
