@@ -18,6 +18,7 @@ import {
 import { Plus, Check, X, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { toast } from 'sonner';
 
 interface Props {
   open: boolean;
@@ -262,6 +263,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
       ...productFields
     } = trimmed;
     updateProduct(product.id, { ...productFields, health, maturity });
+    toast.success(t('changesSaved') || 'Changes saved');
     onOpenChange(false);
   };
 
