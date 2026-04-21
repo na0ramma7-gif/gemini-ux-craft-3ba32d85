@@ -47,6 +47,7 @@ const MAX = {
   purpose: 150,
   strategic: 200,
   business: 200,
+  businessProblem: 300,
   capability: 60,
   metric: 60,
   capabilities: 15,
@@ -64,6 +65,7 @@ type FormState = {
   purpose: string;
   strategicObjective: string;
   businessValue: string;
+  businessProblem: string;
   capabilities: string[];
   successMetrics: string[];
   strategicObjectiveIds: number[];
@@ -111,6 +113,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     purpose: product.purpose ?? '',
     strategicObjective: product.strategicObjective ?? '',
     businessValue: product.businessValue ?? '',
+    businessProblem: product.businessProblem ?? '',
     capabilities: product.capabilities ? [...product.capabilities] : [],
     successMetrics: product.successMetrics ? [...product.successMetrics] : [],
     strategicObjectiveIds: product.strategicObjectiveIds ? [...product.strategicObjectiveIds] : [],
@@ -175,6 +178,8 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
       e.strategicObjective = `Strategic objective cannot exceed ${MAX.strategic} characters`;
     if (s.businessValue.trim().length > MAX.business)
       e.businessValue = `Business value cannot exceed ${MAX.business} characters`;
+    if (s.businessProblem.trim().length > MAX.businessProblem)
+      e.businessProblem = `Business problem cannot exceed ${MAX.businessProblem} characters`;
 
     // Score range validation (0–100, integer or empty)
     const scoreFields: (keyof FormState)[] = [
@@ -214,6 +219,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
     purpose: s.purpose.trim(),
     strategicObjective: s.strategicObjective.trim(),
     businessValue: s.businessValue.trim(),
+    businessProblem: s.businessProblem.trim(),
     healthNotes: s.healthNotes.trim(),
   });
 
@@ -536,6 +542,28 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
                 className={errClasses('businessValue')}
               />
               <ErrorMsg k="businessValue" />
+            </div>
+
+            {/* Business Problem */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="pp-bp" className="text-xs">
+                  Business Problem <span className="text-muted-foreground">(optional)</span>
+                </Label>
+                <Counter value={data.businessProblem} max={MAX.businessProblem} />
+              </div>
+              <Textarea
+                id="pp-bp"
+                ref={(el) => { fieldRefs.current.businessProblem = el; }}
+                rows={2}
+                value={data.businessProblem}
+                maxLength={MAX.businessProblem}
+                placeholder="What problem does this product solve?"
+                onChange={e => setField('businessProblem', e.target.value)}
+                onBlur={() => { setField('businessProblem', data.businessProblem.trim()); blur('businessProblem'); }}
+                className={errClasses('businessProblem')}
+              />
+              <ErrorMsg k="businessProblem" />
             </div>
 
             {/* ───── Product Health (user-defined) ───── */}
