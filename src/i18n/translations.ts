@@ -383,6 +383,9 @@ export const TRANSLATIONS = {
     month: 'Month',
     addEntry: 'Add Entry',
     alreadyAdded: 'already added',
+    noProductResources: 'No resources are currently assigned to this product',
+    noProductResourcesDesc: 'Assign resources to this product first to use them in feature cost planning.',
+    invalidResourceAssignment: 'This resource is no longer assigned to the current product',
     
     // Global date filter
     primaryPeriod: 'Period',
@@ -898,6 +901,9 @@ export const TRANSLATIONS = {
     month: 'الشهر',
     addEntry: 'إضافة إدخال',
     alreadyAdded: 'مضاف مسبقاً',
+    noProductResources: 'لا توجد موارد مخصصة حالياً لهذا المنتج',
+    noProductResourcesDesc: 'قم بتعيين الموارد للمنتج أولاً لاستخدامها في تخطيط تكلفة الميزة.',
+    invalidResourceAssignment: 'هذا المورد لم يعد معيّناً للمنتج الحالي',
     
     // Global date filter
     primaryPeriod: 'الفترة',

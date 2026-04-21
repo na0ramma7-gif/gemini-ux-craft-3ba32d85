@@ -70,6 +70,21 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   const productFeatures = state.features.filter(f => f.productId === feature.productId);
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
 
+  // Resources actually assigned to the current product (via assignments).
+  // Feature-level resource cost selection must be limited to this set.
+  const productResourceIds = useMemo(() => {
+    const ids = new Set<number>();
+    (state.assignments || []).forEach(a => {
+      if (a.productId === feature.productId) ids.add(a.resourceId);
+    });
+    return ids;
+  }, [state.assignments, feature.productId]);
+
+  const productAssignedResources = useMemo(
+    () => state.resources.filter(r => productResourceIds.has(r.id) && r.status === 'Active'),
+    [state.resources, productResourceIds],
+  );
+
   const monthlySummaries = useMemo(() =>
     Array.from({ length: 12 }, (_, i) => {
       const md = yearData[i];
@@ -579,9 +594,19 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                                 {yearData[editMonthIdx].resources.map(alloc => {
                                   const resource = state.resources.find(r => r.id === alloc.resourceId);
                                   if (!resource) return null;
+                                  const isInvalid = !productResourceIds.has(resource.id);
                                   return (
-                                    <tr key={alloc.resourceId} className="hover:bg-secondary/30">
-                                      <td className="px-3 py-2"><div className="font-medium text-foreground">{resource.name}</div><div className="text-xs text-muted-foreground">{resource.role}</div></td>
+                                    <tr key={alloc.resourceId} className={cn("hover:bg-secondary/30", isInvalid && "bg-destructive/5")}>
+                                      <td className="px-3 py-2">
+                                        <div className="font-medium text-foreground flex items-center gap-1.5">
+                                          {resource.name}
+                                          {isInvalid && <AlertTriangle className="w-3.5 h-3.5 text-destructive" />}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">{resource.role}</div>
+                                        {isInvalid && (
+                                          <div className="text-[11px] text-destructive mt-0.5">{t('invalidResourceAssignment')}</div>
+                                        )}
+                                      </td>
                                       <td className="px-3 py-2 text-end text-foreground">{formatCurrency(resource.costRate, language)}</td>
                                       <td className="px-3 py-2 text-center">
                                         <Input type="number" className="h-7 text-xs text-center w-16 mx-auto" value={alloc.utilization} min={0} max={100} step="1"
@@ -702,7 +727,14 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
             <DialogDescription>{t('selectResourcesDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-[50vh] overflow-y-auto py-2">
-            {state.resources.filter(r => r.status === 'Active').map(resource => {
+            {productAssignedResources.length === 0 && (
+              <div className="flex flex-col items-center justify-center text-center py-8 px-4 rounded-lg border border-dashed border-border bg-secondary/20">
+                <Users className="w-8 h-8 text-muted-foreground mb-2" />
+                <div className="text-sm font-medium text-foreground">{t('noProductResources')}</div>
+                <div className="text-xs text-muted-foreground mt-1">{t('noProductResourcesDesc')}</div>
+              </div>
+            )}
+            {productAssignedResources.map(resource => {
               const isAlreadyAdded = yearData[resourceSelectorMonth]?.resources.some(a => a.resourceId === resource.id);
               const isSelected = selectedResourceIds.includes(resource.id);
               return (
