@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect } from 'react';
-import { AppState, ViewType, SelectedState, Portfolio, Product, Feature, Assignment, Resource, Release, StrategicObjective } from '@/types';
+import { AppState, ViewType, SelectedState, Portfolio, Product, Feature, Assignment, Resource, Release, StrategicObjective, RevenueService, RevenueLine } from '@/types';
 import { INITIAL_STATE } from '@/data/initialData';
 import { TRANSLATIONS, Language, TranslationKey } from '@/i18n/translations';
 
@@ -77,6 +77,17 @@ interface AppContextType {
   addProduct: (product: Omit<Product, 'id'>) => Product;
   addRelease: (release: Omit<Release, 'id'>) => void;
   updateRelease: (releaseId: number, updates: Partial<Release>) => void;
+
+  // ── Revenue services & lines (subscription/service model) ──
+  addRevenueService: (featureId: number, name: string, defaultRate: number) => { ok: true; service: RevenueService } | { ok: false; error: string };
+  updateRevenueService: (id: number, updates: Partial<Pick<RevenueService, 'name' | 'defaultRate'>>) => { ok: true } | { ok: false; error: string };
+  deleteRevenueService: (id: number) => void;
+  upsertRevenueLines: (
+    featureId: number,
+    month: string,
+    lines: Array<Omit<RevenueLine, 'id' | 'featureId' | 'month' | 'updatedAt'> & { id?: number }>,
+  ) => { ok: true } | { ok: false; error: string };
+  deleteRevenueLine: (id: number) => void;
 
   // Strategic Objectives (per portfolio)
   addStrategicObjective: (obj: Omit<StrategicObjective, 'id'>) => { ok: true; objective: StrategicObjective } | { ok: false; error: string };
