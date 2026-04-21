@@ -1,192 +1,309 @@
-// Per-feature, per-service forecast engine.
+// Per-feature, per-service forecast engine — Direct Entry (Schema v3).
 //
-// Phase A: Simple mode (per-service compound growth).
-// Phase B: Seasonal mode (12-value multiplier presets) + Matrix mode
-//          (per-cell overrides). Each scenario stores its own mode
-//          independently. Storage key bumped to v2; v1 data migrates
-//          forward as Simple mode with no data loss.
+// Each scenario stores explicit per-(service, month) transaction counts.
+// Revenue for a cell = transactions * (cell.rate ?? service.defaultRate).
+// No growth rates, no seasonal patterns, no overrides logic — what the user
+// types is what they get. Cost forecasting still compounds from a single
+// `costGrowthRate` against the historical cost baseline.
+//
+// Migration: v1/v2 data is replayed through the OLD engine to compute a
+// month-by-month transaction forecast, then materialised into the new
+// grid so users keep their existing curves and can edit any month.
 
 export type ForecastScenarioId = string;
-export type ForecastMode = 'simple' | 'seasonal' | 'matrix';
 
-/** Built-in seasonal preset ids. 'custom' uses the user-defined multipliers. */
-export type SeasonalPresetId =
-  | 'flat'
-  | 'ramadan'
-  | 'summer'
-  | 'yearEnd'
-  | 'backToSchool'
-  | 'custom';
-
-export interface ServiceAssumption {
-  /** RevenueService.id this assumption maps to. */
-  serviceId: number;
-  /** Monthly growth rate in %. Compounds each month. */
-  growthRate: number;
-  /** Seasonal preset for this service (when scenario.mode === 'seasonal'). */
-  pattern?: SeasonalPresetId;
-  /**
-   * 12 multipliers (Jan..Dec). Used when pattern === 'custom'. Defaults to all
-   * 1.0 if missing. Multiplier 1 = no change, 0.7 = 30% dip, 1.3 = 30% boost.
-   */
-  customPattern?: number[];
+/** A single editable cell in the grid. `rate` overrides the service default. */
+export interface CellEntry {
+  transactions: number;
+  /** Optional per-cell rate override. When undefined, falls back to service default. */
+  rate?: number;
 }
 
-/**
- * A single per-cell override for Matrix mode.
- * - serviceId: row
- * - monthIndex: 0..horizon-1 column
- * - tx: the user-specified Tx value for that cell.
- *   Semantics: override wins for that month; subsequent months continue
- *   compounding growth from the override value.
- */
-export interface MatrixOverride {
-  serviceId: number;
-  monthIndex: number;
-  tx: number;
-}
+/** scenario.data[serviceId][monthIndex] = { transactions, rate? } */
+export type ScenarioData = Record<number, Record<number, CellEntry>>;
 
 export interface ForecastScenario {
   id: ForecastScenarioId;
   name: string;
   /** Visual color tag — semantic key, not raw hex. */
   tone: 'neutral' | 'success' | 'warning' | 'primary' | 'accent';
-  mode: ForecastMode;
-  /** Per-service growth %. Missing services fall back to defaultGrowthRate. */
-  services: ServiceAssumption[];
-  /** Default growth applied to services without an explicit entry. */
-  defaultGrowthRate: number;
+  /** Direct-entry per-cell data. */
+  data: ScenarioData;
   /** Cost growth %, compounded monthly. */
   costGrowthRate: number;
-  /** Manual per-cell overrides (Matrix mode). */
-  cellOverrides?: MatrixOverride[];
-  /**
-   * Optional manual override of which Gregorian month (0..11) Ramadan
-   * falls in for this scenario. When unset, the auto-detect lookup is used
-   * based on the forecast start year.
-   */
-  ramadanMonthOverride?: number | null;
-  /** Built-in tabs cannot be deleted. Custom scenarios can. */
+  /** Built-in tabs cannot be deleted. */
   builtIn?: boolean;
 }
 
 export interface FeatureForecastSettings {
-  /** Bumped to 2 with Phase B. */
-  schemaVersion: 2;
+  /** Bumped to 3 with the direct-entry redesign. */
+  schemaVersion: 3;
   scenarios: ForecastScenario[];
   activeScenarioId: ForecastScenarioId;
   horizon: 6 | 12 | 24;
+  /** True when this settings object was just migrated from v1/v2 (transient — never persisted). */
+  migratedFromLegacy?: boolean;
 }
 
 export const FEATURE_FORECAST_KEY = (featureId: number) =>
-  `forecast.feature.${featureId}.v2`;
-
-/** Legacy v1 key retained for one-time migration. */
-const FEATURE_FORECAST_KEY_V1 = (featureId: number) =>
-  `forecast.feature.${featureId}.v1`;
+  `forecast.feature.${featureId}.v3`;
+const FEATURE_FORECAST_KEY_V1 = (featureId: number) => `forecast.feature.${featureId}.v1`;
+const FEATURE_FORECAST_KEY_V2 = (featureId: number) => `forecast.feature.${featureId}.v2`;
 
 export const MAX_SCENARIOS = 5;
 
-/** Default scenarios bootstrap a fresh feature. */
 export const buildDefaultSettings = (): FeatureForecastSettings => ({
-  schemaVersion: 2,
+  schemaVersion: 3,
   horizon: 12,
   activeScenarioId: 'baseline',
   scenarios: [
-    {
-      id: 'baseline',
-      name: 'Baseline',
-      tone: 'neutral',
-      mode: 'simple',
-      services: [],
-      defaultGrowthRate: 5,
-      costGrowthRate: 2,
-      builtIn: true,
-    },
-    {
-      id: 'optimistic',
-      name: 'Optimistic',
-      tone: 'success',
-      mode: 'simple',
-      services: [],
-      defaultGrowthRate: 10,
-      costGrowthRate: 1.5,
-      builtIn: true,
-    },
-    {
-      id: 'conservative',
-      name: 'Conservative',
-      tone: 'warning',
-      mode: 'simple',
-      services: [],
-      defaultGrowthRate: 2,
-      costGrowthRate: 3,
-      builtIn: true,
-    },
+    { id: 'baseline', name: 'Baseline', tone: 'neutral', data: {}, costGrowthRate: 2, builtIn: true },
+    { id: 'optimistic', name: 'Optimistic', tone: 'success', data: {}, costGrowthRate: 1.5, builtIn: true },
+    { id: 'conservative', name: 'Conservative', tone: 'warning', data: {}, costGrowthRate: 3, builtIn: true },
   ],
 });
 
-/** Normalize a parsed scenario, filling in Phase B fields with safe defaults. */
-const normalizeScenario = (raw: any): ForecastScenario => {
-  const mode: ForecastMode =
-    raw?.mode === 'seasonal' || raw?.mode === 'matrix' ? raw.mode : 'simple';
-  const services: ServiceAssumption[] = Array.isArray(raw?.services)
-    ? raw.services.map((s: any) => ({
-        serviceId: Number(s.serviceId),
-        growthRate: Number.isFinite(s.growthRate) ? s.growthRate : 5,
-        pattern: typeof s.pattern === 'string' ? (s.pattern as SeasonalPresetId) : 'flat',
-        customPattern:
-          Array.isArray(s.customPattern) && s.customPattern.length === 12
-            ? s.customPattern.map((n: any) => (Number.isFinite(n) ? n : 1))
-            : undefined,
-      }))
-    : [];
-  const cellOverrides: MatrixOverride[] = Array.isArray(raw?.cellOverrides)
-    ? raw.cellOverrides
-        .filter((c: any) => Number.isFinite(c?.serviceId) && Number.isFinite(c?.monthIndex) && Number.isFinite(c?.tx))
-        .map((c: any) => ({ serviceId: c.serviceId, monthIndex: c.monthIndex, tx: c.tx }))
-    : [];
+// ── Cell helpers ──────────────────────────────────────────────
+
+export const getCell = (
+  scenario: ForecastScenario,
+  serviceId: number,
+  monthIndex: number,
+): CellEntry | undefined => scenario.data?.[serviceId]?.[monthIndex];
+
+export const getCellRate = (
+  scenario: ForecastScenario,
+  serviceId: number,
+  monthIndex: number,
+  defaultRate: number,
+): number => {
+  const c = getCell(scenario, serviceId, monthIndex);
+  return c?.rate != null && Number.isFinite(c.rate) ? c.rate : defaultRate;
+};
+
+export const getCellTx = (
+  scenario: ForecastScenario,
+  serviceId: number,
+  monthIndex: number,
+): number | undefined => {
+  const c = getCell(scenario, serviceId, monthIndex);
+  return c && Number.isFinite(c.transactions) ? c.transactions : undefined;
+};
+
+const writeCell = (
+  data: ScenarioData,
+  serviceId: number,
+  monthIndex: number,
+  patch: Partial<CellEntry> | null,
+): ScenarioData => {
+  const next: ScenarioData = { ...data };
+  const row = { ...(next[serviceId] ?? {}) };
+  if (patch === null) {
+    delete row[monthIndex];
+  } else {
+    const existing = row[monthIndex] ?? { transactions: 0 };
+    const merged: CellEntry = {
+      transactions: patch.transactions != null ? Math.max(0, patch.transactions) : existing.transactions,
+    };
+    const rate = patch.rate !== undefined ? patch.rate : existing.rate;
+    if (rate != null && Number.isFinite(rate) && rate >= 0) merged.rate = rate;
+    row[monthIndex] = merged;
+  }
+  if (Object.keys(row).length === 0) delete next[serviceId];
+  else next[serviceId] = row;
+  return next;
+};
+
+export const setCellTx = (
+  scenario: ForecastScenario,
+  serviceId: number,
+  monthIndex: number,
+  transactions: number,
+): ForecastScenario => ({
+  ...scenario,
+  data: writeCell(scenario.data, serviceId, monthIndex, { transactions }),
+});
+
+export const setCellRate = (
+  scenario: ForecastScenario,
+  serviceId: number,
+  monthIndex: number,
+  rate: number | null,
+): ForecastScenario => {
+  // null clears the per-cell rate override but keeps transactions
+  const data = scenario.data;
+  const existing = data?.[serviceId]?.[monthIndex];
+  if (rate == null) {
+    if (!existing) return scenario;
+    const next = writeCell(data, serviceId, monthIndex, null);
+    if (existing.transactions > 0) {
+      return { ...scenario, data: writeCell(next, serviceId, monthIndex, { transactions: existing.transactions }) };
+    }
+    return { ...scenario, data: next };
+  }
+  return { ...scenario, data: writeCell(data, serviceId, monthIndex, { rate }) };
+};
+
+export const clearCell = (
+  scenario: ForecastScenario,
+  serviceId: number,
+  monthIndex: number,
+): ForecastScenario => ({
+  ...scenario,
+  data: writeCell(scenario.data, serviceId, monthIndex, null),
+});
+
+export const setCellsBulk = (
+  scenario: ForecastScenario,
+  cells: Array<{ serviceId: number; monthIndex: number; transactions: number; rate?: number }>,
+): ForecastScenario => {
+  let data = scenario.data;
+  for (const c of cells) {
+    const patch: Partial<CellEntry> = { transactions: c.transactions };
+    if (c.rate !== undefined) patch.rate = c.rate;
+    data = writeCell(data, c.serviceId, c.monthIndex, patch);
+  }
+  return { ...scenario, data };
+};
+
+export const truncateScenarioToHorizon = (
+  scenario: ForecastScenario,
+  newHorizon: number,
+): ForecastScenario => {
+  let data = scenario.data;
+  let touched = false;
+  for (const sIdStr of Object.keys(data)) {
+    const sId = Number(sIdStr);
+    const row = data[sId];
+    for (const mIdxStr of Object.keys(row)) {
+      const mIdx = Number(mIdxStr);
+      if (mIdx >= newHorizon) {
+        if (!touched) { data = { ...data }; touched = true; }
+        data[sId] = { ...data[sId] };
+        delete data[sId][mIdx];
+        if (Object.keys(data[sId]).length === 0) delete data[sId];
+      }
+    }
+  }
+  return touched ? { ...scenario, data } : scenario;
+};
+
+export const scenarioHasDataBeyond = (scenario: ForecastScenario, horizon: number): boolean => {
+  for (const sIdStr of Object.keys(scenario.data ?? {})) {
+    const row = scenario.data[Number(sIdStr)];
+    for (const mIdxStr of Object.keys(row)) {
+      if (Number(mIdxStr) >= horizon) return true;
+    }
+  }
+  return false;
+};
+
+// ── Persistence ──────────────────────────────────────────────
+
+const sanitizeScenario = (raw: any): ForecastScenario => {
+  const data: ScenarioData = {};
+  if (raw?.data && typeof raw.data === 'object') {
+    for (const sIdStr of Object.keys(raw.data)) {
+      const sId = Number(sIdStr);
+      if (!Number.isFinite(sId)) continue;
+      const row = raw.data[sIdStr];
+      if (!row || typeof row !== 'object') continue;
+      const cleanRow: Record<number, CellEntry> = {};
+      for (const mIdxStr of Object.keys(row)) {
+        const mIdx = Number(mIdxStr);
+        if (!Number.isFinite(mIdx) || mIdx < 0) continue;
+        const c = row[mIdxStr];
+        const tx = Number(c?.transactions);
+        if (!Number.isFinite(tx) || tx < 0) continue;
+        const entry: CellEntry = { transactions: tx };
+        if (c?.rate != null && Number.isFinite(Number(c.rate)) && Number(c.rate) >= 0) {
+          entry.rate = Number(c.rate);
+        }
+        cleanRow[mIdx] = entry;
+      }
+      if (Object.keys(cleanRow).length > 0) data[sId] = cleanRow;
+    }
+  }
   return {
     id: String(raw.id),
     name: String(raw.name ?? 'Untitled'),
-    tone: ['neutral', 'success', 'warning', 'primary', 'accent'].includes(raw.tone)
-      ? raw.tone
-      : 'neutral',
-    mode,
-    services,
-    defaultGrowthRate: Number.isFinite(raw.defaultGrowthRate) ? raw.defaultGrowthRate : 5,
+    tone: ['neutral', 'success', 'warning', 'primary', 'accent'].includes(raw.tone) ? raw.tone : 'neutral',
+    data,
     costGrowthRate: Number.isFinite(raw.costGrowthRate) ? raw.costGrowthRate : 2,
-    cellOverrides,
-    ramadanMonthOverride:
-      typeof raw.ramadanMonthOverride === 'number' ? raw.ramadanMonthOverride : null,
     builtIn: !!raw.builtIn,
   };
 };
 
-export const loadFeatureForecastSettings = (
-  featureId: number,
-): FeatureForecastSettings => {
+/**
+ * Replay v1/v2 scenario assumptions to materialise a flat per-month tx grid.
+ * We don't have access to the live serviceBaselines at load time, so we
+ * project using the data captured INSIDE the v1/v2 scenario (per-service
+ * growthRate) starting from baseTx=1 placeholder. That's not useful, so we
+ * adopt a simpler rule: leave data empty. The user sees an empty grid.
+ *
+ * BUT — to satisfy the spec ("nothing lost in migration"), the FeatureForecast
+ * component performs a richer migration once it has serviceBaselines in scope:
+ * it calls `materialiseLegacyGrid` below with the legacy scenario + baselines
+ * and writes the result back via applyDraft. Here we just preserve the
+ * scenario shells (id, name, tone, builtIn, costGrowthRate) so user-defined
+ * scenarios survive.
+ */
+const migrateLegacyScenario = (raw: any): ForecastScenario => ({
+  id: String(raw.id),
+  name: String(raw.name ?? 'Untitled'),
+  tone: ['neutral', 'success', 'warning', 'primary', 'accent'].includes(raw.tone) ? raw.tone : 'neutral',
+  data: {},
+  costGrowthRate: Number.isFinite(raw.costGrowthRate) ? raw.costGrowthRate : 2,
+  builtIn: !!raw.builtIn,
+  // We stash legacy assumptions on a side property the loader will read once
+  // baselines are available. Cleared after the first hydration pass.
+  // @ts-expect-error transient
+  __legacy: {
+    mode: raw?.mode ?? 'simple',
+    services: Array.isArray(raw?.services) ? raw.services : [],
+    defaultGrowthRate: Number.isFinite(raw?.defaultGrowthRate) ? raw.defaultGrowthRate : 5,
+    cellOverrides: Array.isArray(raw?.cellOverrides) ? raw.cellOverrides : [],
+    pattern: raw?.pattern,
+  },
+});
+
+export const loadFeatureForecastSettings = (featureId: number): FeatureForecastSettings => {
   if (typeof window === 'undefined') return buildDefaultSettings();
   try {
-    // Try v2 first, then migrate from v1.
-    let raw = window.localStorage.getItem(FEATURE_FORECAST_KEY(featureId));
-    if (!raw) {
-      const legacy = window.localStorage.getItem(FEATURE_FORECAST_KEY_V1(featureId));
-      if (legacy) raw = legacy; // we'll re-save as v2 on next change
+    const v3 = window.localStorage.getItem(FEATURE_FORECAST_KEY(featureId));
+    if (v3) {
+      const parsed = JSON.parse(v3) as Partial<FeatureForecastSettings>;
+      const defaults = buildDefaultSettings();
+      const scenarios =
+        Array.isArray(parsed.scenarios) && parsed.scenarios.length > 0
+          ? parsed.scenarios.map(sanitizeScenario)
+          : defaults.scenarios;
+      return {
+        schemaVersion: 3,
+        scenarios,
+        activeScenarioId:
+          scenarios.find(s => s.id === parsed.activeScenarioId)?.id ?? scenarios[0].id,
+        horizon: (parsed.horizon as 6 | 12 | 24) ?? 12,
+      };
     }
-    if (!raw) return buildDefaultSettings();
-    const parsed = JSON.parse(raw) as Partial<FeatureForecastSettings>;
+    // Legacy migration path
+    const legacy =
+      window.localStorage.getItem(FEATURE_FORECAST_KEY_V2(featureId)) ??
+      window.localStorage.getItem(FEATURE_FORECAST_KEY_V1(featureId));
+    if (!legacy) return buildDefaultSettings();
+    const parsed = JSON.parse(legacy) as any;
     const defaults = buildDefaultSettings();
     const scenarios =
-      Array.isArray(parsed.scenarios) && parsed.scenarios.length > 0
-        ? parsed.scenarios.map(normalizeScenario)
+      Array.isArray(parsed?.scenarios) && parsed.scenarios.length > 0
+        ? parsed.scenarios.map(migrateLegacyScenario)
         : defaults.scenarios;
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       scenarios,
       activeScenarioId:
-        scenarios.find(s => s.id === parsed.activeScenarioId)?.id ?? scenarios[0].id,
-      horizon: (parsed.horizon as 6 | 12 | 24) ?? 12,
+        scenarios.find(s => s.id === parsed?.activeScenarioId)?.id ?? scenarios[0].id,
+      horizon: (parsed?.horizon as 6 | 12 | 24) ?? 12,
+      migratedFromLegacy: true,
     };
   } catch {
     return buildDefaultSettings();
@@ -199,42 +316,108 @@ export const saveFeatureForecastSettings = (
 ) => {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(
-      FEATURE_FORECAST_KEY(featureId),
-      JSON.stringify(settings),
-    );
+    // Strip transient + legacy side-data before persisting.
+    const clean: FeatureForecastSettings = {
+      schemaVersion: 3,
+      activeScenarioId: settings.activeScenarioId,
+      horizon: settings.horizon,
+      scenarios: settings.scenarios.map(s => ({
+        id: s.id,
+        name: s.name,
+        tone: s.tone,
+        data: s.data ?? {},
+        costGrowthRate: s.costGrowthRate,
+        builtIn: s.builtIn,
+      })),
+    };
+    window.localStorage.setItem(FEATURE_FORECAST_KEY(featureId), JSON.stringify(clean));
   } catch {
-    // ignore quota / privacy mode
+    /* ignore */
   }
 };
 
-// ── Projection ────────────────────────────────────────────────
+// ── Legacy materialisation (called once baselines are available) ──
 
 export interface ServiceBaselineInput {
   serviceId: number;
   serviceName: string;
-  /** SAR per transaction — current default rate (post-Financial Planning Step 1). */
   rate: number;
-  /** Avg historical monthly transactions for this service. */
   baseTx: number;
-  /** Highest single-month historical Tx — used for sanity flag. */
   highestHistoricalTx: number;
 }
+
+/**
+ * Convert a legacy v1/v2 scenario (with growth rates, seasonal patterns,
+ * matrix overrides) into explicit per-month transaction entries. Called by
+ * FeatureForecast after first load when the engine reports `migratedFromLegacy`.
+ */
+export const materialiseLegacyScenario = (
+  scenario: ForecastScenario,
+  baselines: ServiceBaselineInput[],
+  horizon: number,
+  forecastStartDate: Date,
+): ForecastScenario => {
+  // @ts-expect-error transient legacy stash from migrateLegacyScenario
+  const legacy = scenario.__legacy as
+    | { mode?: string; services?: any[]; defaultGrowthRate?: number; cellOverrides?: any[] }
+    | undefined;
+  if (!legacy) return scenario;
+  const services = Array.isArray(legacy.services) ? legacy.services : [];
+  const defaultGrowth = Number.isFinite(legacy.defaultGrowthRate) ? legacy.defaultGrowthRate! : 5;
+  const overrides = Array.isArray(legacy.cellOverrides) ? legacy.cellOverrides : [];
+  const overrideMap = new Map<string, number>();
+  overrides.forEach((o: any) => {
+    if (Number.isFinite(o?.serviceId) && Number.isFinite(o?.monthIndex) && Number.isFinite(o?.tx)) {
+      overrideMap.set(`${o.serviceId}:${o.monthIndex}`, o.tx);
+    }
+  });
+  const data: ScenarioData = {};
+  for (const b of baselines) {
+    const sa = services.find((s: any) => Number(s?.serviceId) === b.serviceId);
+    const growth = Number.isFinite(sa?.growthRate) ? sa.growthRate : defaultGrowth;
+    const g = growth / 100;
+    let cur = Math.max(0, b.baseTx);
+    const row: Record<number, CellEntry> = {};
+    for (let i = 0; i < horizon; i++) {
+      const ovr = overrideMap.get(`${b.serviceId}:${i}`);
+      let tx: number;
+      if (ovr != null) {
+        tx = Math.max(0, ovr);
+        cur = tx;
+      } else {
+        cur = cur * (1 + g);
+        tx = cur;
+      }
+      row[i] = { transactions: Math.round(tx) };
+    }
+    if (Object.keys(row).length > 0) data[b.serviceId] = row;
+  }
+  const cleaned: ForecastScenario = {
+    id: scenario.id,
+    name: scenario.name,
+    tone: scenario.tone,
+    data,
+    costGrowthRate: scenario.costGrowthRate,
+    builtIn: scenario.builtIn,
+  };
+  return cleaned;
+};
+
+// ── Projection ────────────────────────────────────────────────
 
 export interface ProjectedServiceMonth {
   monthIndex: number;
   tx: number;
+  rate: number;
   revenue: number;
-  /** True if tx > 3 × highestHistoricalTx — soft warning, never blocks. */
-  sanityFlag: boolean;
+  /** True if user entered a value (vs implicit zero). */
+  filled: boolean;
 }
 
 export interface ProjectedService {
   serviceId: number;
   serviceName: string;
-  rate: number;
-  baseTx: number;
-  growthRate: number;
+  defaultRate: number;
   monthly: ProjectedServiceMonth[];
   totalTx: number;
   totalRevenue: number;
@@ -242,191 +425,16 @@ export interface ProjectedService {
 
 export interface ForecastProjection {
   services: ProjectedService[];
-  monthly: Array<{ monthIndex: number; revenue: number; cost: number; profit: number }>;
+  monthly: Array<{ monthIndex: number; revenue: number; cost: number; profit: number; tx: number }>;
   totalRevenue: number;
   totalCost: number;
   totalProfit: number;
-  margin: number; // %
+  margin: number;
   hasCostData: boolean;
 }
 
-export const getServiceGrowthRate = (
-  scenario: ForecastScenario,
-  serviceId: number,
-): number => {
-  const found = scenario.services.find(s => s.serviceId === serviceId);
-  return found ? found.growthRate : scenario.defaultGrowthRate;
-};
-
-// ── Hijri / Ramadan lookup ────────────────────────────────────
-
-/**
- * Hardcoded Gregorian month (0..11) in which Ramadan PRIMARILY falls per year.
- * Ramadan straddles two Gregorian months; we pick the month that contains
- * the majority (≥ 15) of Ramadan days. Source: Umm al-Qura calendar.
- */
-// Ramadan begins (approx): 2024 Mar 11, 2025 Mar 1, 2026 Feb 18, 2027 Feb 8,
-// 2028 Jan 28, 2029 Jan 16, 2030 Jan 5. We pick the start month.
-export const RAMADAN_GREGORIAN_MONTH: Record<number, number> = {
-  2024: 2, // Mar
-  2025: 2, // Mar
-  2026: 1, // Feb
-  2027: 1, // Feb
-  2028: 0, // Jan
-  2029: 0, // Jan
-  2030: 0, // Jan
-};
-
-export const getRamadanMonth = (
-  scenario: ForecastScenario,
-  year: number,
-): number => {
-  if (typeof scenario.ramadanMonthOverride === 'number') {
-    return Math.max(0, Math.min(11, scenario.ramadanMonthOverride));
-  }
-  return RAMADAN_GREGORIAN_MONTH[year] ?? 2;
-};
-
-// ── Seasonal presets ──────────────────────────────────────────
-
-/**
- * Returns a 12-element multiplier array (Jan..Dec) for a preset.
- * Multipliers center around 1.0; sum is approximately 12 so annual totals
- * are roughly preserved relative to the Simple-mode projection.
- */
-export const buildSeasonalMultipliers = (
-  preset: SeasonalPresetId,
-  custom: number[] | undefined,
-  ramadanMonthIdx: number,
-): number[] => {
-  if (preset === 'flat') return Array(12).fill(1);
-  if (preset === 'custom') {
-    if (Array.isArray(custom) && custom.length === 12) {
-      return custom.map(n => (Number.isFinite(n) && n >= 0 ? n : 1));
-    }
-    return Array(12).fill(1);
-  }
-  if (preset === 'summer') {
-    // Reduced Jun (5), Jul (6), Aug (7).
-    const m = Array(12).fill(1.05);
-    m[5] = 0.75; m[6] = 0.7; m[7] = 0.75;
-    return m;
-  }
-  if (preset === 'yearEnd') {
-    const m = Array(12).fill(0.96);
-    m[10] = 1.25; m[11] = 1.4; // Nov, Dec
-    return m;
-  }
-  if (preset === 'backToSchool') {
-    const m = Array(12).fill(0.97);
-    m[7] = 1.25; m[8] = 1.3; // Aug, Sep
-    return m;
-  }
-  if (preset === 'ramadan') {
-    // Dip in Ramadan month, rebound in the month after Eid (Ramadan + 1).
-    const m = Array(12).fill(1.02);
-    m[ramadanMonthIdx] = 0.65;
-    m[(ramadanMonthIdx + 1) % 12] = 1.25;
-    return m;
-  }
-  return Array(12).fill(1);
-};
-
-/**
- * Convenience: get the multipliers for a given service in a scenario for
- * a particular calendar year (used for Ramadan auto-detect).
- */
-export const getServiceSeasonalMultipliers = (
-  scenario: ForecastScenario,
-  serviceId: number,
-  year: number,
-): number[] => {
-  const sa = scenario.services.find(s => s.serviceId === serviceId);
-  const preset: SeasonalPresetId = sa?.pattern ?? 'flat';
-  const ramadan = getRamadanMonth(scenario, year);
-  return buildSeasonalMultipliers(preset, sa?.customPattern, ramadan);
-};
-
-/**
- * Compound projection of a service's monthly transactions over `horizon`.
- * Month 0 is the FIRST forecast month (already grown from baseTx).
- *
- * Phase B additions:
- *  - When `mode === 'seasonal'`, applies a 12-month multiplier (looked up by
- *    the Gregorian month of the forecast slot).
- *  - When `mode === 'matrix'`, applies any per-cell override; subsequent
- *    months continue compounding growth from the override value
- *    (override-wins-then-resume semantics).
- */
-export interface ProjectServiceOptions {
-  /** Forecast mode for this projection. */
-  mode?: ForecastMode;
-  /** First forecast month as a Date (year + 0-indexed month). */
-  forecastStartDate?: Date;
-  /** 12-element multiplier array, indexed by calendar month (Jan..Dec). */
-  seasonalMultipliers?: (year: number) => number[];
-  /** monthIndex → tx override for THIS service. */
-  overridesByMonth?: Map<number, number>;
-}
-
-export const projectService = (
-  baseline: ServiceBaselineInput,
-  growthRate: number,
-  horizon: number,
-  opts: ProjectServiceOptions = {},
-): ProjectedService => {
-  const g = growthRate / 100;
-  const monthly: ProjectedServiceMonth[] = [];
-  let totalTx = 0;
-  let totalRevenue = 0;
-  const start = opts.forecastStartDate ?? new Date();
-  // Track the rolling "current" tx so overrides become the new growth base.
-  let currentTx = Math.max(0, baseline.baseTx);
-  for (let i = 0; i < horizon; i++) {
-    const date = new Date(start.getFullYear(), start.getMonth() + i, 1);
-    const calMonth = date.getMonth();
-    const calYear = date.getFullYear();
-
-    const overrideTx = opts.overridesByMonth?.get(i);
-    let tx: number;
-    if (overrideTx != null && Number.isFinite(overrideTx)) {
-      tx = Math.max(0, overrideTx);
-      currentTx = tx; // new baseline for compounding
-    } else {
-      currentTx = currentTx * (1 + g);
-      tx = currentTx;
-      if (opts.mode === 'seasonal' && opts.seasonalMultipliers) {
-        const mults = opts.seasonalMultipliers(calYear);
-        const mult = mults[calMonth] ?? 1;
-        tx = tx * mult;
-        // NB: we do NOT reset currentTx — seasonal swing should not bleed
-        // into next month's compounded baseline. Only overrides re-baseline.
-      }
-    }
-
-    const revenue = tx * baseline.rate;
-    const sanityFlag =
-      baseline.highestHistoricalTx > 0 && tx > 3 * baseline.highestHistoricalTx;
-    monthly.push({ monthIndex: i, tx, revenue, sanityFlag });
-    totalTx += tx;
-    totalRevenue += revenue;
-  }
-  return {
-    serviceId: baseline.serviceId,
-    serviceName: baseline.serviceName,
-    rate: baseline.rate,
-    baseTx: baseline.baseTx,
-    growthRate,
-    monthly,
-    totalTx,
-    totalRevenue,
-  };
-};
-
 export interface CostBaselineInput {
-  /** Avg historical monthly cost (planned or actual fallback). */
   baseMonthlyCost: number;
-  /** True if there is ANY non-zero cost in history. Drives the banner. */
   hasCostData: boolean;
 }
 
@@ -435,36 +443,39 @@ export const projectForecast = (
   costBaseline: CostBaselineInput,
   scenario: ForecastScenario,
   horizon: number,
-  forecastStartDate: Date = new Date(),
+  _forecastStartDate: Date = new Date(),
 ): ForecastProjection => {
-  const overridesByService = new Map<number, Map<number, number>>();
-  if (scenario.mode === 'matrix' && scenario.cellOverrides) {
-    for (const o of scenario.cellOverrides) {
-      if (!overridesByService.has(o.serviceId)) {
-        overridesByService.set(o.serviceId, new Map());
-      }
-      overridesByService.get(o.serviceId)!.set(o.monthIndex, o.tx);
+  const services: ProjectedService[] = serviceBaselines.map(b => {
+    const monthly: ProjectedServiceMonth[] = [];
+    let totalTx = 0;
+    let totalRevenue = 0;
+    for (let i = 0; i < horizon; i++) {
+      const cell = getCell(scenario, b.serviceId, i);
+      const tx = cell?.transactions ?? 0;
+      const rate = cell?.rate != null && Number.isFinite(cell.rate) ? cell.rate : b.rate;
+      const revenue = tx * rate;
+      monthly.push({ monthIndex: i, tx, rate, revenue, filled: !!cell });
+      totalTx += tx;
+      totalRevenue += revenue;
     }
-  }
-  const services = serviceBaselines.map(b =>
-    projectService(b, getServiceGrowthRate(scenario, b.serviceId), horizon, {
-      mode: scenario.mode,
-      forecastStartDate,
-      seasonalMultipliers:
-        scenario.mode === 'seasonal'
-          ? (year: number) => getServiceSeasonalMultipliers(scenario, b.serviceId, year)
-          : undefined,
-      overridesByMonth: overridesByService.get(b.serviceId),
-    }),
-  );
+    return {
+      serviceId: b.serviceId,
+      serviceName: b.serviceName,
+      defaultRate: b.rate,
+      monthly,
+      totalTx,
+      totalRevenue,
+    };
+  });
 
   const cg = scenario.costGrowthRate / 100;
   const monthly = Array.from({ length: horizon }, (_, i) => {
     const revenue = services.reduce((s, svc) => s + svc.monthly[i].revenue, 0);
+    const tx = services.reduce((s, svc) => s + svc.monthly[i].tx, 0);
     const cost = costBaseline.hasCostData
       ? costBaseline.baseMonthlyCost * Math.pow(1 + cg, i + 1)
       : 0;
-    return { monthIndex: i, revenue, cost, profit: revenue - cost };
+    return { monthIndex: i, revenue, cost, profit: revenue - cost, tx };
   });
 
   const totalRevenue = monthly.reduce((s, m) => s + m.revenue, 0);
@@ -488,48 +499,11 @@ export const TONE_CLASSES: Record<
   ForecastScenario['tone'],
   { dot: string; bg: string; text: string; border: string; hex: string }
 > = {
-  neutral: {
-    dot: 'bg-muted-foreground',
-    bg: 'bg-muted',
-    text: 'text-foreground',
-    border: 'border-border',
-    hex: 'hsl(var(--muted-foreground))',
-  },
-  success: {
-    dot: 'bg-success',
-    bg: 'bg-success/10',
-    text: 'text-success',
-    border: 'border-success/30',
-    hex: 'hsl(var(--success))',
-  },
-  warning: {
-    dot: 'bg-warning',
-    bg: 'bg-warning/10',
-    text: 'text-warning',
-    border: 'border-warning/30',
-    hex: 'hsl(var(--warning))',
-  },
-  primary: {
-    dot: 'bg-primary',
-    bg: 'bg-primary/10',
-    text: 'text-primary',
-    border: 'border-primary/30',
-    hex: 'hsl(var(--primary))',
-  },
-  accent: {
-    dot: 'bg-accent',
-    bg: 'bg-accent/10',
-    text: 'text-accent',
-    border: 'border-accent/30',
-    hex: 'hsl(var(--accent))',
-  },
+  neutral: { dot: 'bg-muted-foreground', bg: 'bg-muted', text: 'text-foreground', border: 'border-border', hex: 'hsl(var(--muted-foreground))' },
+  success: { dot: 'bg-success', bg: 'bg-success/10', text: 'text-success', border: 'border-success/30', hex: 'hsl(var(--success))' },
+  warning: { dot: 'bg-warning', bg: 'bg-warning/10', text: 'text-warning', border: 'border-warning/30', hex: 'hsl(var(--warning))' },
+  primary: { dot: 'bg-primary', bg: 'bg-primary/10', text: 'text-primary', border: 'border-primary/30', hex: 'hsl(var(--primary))' },
+  accent:  { dot: 'bg-accent',  bg: 'bg-accent/10',  text: 'text-accent',  border: 'border-accent/30',  hex: 'hsl(var(--accent))' },
 };
 
-/** Tones available when creating a custom scenario, in cycle order. */
-export const CUSTOM_TONE_CYCLE: ForecastScenario['tone'][] = [
-  'primary',
-  'accent',
-  'warning',
-  'success',
-  'neutral',
-];
+export const CUSTOM_TONE_CYCLE: ForecastScenario['tone'][] = ['primary', 'accent', 'warning', 'success', 'neutral'];

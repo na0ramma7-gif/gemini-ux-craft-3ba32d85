@@ -1,4 +1,10 @@
-import { useMemo, useState, useEffect } from 'react';
+// Forecast Assumptions — direct-entry redesign.
+//
+// One view: scenario tabs + horizon selector + Quick fill helper + grid.
+// Each cell is a transaction count the user types. Revenue auto-calculates.
+// No modes, no growth rates, no seasonal patterns. Cost growth rate stays.
+
+import { useEffect, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -26,54 +32,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Copy, Trash2, RotateCcw, Pencil, AlertCircle } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Copy, Trash2, RotateCcw, Pencil, Wand2 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import {
   FeatureForecastSettings,
-  ForecastMode,
   ForecastScenarioId,
   MAX_SCENARIOS,
-  SeasonalPresetId,
   ServiceBaselineInput,
   TONE_CLASSES,
-  buildSeasonalMultipliers,
-  getRamadanMonth,
-  getServiceGrowthRate,
   projectForecast,
+  scenarioHasDataBeyond,
 } from '@/lib/featureForecast';
 import {
-  clearAllCellOverrides,
-  clearCellOverride,
+  buildQuickFillCells,
+  clearScenarioCell,
   duplicateScenario,
   deleteScenario,
   renameScenario,
   resetScenarioToDefaults,
-  resetServiceGrowth,
-  scenarioHasOverrides,
-  setCellOverride,
-  setCellOverridesBulk,
-  setRamadanMonthOverride,
-  setScenarioMode,
-  setServiceGrowth,
-  setServicePattern,
-  updateScenario,
+  setHorizonOnDraft,
+  setScenarioCellRate,
+  setScenarioCellTx,
+  setScenarioCellsBulk,
+  setScenarioCostGrowth,
 } from '@/hooks/useFeatureForecastSettings';
 import { useApp } from '@/context/AppContext';
-import ForecastMatrixGrid from '@/components/forecast/ForecastMatrixGrid';
-
-const MONTH_LABEL_KEYS_FALLBACK = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-
-const SEASONAL_PRESETS: { id: SeasonalPresetId; key: string }[] = [
-  { id: 'flat', key: 'presetFlat' },
-  { id: 'ramadan', key: 'presetRamadan' },
-  { id: 'summer', key: 'presetSummer' },
-  { id: 'yearEnd', key: 'presetYearEnd' },
-  { id: 'backToSchool', key: 'presetBackToSchool' },
-  { id: 'custom', key: 'presetCustom' },
-];
+import ForecastDirectEntryGrid from '@/components/forecast/ForecastMatrixGrid';
 
 interface Props {
   open: boolean;
@@ -101,7 +86,8 @@ const ForecastAssumptionsPanel = ({
   const [renameValue, setRenameValue] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<ForecastScenarioId | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [pendingModeSwitch, setPendingModeSwitch] = useState<ForecastMode | null>(null);
+  const [pendingHorizon, setPendingHorizon] = useState<6 | 12 | 24 | null>(null);
+  const [quickFillOpen, setQuickFillOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -152,27 +138,21 @@ const ForecastAssumptionsPanel = ({
     setRenamingId(null);
   };
 
-  const updateActive = (patch: any) => {
-    setDraft(d => updateScenario(d, activeId, patch));
-  };
-
-  const requestModeSwitch = (next: ForecastMode) => {
-    if (next === activeScenario.mode) return;
-    // Warn only when overrides would be lost (Matrix → other) or when leaving
-    // Seasonal would lose patterns. Per spec, the warning text is generic.
-    const wouldLoseOverrides =
-      activeScenario.mode === 'matrix' && scenarioHasOverrides(draft, activeId);
-    if (wouldLoseOverrides) {
-      setPendingModeSwitch(next);
-    } else {
-      setDraft(d => setScenarioMode(d, activeId, next));
+  const handleHorizonChange = (v: string) => {
+    const next = Number(v) as 6 | 12 | 24;
+    if (next >= draft.horizon) {
+      setDraft(d => setHorizonOnDraft(d, next, false));
+      return;
     }
+    // Shrinking: warn if any scenario has data beyond the new horizon
+    const wouldDiscard = draft.scenarios.some(s => scenarioHasDataBeyond(s, next));
+    if (wouldDiscard) setPendingHorizon(next);
+    else setDraft(d => setHorizonOnDraft(d, next, false));
   };
-
-  const confirmModeSwitch = () => {
-    if (pendingModeSwitch) {
-      setDraft(d => setScenarioMode(d, activeId, pendingModeSwitch));
-      setPendingModeSwitch(null);
+  const confirmHorizonShrink = () => {
+    if (pendingHorizon != null) {
+      setDraft(d => setHorizonOnDraft(d, pendingHorizon, true));
+      setPendingHorizon(null);
     }
   };
 
@@ -184,12 +164,13 @@ const ForecastAssumptionsPanel = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[1200px] w-[95vw] h-[90vh] p-0 flex flex-col gap-0 overflow-hidden">
+        <DialogContent className="max-w-[1280px] w-[96vw] h-[90vh] p-0 flex flex-col gap-0 overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b border-border shrink-0">
             <DialogTitle className="text-lg font-semibold">{t('forecastAssumptions')}</DialogTitle>
-            <DialogDescription className="text-xs">{t('forecastAssumptionsDesc')}</DialogDescription>
+            <DialogDescription className="text-xs">{t('forecastDirectEntryDesc')}</DialogDescription>
           </DialogHeader>
 
+          {/* Scenario tabs + horizon */}
           <div className="flex items-center gap-2 px-6 py-3 border-b border-border bg-muted/30 shrink-0 flex-wrap">
             <div className="flex items-center gap-1 flex-wrap">
               {draft.scenarios.map(s => {
@@ -265,13 +246,8 @@ const ForecastAssumptionsPanel = ({
             <div className="flex-1" />
 
             <Label className="text-xs text-muted-foreground">{t('forecastHorizon')}</Label>
-            <Select
-              value={String(draft.horizon)}
-              onValueChange={v => setDraft(d => ({ ...d, horizon: Number(v) as 6 | 12 | 24 }))}
-            >
-              <SelectTrigger className="w-32 h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={String(draft.horizon)} onValueChange={handleHorizonChange}>
+              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="6">6 {t('months')}</SelectItem>
                 <SelectItem value="12">12 {t('months')}</SelectItem>
@@ -280,208 +256,57 @@ const ForecastAssumptionsPanel = ({
             </Select>
           </div>
 
+          {/* Body: grid + live preview */}
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_320px] overflow-hidden">
-            <div className="overflow-auto p-6 space-y-5">
-              {/* Mode selector + Ramadan override */}
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="inline-flex bg-muted rounded-lg p-1 gap-1" role="tablist" aria-label={t('mode')}>
-                  {(['simple', 'seasonal', 'matrix'] as ForecastMode[]).map(m => {
-                    const active = activeScenario.mode === m;
-                    const label = t(m === 'simple' ? 'modeSimple' : m === 'seasonal' ? 'modeSeasonal' : 'modeMatrix');
-                    return (
-                      <button
-                        key={m}
-                        type="button"
-                        role="tab"
-                        aria-selected={active}
-                        onClick={() => requestModeSwitch(m)}
-                        className={cn(
-                          'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-                          active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-                        )}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-[11px] text-muted-foreground flex-1 min-w-[160px]">
-                  {t(activeScenario.mode === 'simple' ? 'modeSimpleHelp' : activeScenario.mode === 'seasonal' ? 'modeSeasonalHelp' : 'modeMatrixHelp')}
-                </p>
-                {activeScenario.mode === 'seasonal' && (
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground">{t('ramadanMonth')}</Label>
-                    <Select
-                      value={activeScenario.ramadanMonthOverride == null ? 'auto' : String(activeScenario.ramadanMonthOverride)}
-                      onValueChange={v =>
-                        setDraft(d => setRamadanMonthOverride(d, activeId, v === 'auto' ? null : Number(v)))
-                      }
-                    >
-                      <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="auto">
-                          {t('autoDetect')} ({MONTH_LABEL_KEYS_FALLBACK[getRamadanMonth(activeScenario, forecastStartDate.getFullYear())]})
-                        </SelectItem>
-                        {MONTH_LABEL_KEYS_FALLBACK.map((m, i) => (
-                          <SelectItem key={i} value={String(i)}>{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-border bg-muted/20">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">{t('defaultRevenueGrowth')}</Label>
-                  <p className="text-[11px] text-muted-foreground">{t('defaultRevenueGrowthHelp')}</p>
-                  <div className="relative max-w-[160px]">
-                    <Input
-                      type="number"
-                      step="0.5"
-                      value={activeScenario.defaultGrowthRate}
-                      onChange={e => updateActive({ defaultGrowthRate: Number(e.target.value) || 0 })}
-                      className="pe-8 h-9 text-sm"
-                    />
-                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-                  </div>
-                </div>
+            <div className="overflow-auto p-6 space-y-4">
+              {/* Cost growth + Quick fill toolbar */}
+              <div className="flex items-end justify-between gap-3 flex-wrap">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">{t('costGrowthRate')}</Label>
-                  <p className="text-[11px] text-muted-foreground">{t('costGrowthHelp')}</p>
-                  <div className="relative max-w-[160px]">
+                  <div className="relative max-w-[180px]">
                     <Input
                       type="number"
                       step="0.5"
                       value={activeScenario.costGrowthRate}
-                      onChange={e => updateActive({ costGrowthRate: Number(e.target.value) || 0 })}
+                      onChange={e =>
+                        setDraft(d => setScenarioCostGrowth(d, activeId, Number(e.target.value) || 0))
+                      }
                       className="pe-8 h-9 text-sm"
                     />
                     <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
                   </div>
+                  <p className="text-[10px] text-muted-foreground">{t('costGrowthHelp')}</p>
                 </div>
+                <QuickFillButton
+                  open={quickFillOpen}
+                  onOpenChange={setQuickFillOpen}
+                  baselines={serviceBaselines}
+                  horizon={draft.horizon}
+                  onApply={(cells) => {
+                    setDraft(d => setScenarioCellsBulk(d, activeId, cells));
+                    setQuickFillOpen(false);
+                  }}
+                  scenario={activeScenario}
+                />
               </div>
 
-              <div>
-                <h4 className="text-sm font-semibold mb-2">{t('perServiceGrowth')}</h4>
-                {activeScenario.mode === 'matrix' ? (
-                  <ForecastMatrixGrid
-                    scenario={activeScenario}
-                    baselines={serviceBaselines}
-                    projectedServices={projection.services}
-                    forecastStartDate={forecastStartDate}
-                    horizon={draft.horizon}
-                    onSetCell={(sId, mIdx, tx) => setDraft(d => setCellOverride(d, activeId, sId, mIdx, tx))}
-                    onClearCell={(sId, mIdx) => setDraft(d => clearCellOverride(d, activeId, sId, mIdx))}
-                    onBulkSet={cells => setDraft(d => setCellOverridesBulk(d, activeId, cells))}
-                    onClearAll={() => setDraft(d => clearAllCellOverrides(d, activeId))}
-                  />
-                ) : serviceBaselines.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                    {t('noServicesForForecast')}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-border overflow-hidden">
-                    <table className="w-full text-xs">
-                      <thead className="bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
-                        <tr>
-                          <th className="text-start px-3 py-2 font-medium">{t('service')}</th>
-                          <th className="text-end px-3 py-2 font-medium">{t('baseTx')}</th>
-                          <th className="text-end px-3 py-2 font-medium">{t('rate')}</th>
-                          <th className="text-end px-3 py-2 font-medium">{t('growthPercent')}</th>
-                          {activeScenario.mode === 'seasonal' && (
-                            <>
-                              <th className="text-start px-3 py-2 font-medium">{t('seasonalPattern')}</th>
-                              <th className="text-center px-3 py-2 font-medium">{t('seasonalSparkline')}</th>
-                            </>
-                          )}
-                          <th className="text-end px-3 py-2 font-medium">{t('forecastTxEnd')}</th>
-                          <th className="text-end px-3 py-2 font-medium w-10"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {serviceBaselines.map(b => {
-                          const overridden = activeScenario.services.some(s => s.serviceId === b.serviceId);
-                          const growth = getServiceGrowthRate(activeScenario, b.serviceId);
-                          const last = b.baseTx * Math.pow(1 + growth / 100, draft.horizon);
-                          const sanity = b.highestHistoricalTx > 0 && last > 3 * b.highestHistoricalTx;
-                          const sa = activeScenario.services.find(s => s.serviceId === b.serviceId);
-                          const pattern: SeasonalPresetId = sa?.pattern ?? 'flat';
-                          const ramadan = getRamadanMonth(activeScenario, forecastStartDate.getFullYear());
-                          const mults = buildSeasonalMultipliers(pattern, sa?.customPattern, ramadan);
-                          return (
-                            <tr key={b.serviceId} className={cn('border-t border-border/60', overridden && 'bg-warning/5')}>
-                              <td className="px-3 py-2 font-medium text-foreground">
-                                <div className="flex items-center gap-2">
-                                  {overridden && <span className="w-1.5 h-1.5 rounded-full bg-warning" title={t('overridden')} />}
-                                  {b.serviceName}
-                                </div>
-                              </td>
-                              <td className="px-3 py-2 text-end tabular-nums text-muted-foreground">
-                                {Math.round(b.baseTx).toLocaleString()}
-                              </td>
-                              <td className="px-3 py-2 text-end tabular-nums text-muted-foreground">
-                                {formatCurrency(b.rate, language)}
-                              </td>
-                              <td className="px-3 py-2 text-end">
-                                <div className="relative inline-block">
-                                  <Input
-                                    type="number"
-                                    step="0.5"
-                                    value={growth}
-                                    onChange={e => setDraft(d => setServiceGrowth(d, activeId, b.serviceId, Number(e.target.value) || 0))}
-                                    className="h-8 w-24 text-end text-xs pe-6 tabular-nums"
-                                  />
-                                  <span className="absolute end-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
-                                </div>
-                              </td>
-                              {activeScenario.mode === 'seasonal' && (
-                                <>
-                                  <td className="px-3 py-2">
-                                    <Select
-                                      value={pattern}
-                                      onValueChange={(v) => setDraft(d => setServicePattern(d, activeId, b.serviceId, v as SeasonalPresetId))}
-                                    >
-                                      <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
-                                      <SelectContent>
-                                        {SEASONAL_PRESETS.map(p => (
-                                          <SelectItem key={p.id} value={p.id}>{t(p.key as any)}</SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <PatternBars values={mults} />
-                                  </td>
-                                </>
-                              )}
-                              <td className="px-3 py-2 text-end tabular-nums">
-                                <span className={cn('inline-flex items-center gap-1', sanity ? 'text-warning' : 'text-foreground')}>
-                                  {sanity && <AlertCircle className="w-3 h-3" aria-label={t('sanitySpike')} />}
-                                  {Math.round(last).toLocaleString()}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 text-end">
-                                {overridden && (
-                                  <button
-                                    type="button"
-                                    className="text-[11px] text-primary hover:underline"
-                                    onClick={() => setDraft(d => resetServiceGrowth(d, activeId, b.serviceId))}
-                                    title={t('resetToDefaultGrowth')}
-                                  >
-                                    {t('reset')}
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                <p className="text-[11px] text-muted-foreground mt-2">{t('overrideHint')}</p>
-              </div>
+              {serviceBaselines.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  {t('noServicesForForecast')}
+                </div>
+              ) : (
+                <ForecastDirectEntryGrid
+                  scenario={activeScenario}
+                  baselines={serviceBaselines}
+                  projectedServices={projection.services}
+                  forecastStartDate={forecastStartDate}
+                  horizon={draft.horizon}
+                  onSetCell={(sId, mIdx, tx) => setDraft(d => setScenarioCellTx(d, activeId, sId, mIdx, tx))}
+                  onSetCellRate={(sId, mIdx, rate) => setDraft(d => setScenarioCellRate(d, activeId, sId, mIdx, rate))}
+                  onClearCell={(sId, mIdx) => setDraft(d => clearScenarioCell(d, activeId, sId, mIdx))}
+                  onBulkSet={(cells) => setDraft(d => setScenarioCellsBulk(d, activeId, cells))}
+                />
+              )}
             </div>
 
             <aside className="border-t lg:border-t-0 lg:border-s border-border bg-muted/20 overflow-auto p-5 space-y-4">
@@ -576,24 +401,122 @@ const ForecastAssumptionsPanel = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!pendingModeSwitch} onOpenChange={v => !v && setPendingModeSwitch(null)}>
+      <AlertDialog open={pendingHorizon != null} onOpenChange={v => !v && setPendingHorizon(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('confirmModeSwitchTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('confirmModeSwitchDesc')}</AlertDialogDescription>
+            <AlertDialogTitle>{t('horizonShrinkTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('horizonShrinkDesc')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('keep')}</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmModeSwitch}
+              onClick={confirmHorizonShrink}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {t('discardAndSwitch')}
+              {t('discardAndShrink')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+};
+
+// ── Quick-fill popover ────────────────────────────────────────
+
+interface QuickFillProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  baselines: ServiceBaselineInput[];
+  horizon: number;
+  scenario: import('@/lib/featureForecast').ForecastScenario;
+  onApply: (cells: Array<{ serviceId: number; monthIndex: number; transactions: number }>) => void;
+}
+
+const QuickFillButton = ({ open, onOpenChange, baselines, horizon, scenario, onApply }: QuickFillProps) => {
+  const { t } = useApp();
+  const [serviceId, setServiceId] = useState<string>('all');
+  const [startMonth, setStartMonth] = useState(0);
+  const [mode, setMode] = useState<'fixed' | 'growth' | 'copyForward'>('fixed');
+  const [value, setValue] = useState('100');
+  const [growthPct, setGrowthPct] = useState('5');
+
+  const apply = () => {
+    const ids = serviceId === 'all' ? baselines.map(b => b.serviceId) : [Number(serviceId)];
+    const cells = buildQuickFillCells(
+      ids,
+      Math.max(0, Math.min(horizon - 1, startMonth)),
+      horizon - 1,
+      mode,
+      scenario,
+      { value: Number(value) || 0, growthPct: Number(growthPct) || 0 },
+    );
+    onApply(cells);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-9 gap-1.5" disabled={baselines.length === 0}>
+          <Wand2 className="w-3.5 h-3.5" />
+          {t('quickFill')}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-4 space-y-3" align="end">
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('service')}</Label>
+          <Select value={serviceId} onValueChange={setServiceId}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('allServices')}</SelectItem>
+              {baselines.map(b => (
+                <SelectItem key={b.serviceId} value={String(b.serviceId)}>{b.serviceName}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('startingMonth')}</Label>
+          <Select value={String(startMonth)} onValueChange={v => setStartMonth(Number(v))}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: horizon }, (_, i) => (
+                <SelectItem key={i} value={String(i)}>{`${t('month')} ${i + 1}`}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('fillMode')}</Label>
+          <Select value={mode} onValueChange={v => setMode(v as any)}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="fixed">{t('fillFixed')}</SelectItem>
+              <SelectItem value="growth">{t('fillGrowth')}</SelectItem>
+              <SelectItem value="copyForward">{t('copyForward')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {mode !== 'copyForward' && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">
+              {mode === 'fixed' ? t('value') : t('startingValue')}
+            </Label>
+            <Input type="number" value={value} onChange={e => setValue(e.target.value)} className="h-8 text-sm" />
+          </div>
+        )}
+        {mode === 'growth' && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('monthlyGrowthPct')}</Label>
+            <Input type="number" step="0.5" value={growthPct} onChange={e => setGrowthPct(e.target.value)} className="h-8 text-sm" />
+          </div>
+        )}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" size="sm" className="h-8" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
+          <Button size="sm" className="h-8" onClick={apply}>{t('apply')}</Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 };
 
@@ -612,8 +535,7 @@ const PreviewCard = ({
 
 const Sparkline = ({ values, color, label }: { values: number[]; color: string; label: string }) => {
   if (values.length === 0) return null;
-  const w = 280;
-  const h = 60;
+  const w = 280; const h = 60;
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
   const span = max - min || 1;
@@ -631,25 +553,6 @@ const Sparkline = ({ values, color, label }: { values: number[]; color: string; 
         <polyline fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" points={points} />
       </svg>
     </div>
-  );
-};
-
-const PatternBars = ({ values }: { values: number[] }) => {
-  const w = 96;
-  const h = 24;
-  const max = Math.max(...values, 1.01);
-  const barW = w / values.length;
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h}>
-      <line x1={0} y1={h / 2} x2={w} y2={h / 2} stroke="hsl(var(--border))" strokeDasharray="2 2" />
-      {values.map((v, i) => {
-        const norm = v / max;
-        const barH = Math.max(1, norm * (h - 2));
-        const y = h - barH;
-        const fill = v < 0.95 ? 'hsl(var(--warning))' : v > 1.05 ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))';
-        return <rect key={i} x={i * barW + 0.5} y={y} width={Math.max(1, barW - 1)} height={barH} fill={fill} opacity={0.85} />;
-      })}
-    </svg>
   );
 };
 
