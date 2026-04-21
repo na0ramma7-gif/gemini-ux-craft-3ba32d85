@@ -275,6 +275,32 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
     });
   }, [state, feature.productId]);
 
+  // Per-service baseline driving the forecast (historical totals by service for THIS feature).
+  const perServiceBaseline = useMemo(() => {
+    const lines = state.revenueLines.filter(l => l.featureId === feature.id);
+    const byId = new Map<number, { planned: number; actual: number; lines: number }>();
+    lines.forEach(l => {
+      const cur = byId.get(l.serviceId) ?? { planned: 0, actual: 0, lines: 0 };
+      cur.planned += l.rate * (l.plannedTransactions || 0);
+      cur.actual += l.rate * (l.actualTransactions || 0);
+      cur.lines += 1;
+      byId.set(l.serviceId, cur);
+    });
+    const totalActual = Array.from(byId.values()).reduce((s, v) => s + v.actual, 0);
+    return Array.from(byId.entries())
+      .map(([id, v]) => {
+        const svc = state.revenueServices.find(s => s.id === id);
+        return {
+          name: svc?.name ?? 'Unknown',
+          planned: v.planned,
+          actual: v.actual,
+          lines: v.lines,
+          share: totalActual > 0 ? (v.actual / totalActual) * 100 : 0,
+        };
+      })
+      .sort((a, b) => b.actual - a.actual);
+  }, [state.revenueLines, state.revenueServices, feature.id]);
+
   const handleOverride = useCallback((monthKey: string, field: 'revenue' | 'cost', value: number) => {
     setManualOverrides(prev => ({ ...prev, [monthKey]: { ...prev[monthKey], [field]: value } }));
   }, []);
