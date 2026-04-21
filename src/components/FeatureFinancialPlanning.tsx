@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Feature } from '@/types';
+import { Feature, RevenueLine, RevenueService } from '@/types';
+import { toast } from 'sonner';
 import FeatureForecast from '@/components/FeatureForecast';
 import { formatCurrency, cn } from '@/lib/utils';
 import { parseMoney, parsePercent } from '@/lib/validation';
@@ -21,7 +22,7 @@ import {
 import {
   ArrowLeft, ArrowRight, Plus, Trash2, DollarSign, Users, TrendingUp, TrendingDown,
   FileText, Save, ChevronDown, ChevronRight, UserPlus, Lightbulb, AlertTriangle,
-  BarChart3, PieChart, Pencil, Target, Receipt,
+  BarChart3, PieChart, Pencil, Target, Receipt, Tag,
 } from 'lucide-react';
 import KPICard from '@/components/KPICard';
 import {
