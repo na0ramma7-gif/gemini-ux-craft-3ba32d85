@@ -1,22 +1,22 @@
-import { useMemo, useState, useCallback } from 'react';
+// Feature-level Forecast (Phase A: Simple mode, per-service growth, multi-scenario).
+//
+// Architecture:
+//   - Reads per-service historical baseline (avg monthly Tx, highest Tx, current rate)
+//     from `state.revenueLines` + `state.revenueServices` for THIS feature.
+//   - Reads cost baseline from `costEntries` prop (Financial Planning workspace).
+//   - Per-feature scenarios live in localStorage via `useFeatureForecastSettings`.
+//   - The Assumptions Panel edits a DRAFT and only commits on Apply.
+import { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Feature } from '@/types';
 import { formatCurrency, cn } from '@/lib/utils';
-import { parseGrowthRate, parseNumber } from '@/lib/validation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
-  AreaChart,
-  Area,
   LineChart,
   Line,
   XAxis,
@@ -33,48 +33,20 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
-  Pencil,
   DollarSign,
-  BarChart3,
-  Zap,
-  Target,
+  Pencil,
 } from 'lucide-react';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  ForecastScenario,
+  ServiceBaselineInput,
+  TONE_CLASSES,
+  getServiceGrowthRate,
+  projectForecast,
+} from '@/lib/featureForecast';
+import { useFeatureForecastSettings } from '@/hooks/useFeatureForecastSettings';
+import ForecastAssumptionsPanel from '@/components/forecast/ForecastAssumptionsPanel';
 
-// Types
-type ScenarioType = 'baseline' | 'optimistic' | 'conservative';
-type HorizonMonths = 12 | 24 | 36;
-
-interface ForecastAssumptions {
-  revenueGrowthRate: number;
-  costGrowthRate: number;
-  resourceExpansion: number;
-  manualRevenueAdj: number;
-  manualCostAdj: number;
-}
-
-const SCENARIO_DEFAULTS: Record<ScenarioType, ForecastAssumptions> = {
-  baseline: { revenueGrowthRate: 5, costGrowthRate: 2, resourceExpansion: 3, manualRevenueAdj: 0, manualCostAdj: 0 },
-  optimistic: { revenueGrowthRate: 10, costGrowthRate: 1.5, resourceExpansion: 5, manualRevenueAdj: 0, manualCostAdj: 0 },
-  conservative: { revenueGrowthRate: 2, costGrowthRate: 3, resourceExpansion: 1, manualRevenueAdj: 0, manualCostAdj: 0 },
-};
-
-interface ForecastRow {
-  name: string;
-  month: string;
-  revenue: number;
-  cost: number;
-  profit: number;
-  isHistorical: boolean;
-  isManualRevenue?: boolean;
-  isManualCost?: boolean;
-}
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 interface FeatureForecastProps {
   feature: Feature;
@@ -82,141 +54,114 @@ interface FeatureForecastProps {
   costEntries: Array<{ month: number; year: number; planned: number; actual: number; calculatedCost?: number }>;
 }
 
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForecastProps) => {
   const { state, t, language } = useApp();
-  const [horizon, setHorizon] = useState<HorizonMonths>(12);
-  const [scenario, setScenario] = useState<ScenarioType>('baseline');
-  const [assumptions, setAssumptions] = useState<ForecastAssumptions>(SCENARIO_DEFAULTS['baseline']);
+  const { settings, setActiveScenario, applyDraft } = useFeatureForecastSettings(feature.id);
   const [showAssumptions, setShowAssumptions] = useState(false);
-  const [showTable, setShowTable] = useState(false);
-  const [manualOverrides, setManualOverrides] = useState<Record<string, { revenue?: number; cost?: number }>>({});
+  const [showDetails, setShowDetails] = useState(false);
 
-  // Build historical data from entries
-  const historicalData = useMemo(() => {
+  const activeScenario: ForecastScenario =
+    settings.scenarios.find(s => s.id === settings.activeScenarioId) ?? settings.scenarios[0];
+
+  // ── Per-service baseline for THIS feature ─────────────────────
+  // baseTx = avg historical monthly transactions per service
+  // rate   = the service's current default rate (Financial Planning Step 1)
+  const serviceBaselines = useMemo<ServiceBaselineInput[]>(() => {
+    const services = state.revenueServices.filter(s => s.featureId === feature.id);
+    if (services.length === 0) return [];
+    const lines = state.revenueLines.filter(l => l.featureId === feature.id);
+    return services
+      .map(svc => {
+        const svcLines = lines.filter(l => l.serviceId === svc.id);
+        // Distinct months observed for THIS service.
+        const monthsObserved = new Set(svcLines.map(l => l.month)).size;
+        const totalTx = svcLines.reduce(
+          (s, l) => s + (l.actualTransactions || l.plannedTransactions || 0),
+          0,
+        );
+        const highestTx = svcLines.reduce(
+          (m, l) => Math.max(m, l.actualTransactions || l.plannedTransactions || 0),
+          0,
+        );
+        const baseTx = monthsObserved > 0 ? totalTx / monthsObserved : 0;
+        return {
+          serviceId: svc.id,
+          serviceName: svc.name,
+          rate: svc.defaultRate,
+          baseTx,
+          highestHistoricalTx: highestTx,
+        };
+      })
+      // Drop services with zero history — nothing meaningful to forecast.
+      .filter(b => b.baseTx > 0);
+  }, [state.revenueServices, state.revenueLines, feature.id]);
+
+  // ── Cost baseline from Financial Planning workspace ───────────
+  const costBaseline = useMemo(() => {
+    // Aggregate by month: cost = actual fallback to planned/calculated.
+    const byMonth: Record<string, number> = {};
+    costEntries.forEach(e => {
+      const key = `${e.year}-${e.month}`;
+      const v = e.actual > 0 ? e.actual : e.calculatedCost ?? e.planned;
+      byMonth[key] = (byMonth[key] || 0) + v;
+    });
+    const monthsWithCost = Object.values(byMonth).filter(v => v > 0);
+    const total = monthsWithCost.reduce((s, v) => s + v, 0);
+    const baseMonthlyCost = monthsWithCost.length > 0 ? total / monthsWithCost.length : 0;
+    return { baseMonthlyCost, hasCostData: monthsWithCost.length > 0 };
+  }, [costEntries]);
+
+  // ── Live projection for the active scenario ───────────────────
+  const projection = useMemo(
+    () => projectForecast(serviceBaselines, costBaseline, activeScenario, settings.horizon),
+    [serviceBaselines, costBaseline, activeScenario, settings.horizon],
+  );
+
+  // ── Historical chart series ───────────────────────────────────
+  const historicalChart = useMemo(() => {
     const monthMap: Record<string, { revenue: number; cost: number }> = {};
-
     revenueEntries.forEach(e => {
       const key = `${e.year}-${String(e.month + 1).padStart(2, '0')}`;
       if (!monthMap[key]) monthMap[key] = { revenue: 0, cost: 0 };
       monthMap[key].revenue += e.actual > 0 ? e.actual : e.planned;
     });
-
     costEntries.forEach(e => {
       const key = `${e.year}-${String(e.month + 1).padStart(2, '0')}`;
       if (!monthMap[key]) monthMap[key] = { revenue: 0, cost: 0 };
-      monthMap[key].cost += e.actual > 0 ? e.actual : (e.calculatedCost || e.planned);
+      monthMap[key].cost += e.actual > 0 ? e.actual : e.calculatedCost ?? e.planned;
     });
-
-    // Also pull from global state
-    const featureRevActual = state.revenueActual.filter(r => r.featureId === feature.id);
-    featureRevActual.forEach(r => {
-      const key = r.month;
-      if (!monthMap[key]) monthMap[key] = { revenue: 0, cost: 0 };
-      monthMap[key].revenue += r.actual;
-    });
-
-    const featureRevPlan = state.revenuePlan.filter(r => r.featureId === feature.id);
-    featureRevPlan.forEach(r => {
-      const key = r.month;
-      if (!monthMap[key]) monthMap[key] = { revenue: 0, cost: 0 };
-      if (monthMap[key].revenue === 0) monthMap[key].revenue += r.expected;
-    });
-
-    const months = Object.keys(monthMap).sort();
-    return months.map(key => {
-      const [y, m] = key.split('-');
-      return {
-        name: `${MONTHS_SHORT[parseInt(m) - 1]} ${y.slice(2)}`,
-        month: key,
-        revenue: monthMap[key].revenue,
-        cost: monthMap[key].cost,
-        profit: monthMap[key].revenue - monthMap[key].cost,
-        isHistorical: true,
-      };
-    });
-  }, [revenueEntries, costEntries, state, feature.id]);
-
-  // Generate forecast rows
-  const forecastRows = useMemo((): ForecastRow[] => {
-    const lastHistorical = historicalData[historicalData.length - 1];
-    if (!lastHistorical) {
-      // No historical data: use base values
-      const baseRevenue = 10000;
-      const baseCost = 6000;
-      const rows: ForecastRow[] = [];
-      const now = new Date();
-      let projRev = baseRevenue;
-      let projCost = baseCost;
-
-      for (let i = 0; i < horizon; i++) {
-        const forecastDate = new Date(now.getFullYear(), now.getMonth() + i + 1, 1);
-        const monthKey = `${forecastDate.getFullYear()}-${String(forecastDate.getMonth() + 1).padStart(2, '0')}`;
-        projRev *= (1 + assumptions.revenueGrowthRate / 100);
-        projCost *= (1 + assumptions.costGrowthRate / 100);
-        const adjRev = projRev + assumptions.manualRevenueAdj;
-        const adjCost = projCost + assumptions.manualCostAdj;
-        const override = manualOverrides[monthKey];
-        const finalRev = override?.revenue ?? Math.round(adjRev);
-        const finalCost = override?.cost ?? Math.round(adjCost);
-        rows.push({
-          name: `${MONTHS_SHORT[forecastDate.getMonth()]} ${String(forecastDate.getFullYear()).slice(2)}`,
-          month: monthKey,
-          revenue: finalRev,
-          cost: finalCost,
-          profit: finalRev - finalCost,
-          isHistorical: false,
-          isManualRevenue: override?.revenue !== undefined,
-          isManualCost: override?.cost !== undefined,
-        });
-        if (override?.revenue !== undefined) projRev = override.revenue;
-        if (override?.cost !== undefined) projCost = override.cost;
-      }
-      return rows;
-    }
-
-    const [y, m] = lastHistorical.month.split('-').map(Number);
-    let projRevenue = lastHistorical.revenue;
-    let projCost = lastHistorical.cost;
-    const rows: ForecastRow[] = [];
-
-    for (let i = 1; i <= horizon; i++) {
-      const forecastDate = new Date(y, m - 1 + i, 1);
-      const monthKey = `${forecastDate.getFullYear()}-${String(forecastDate.getMonth() + 1).padStart(2, '0')}`;
-
-      projRevenue *= (1 + assumptions.revenueGrowthRate / 100);
-      projCost *= (1 + assumptions.costGrowthRate / 100);
-
-      const adjRev = projRevenue + assumptions.manualRevenueAdj;
-      const adjCost = projCost + assumptions.manualCostAdj;
-
-      const override = manualOverrides[monthKey];
-      const finalRev = override?.revenue ?? Math.round(adjRev);
-      const finalCost = override?.cost ?? Math.round(adjCost);
-
-      rows.push({
-        name: `${MONTHS_SHORT[forecastDate.getMonth()]} ${String(forecastDate.getFullYear()).slice(2)}`,
-        month: monthKey,
-        revenue: finalRev,
-        cost: finalCost,
-        profit: finalRev - finalCost,
-        isHistorical: false,
-        isManualRevenue: override?.revenue !== undefined,
-        isManualCost: override?.cost !== undefined,
+    state.revenueActual
+      .filter(r => r.featureId === feature.id)
+      .forEach(r => {
+        if (!monthMap[r.month]) monthMap[r.month] = { revenue: 0, cost: 0 };
+        monthMap[r.month].revenue += r.actual;
       });
+    return Object.keys(monthMap)
+      .sort()
+      .map(key => {
+        const [y, m] = key.split('-');
+        return {
+          name: `${MONTHS_SHORT[parseInt(m) - 1]} ${y.slice(2)}`,
+          month: key,
+          revenue: monthMap[key].revenue,
+          cost: monthMap[key].cost,
+          profit: monthMap[key].revenue - monthMap[key].cost,
+        };
+      });
+  }, [revenueEntries, costEntries, state.revenueActual, feature.id]);
 
-      if (override?.revenue !== undefined) projRevenue = override.revenue;
-      if (override?.cost !== undefined) projCost = override.cost;
-    }
-
-    return rows;
-  }, [historicalData, horizon, assumptions, manualOverrides]);
-
-  // Chart data
+  // ── Combined chart data: actuals + forecast lines ─────────────
   const chartData = useMemo(() => {
-    const historical = historicalData.map(d => ({
-      ...d,
+    const last = historicalChart[historicalChart.length - 1];
+    const startDate = last
+      ? (() => {
+          const [y, m] = last.month.split('-').map(Number);
+          return new Date(y, m - 1 + 1, 1);
+        })()
+      : new Date();
+
+    const historical = historicalChart.map(d => ({
+      name: d.name,
       actualRevenue: d.revenue,
       actualCost: d.cost,
       actualProfit: d.profit,
@@ -225,102 +170,22 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
       forecastProfit: undefined as number | undefined,
     }));
 
-    const bridge = historicalData[historicalData.length - 1];
-    const forecast = forecastRows.map((d, idx) => ({
-      name: d.name,
-      month: d.month,
-      actualRevenue: idx === 0 && bridge ? bridge.revenue : undefined as number | undefined,
-      actualCost: idx === 0 && bridge ? bridge.cost : undefined as number | undefined,
-      actualProfit: idx === 0 && bridge ? bridge.profit : undefined as number | undefined,
-      forecastRevenue: d.revenue,
-      forecastCost: d.cost,
-      forecastProfit: d.profit,
-    }));
-
-    return [...historical, ...forecast];
-  }, [historicalData, forecastRows]);
-
-  // Summary
-  const summary = useMemo(() => {
-    const totalRevenue = forecastRows.reduce((s, r) => s + r.revenue, 0);
-    const totalCost = forecastRows.reduce((s, r) => s + r.cost, 0);
-    const totalProfit = totalRevenue - totalCost;
-    const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
-
-    let cumProfit = 0;
-    let breakEven: string | null = null;
-    for (const row of forecastRows) {
-      cumProfit += row.profit;
-      if (cumProfit > 0 && !breakEven) breakEven = row.name;
-    }
-
-    const alerts: string[] = [];
-    if (margin < 0) alerts.push(t('projectedMargin') + ' < 0%');
-
-    return { totalRevenue, totalCost, totalProfit, margin, breakEven, alerts };
-  }, [forecastRows, t]);
-
-  // Revenue pipeline
-  const revenuePipeline = useMemo(() => {
-    const product = state.products.find(p => p.id === feature.productId);
-    const features = state.features.filter(f => f.productId === feature.productId && f.status !== 'Delivered');
-    return features.map(f => {
-      const expectedRevenue = state.revenuePlan.filter(r => r.featureId === f.id).reduce((s, r) => s + r.expected, 0);
+    const forecast = projection.monthly.map((m, i) => {
+      const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
       return {
-        product: product?.name || '',
-        feature: f.name,
-        launchDate: f.endDate,
-        estimatedRevenue: expectedRevenue,
+        name: `${MONTHS_SHORT[date.getMonth()]} ${String(date.getFullYear()).slice(2)}`,
+        actualRevenue: i === 0 && last ? last.revenue : (undefined as number | undefined),
+        actualCost: i === 0 && last ? last.cost : (undefined as number | undefined),
+        actualProfit: i === 0 && last ? last.profit : (undefined as number | undefined),
+        forecastRevenue: m.revenue,
+        forecastCost: projection.hasCostData ? m.cost : (undefined as number | undefined),
+        forecastProfit: projection.hasCostData ? m.profit : m.revenue,
       };
     });
-  }, [state, feature.productId]);
+    return [...historical, ...forecast];
+  }, [historicalChart, projection]);
 
-  // Per-service baseline driving the forecast (historical totals by service for THIS feature).
-  const perServiceBaseline = useMemo(() => {
-    const lines = state.revenueLines.filter(l => l.featureId === feature.id);
-    const byId = new Map<number, { planned: number; actual: number; lines: number }>();
-    lines.forEach(l => {
-      const cur = byId.get(l.serviceId) ?? { planned: 0, actual: 0, lines: 0 };
-      cur.planned += l.rate * (l.plannedTransactions || 0);
-      cur.actual += l.rate * (l.actualTransactions || 0);
-      cur.lines += 1;
-      byId.set(l.serviceId, cur);
-    });
-    const totalActual = Array.from(byId.values()).reduce((s, v) => s + v.actual, 0);
-    return Array.from(byId.entries())
-      .map(([id, v]) => {
-        const svc = state.revenueServices.find(s => s.id === id);
-        return {
-          name: svc?.name ?? 'Unknown',
-          planned: v.planned,
-          actual: v.actual,
-          lines: v.lines,
-          share: totalActual > 0 ? (v.actual / totalActual) * 100 : 0,
-        };
-      })
-      .sort((a, b) => b.actual - a.actual);
-  }, [state.revenueLines, state.revenueServices, feature.id]);
-
-  const handleOverride = useCallback((monthKey: string, field: 'revenue' | 'cost', value: number) => {
-    setManualOverrides(prev => ({ ...prev, [monthKey]: { ...prev[monthKey], [field]: value } }));
-  }, []);
-
-  const clearOverride = useCallback((monthKey: string, field: 'revenue' | 'cost') => {
-    setManualOverrides(prev => {
-      const updated = { ...prev };
-      if (updated[monthKey]) {
-        const { [field]: _, ...rest } = updated[monthKey];
-        if (Object.keys(rest).length === 0) delete updated[monthKey];
-        else updated[monthKey] = rest;
-      }
-      return updated;
-    });
-  }, []);
-
-  const handleScenarioChange = (s: ScenarioType) => {
-    setScenario(s);
-    setAssumptions({ ...SCENARIO_DEFAULTS[s] });
-  };
+  const tone = TONE_CLASSES[activeScenario.tone];
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
@@ -331,16 +196,20 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
           <div key={entry.dataKey} className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
             <span className="text-muted-foreground">{entry.name}:</span>
-            <span className="font-semibold text-foreground">{formatCurrency(entry.value, language)}</span>
+            <span className="font-semibold text-foreground tabular-nums">
+              {formatCurrency(entry.value, language)}
+            </span>
           </div>
         ))}
       </div>
     );
   };
 
+  const hasAnyServices = serviceBaselines.length > 0;
+
   return (
     <div className="space-y-6">
-      {/* Header with controls */}
+      {/* Header with scenario tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h3 className="text-base sm:text-lg font-semibold text-foreground flex items-center gap-2">
@@ -348,35 +217,32 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
             {t('forecast')} — {feature.name}
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {t(scenario as any)} · {horizon} {t('months')} · {assumptions.revenueGrowthRate}% {t('revenue')} / {assumptions.costGrowthRate}% {t('cost')}
+            {activeScenario.name} · {settings.horizon} {t('months')} · {activeScenario.defaultGrowthRate}%{' '}
+            {t('revenue')} / {activeScenario.costGrowthRate}% {t('cost')}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Scenario Quick Switch */}
-          <div className="flex bg-secondary rounded-lg p-1">
-            {(['baseline', 'optimistic', 'conservative'] as ScenarioType[]).map(s => (
-              <button
-                key={s}
-                onClick={() => handleScenarioChange(s)}
-                className={`px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
-                  scenario === s ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {t(s as any)}
-              </button>
-            ))}
+          <div className="flex bg-secondary rounded-lg p-1 gap-0.5">
+            {settings.scenarios.map(s => {
+              const sTone = TONE_CLASSES[s.tone];
+              const active = s.id === settings.activeScenarioId;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveScenario(s.id)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors',
+                    active
+                      ? `${sTone.bg} ${sTone.text} shadow-sm`
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <span className={cn('w-1.5 h-1.5 rounded-full', sTone.dot)} />
+                  {s.name}
+                </button>
+              );
+            })}
           </div>
-          {/* Horizon select */}
-          <Select value={String(horizon)} onValueChange={v => setHorizon(Number(v) as HorizonMonths)}>
-            <SelectTrigger className="w-28 h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="12">12 {t('months')}</SelectItem>
-              <SelectItem value="24">24 {t('months')}</SelectItem>
-              <SelectItem value="36">36 {t('months')}</SelectItem>
-            </SelectContent>
-          </Select>
           <Button variant="outline" size="sm" onClick={() => setShowAssumptions(true)} className="gap-1.5">
             <Settings2 className="w-3.5 h-3.5" />
             {t('forecastAssumptions')}
@@ -384,92 +250,50 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
         </div>
       </div>
 
-      {/* Forecast Assumptions Dialog */}
-      <Dialog open={showAssumptions} onOpenChange={setShowAssumptions}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('forecastAssumptions')}</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t('revenueGrowthRate')}</Label>
-              <div className="relative">
-                <Input type="number" step="0.5" min={-100} max={100} value={assumptions.revenueGrowthRate} className="pe-8 h-9 text-sm"
-                  onChange={e => setAssumptions({ ...assumptions, revenueGrowthRate: parseGrowthRate(e.target.value) })} />
-                <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t('costGrowthRate')}</Label>
-              <div className="relative">
-                <Input type="number" step="0.5" min={-100} max={100} value={assumptions.costGrowthRate} className="pe-8 h-9 text-sm"
-                  onChange={e => setAssumptions({ ...assumptions, costGrowthRate: parseGrowthRate(e.target.value) })} />
-                <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t('resourceExpansion')}</Label>
-              <div className="relative">
-                <Input type="number" step="0.5" min={-100} max={100} value={assumptions.resourceExpansion} className="pe-8 h-9 text-sm"
-                  onChange={e => setAssumptions({ ...assumptions, resourceExpansion: parseGrowthRate(e.target.value) })} />
-                <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t('manualRevenueAdj')}</Label>
-              <Input type="number" step="1" value={assumptions.manualRevenueAdj || ''} placeholder="0" className="h-9 text-sm"
-                onChange={e => setAssumptions({ ...assumptions, manualRevenueAdj: parseNumber(e.target.value, { min: -1e10, max: 1e10 }) })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t('manualCostAdj')}</Label>
-              <Input type="number" step="1" value={assumptions.manualCostAdj || ''} placeholder="0" className="h-9 text-sm"
-                onChange={e => setAssumptions({ ...assumptions, manualCostAdj: parseNumber(e.target.value, { min: -1e10, max: 1e10 }) })} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button size="sm" onClick={() => setShowAssumptions(false)}>
-              {t('applyConfig')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Alerts */}
-      {summary.alerts.length > 0 && (
-        <div className="space-y-2">
-          {summary.alerts.map((alert, idx) => (
-            <div key={idx} className="flex items-center gap-2 bg-warning/10 border border-warning/20 rounded-lg px-3 py-2 text-xs text-foreground">
-              <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0" />
-              {alert}
-            </div>
-          ))}
+      {/* No-cost banner */}
+      {!projection.hasCostData && (
+        <div className="flex items-start gap-2 bg-warning/10 border border-warning/30 rounded-lg px-3 py-2.5 text-xs">
+          <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+          <p className="text-foreground">{t('noCostBannerLong')}</p>
         </div>
       )}
 
-      {/* Summary Cards */}
+      {/* No-services banner */}
+      {!hasAnyServices && (
+        <div className="flex items-start gap-2 bg-muted border border-border rounded-lg px-3 py-2.5 text-xs">
+          <AlertTriangle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+          <p className="text-foreground">{t('noServicesForForecastBanner')}</p>
+        </div>
+      )}
+
+      {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-success/10 rounded-xl p-4">
-          <div className="text-[11px] text-muted-foreground mb-1">{t('projectedRevenue')} ({horizon} {t('months')})</div>
-          <div className="text-base font-bold text-success">{formatCurrency(summary.totalRevenue, language)}</div>
-        </div>
-        <div className="bg-destructive/10 rounded-xl p-4">
-          <div className="text-[11px] text-muted-foreground mb-1">{t('projectedCost')} ({horizon} {t('months')})</div>
-          <div className="text-base font-bold text-destructive">{formatCurrency(summary.totalCost, language)}</div>
-        </div>
-        <div className="bg-primary/10 rounded-xl p-4">
-          <div className="text-[11px] text-muted-foreground mb-1">{t('projectedProfit')} ({horizon} {t('months')})</div>
-          <div className={`text-base font-bold ${summary.totalProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
-            {formatCurrency(summary.totalProfit, language)}
-          </div>
-        </div>
-        <div className="bg-accent/10 rounded-xl p-4">
-          <div className="text-[11px] text-muted-foreground mb-1">{t('projectedMargin')}</div>
-          <div className="text-base font-bold text-primary">{summary.margin.toFixed(1)}%</div>
-        </div>
+        <SummaryCard
+          label={`${t('projectedRevenue')} (${settings.horizon} ${t('months')})`}
+          value={formatCurrency(projection.totalRevenue, language)}
+          tone="success"
+        />
+        <SummaryCard
+          label={`${t('projectedCost')} (${settings.horizon} ${t('months')})`}
+          value={projection.hasCostData ? formatCurrency(projection.totalCost, language) : '—'}
+          tone="destructive"
+          hint={!projection.hasCostData ? t('noCostData') : undefined}
+        />
+        <SummaryCard
+          label={`${t('projectedProfit')} (${settings.horizon} ${t('months')})`}
+          value={formatCurrency(projection.totalProfit, language)}
+          tone={projection.totalProfit >= 0 ? 'success' : 'destructive'}
+        />
+        <SummaryCard
+          label={t('projectedMargin')}
+          value={projection.hasCostData ? `${projection.margin.toFixed(1)}%` : '—'}
+          tone="primary"
+          hint={!projection.hasCostData ? t('noCostData') : undefined}
+        />
       </div>
 
-      {/* Per-service baseline driving this forecast */}
-      {perServiceBaseline.length > 0 && (
+      {/* Per-service baseline + assumptions */}
+      {hasAnyServices && (
         <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
           <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-primary" />
@@ -480,20 +304,40 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
               <thead>
                 <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
                   <th className="text-start py-2 ps-1">{t('service')}</th>
-                  <th className="text-end py-2">{t('plannedRevenue')}</th>
-                  <th className="text-end py-2">{t('actualRevenue')}</th>
+                  <th className="text-end py-2">{t('baseTx')}</th>
+                  <th className="text-end py-2">{t('rate')}</th>
+                  <th className="text-end py-2">{t('growthPercent')}</th>
+                  <th className="text-end py-2">{t('pattern')}</th>
                   <th className="text-end py-2 pe-1">{t('shareOfTotal')}</th>
                 </tr>
               </thead>
               <tbody>
-                {perServiceBaseline.map(r => (
-                  <tr key={r.name} className="border-b border-border/50">
-                    <td className="py-2 ps-1 font-medium text-foreground">{r.name}</td>
-                    <td className="py-2 text-end text-muted-foreground">{formatCurrency(r.planned, language)}</td>
-                    <td className="py-2 text-end font-semibold text-foreground">{formatCurrency(r.actual, language)}</td>
-                    <td className="py-2 pe-1 text-end text-muted-foreground">{r.share.toFixed(1)}%</td>
-                  </tr>
-                ))}
+                {projection.services.map(s => {
+                  const overridden = activeScenario.services.some(a => a.serviceId === s.serviceId);
+                  const share = projection.totalRevenue > 0 ? (s.totalRevenue / projection.totalRevenue) * 100 : 0;
+                  return (
+                    <tr key={s.serviceId} className="border-b border-border/50">
+                      <td className="py-2 ps-1 font-medium text-foreground">
+                        <div className="flex items-center gap-2">
+                          {overridden && <span className="w-1.5 h-1.5 rounded-full bg-warning" title={t('overridden')} />}
+                          {s.serviceName}
+                        </div>
+                      </td>
+                      <td className="py-2 text-end tabular-nums text-muted-foreground">
+                        {Math.round(s.baseTx).toLocaleString()}
+                      </td>
+                      <td className="py-2 text-end tabular-nums text-muted-foreground">
+                        {formatCurrency(s.rate, language)}
+                      </td>
+                      <td className={cn('py-2 text-end tabular-nums font-medium', overridden ? 'text-warning' : 'text-foreground')}>
+                        {s.growthRate.toFixed(1)}%
+                        {overridden && <Pencil className="inline w-2.5 h-2.5 ms-1" />}
+                      </td>
+                      <td className="py-2 text-end text-muted-foreground">{t('flat')}</td>
+                      <td className="py-2 pe-1 text-end text-muted-foreground tabular-nums">{share.toFixed(1)}%</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -502,137 +346,134 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
 
       {/* Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* Revenue Forecast */}
-        <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
-          <h4 className="text-sm font-semibold text-foreground mb-3">{t('revenueForecast')}</h4>
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="actualRevenue" stroke="hsl(var(--revenue))" strokeWidth={2} dot={false} name={`${t('actual')} ${t('revenue')}`} connectNulls={false} />
-                <Line type="monotone" dataKey="forecastRevenue" stroke="hsl(var(--revenue))" strokeWidth={2} strokeDasharray="6 3" strokeOpacity={0.7} dot={false} name={`${t('forecast')} ${t('revenue')}`} connectNulls={false} />
-                <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Cost Forecast */}
-        <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
-          <h4 className="text-sm font-semibold text-foreground mb-3">{t('costForecast')}</h4>
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="actualCost" stroke="hsl(var(--cost))" strokeWidth={2} dot={false} name={`${t('actual')} ${t('cost')}`} connectNulls={false} />
-                <Line type="monotone" dataKey="forecastCost" stroke="hsl(var(--cost))" strokeWidth={2} strokeDasharray="6 3" strokeOpacity={0.7} dot={false} name={`${t('forecast')} ${t('cost')}`} connectNulls={false} />
-                <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Profit Projection */}
-        <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
-          <h4 className="text-sm font-semibold text-foreground mb-3">{t('profitProjection')}</h4>
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-                <Tooltip content={<CustomTooltip />} />
-                <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
-                <Line type="monotone" dataKey="actualProfit" stroke="hsl(var(--profit))" strokeWidth={2} dot={false} name={`${t('actual')} ${t('netProfit')}`} connectNulls={false} />
-                <Line type="monotone" dataKey="forecastProfit" stroke="hsl(var(--profit))" strokeWidth={2} strokeDasharray="6 3" strokeOpacity={0.7} dot={false} name={`${t('forecast')} ${t('netProfit')}`} connectNulls={false} />
-                <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <ChartCard title={t('revenueForecast')}>
+          <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+            <Tooltip content={<CustomTooltip />} />
+            <Line type="monotone" dataKey="actualRevenue" stroke="hsl(var(--revenue))" strokeWidth={2} dot={false} name={`${t('actual')} ${t('revenue')}`} connectNulls={false} />
+            <Line type="monotone" dataKey="forecastRevenue" stroke={tone.hex} strokeWidth={2} strokeDasharray="6 3" strokeOpacity={0.85} dot={false} name={`${t('forecast')} ${t('revenue')}`} connectNulls={false} />
+            <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
+          </LineChart>
+        </ChartCard>
+        <ChartCard title={t('costForecast')}>
+          <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+            <Tooltip content={<CustomTooltip />} />
+            <Line type="monotone" dataKey="actualCost" stroke="hsl(var(--cost))" strokeWidth={2} dot={false} name={`${t('actual')} ${t('cost')}`} connectNulls={false} />
+            <Line type="monotone" dataKey="forecastCost" stroke="hsl(var(--cost))" strokeWidth={2} strokeDasharray="6 3" strokeOpacity={0.7} dot={false} name={`${t('forecast')} ${t('cost')}`} connectNulls={false} />
+            <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
+          </LineChart>
+        </ChartCard>
+        <ChartCard title={t('profitProjection')}>
+          <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+            <Tooltip content={<CustomTooltip />} />
+            <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
+            <Line type="monotone" dataKey="actualProfit" stroke="hsl(var(--profit))" strokeWidth={2} dot={false} name={`${t('actual')} ${t('netProfit')}`} connectNulls={false} />
+            <Line type="monotone" dataKey="forecastProfit" stroke="hsl(var(--profit))" strokeWidth={2} strokeDasharray="6 3" strokeOpacity={0.7} dot={false} name={`${t('forecast')} ${t('netProfit')}`} connectNulls={false} />
+            <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 9, paddingTop: 4 }} />
+          </LineChart>
+        </ChartCard>
       </div>
 
-      {/* Editable Forecast Table */}
-      <Collapsible open={showTable} onOpenChange={setShowTable}>
+      {/* Forecast Details (per-service, per-month) */}
+      <Collapsible open={showDetails} onOpenChange={setShowDetails}>
         <CollapsibleTrigger asChild>
           <Button variant="outline" className="w-full justify-between gap-2">
             <span className="text-sm font-medium">{t('forecastDetails')}</span>
-            {showTable ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="bg-card rounded-xl shadow-[var(--shadow-card)] overflow-hidden mt-3">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-secondary/50">
-                    <th className="text-start p-3 font-medium text-muted-foreground">{t('month')}</th>
-                    <th className="text-start p-3 font-medium text-muted-foreground">{t('type')}</th>
-                    <th className="text-end p-3 font-medium text-muted-foreground">{t('forecastRevenue')}</th>
-                    <th className="text-end p-3 font-medium text-muted-foreground">{t('forecastCost')}</th>
-                    <th className="text-end p-3 font-medium text-muted-foreground">{t('forecastProfit')}</th>
+                <thead className="bg-muted/40">
+                  <tr>
+                    <th className="text-start p-3 font-medium text-muted-foreground sticky start-0 bg-muted/40 z-10">{t('service')}</th>
+                    {projection.monthly.map((_, i) => (
+                      <th key={i} className="text-end p-3 font-medium text-muted-foreground tabular-nums">
+                        {monthLabel(i, historicalChart[historicalChart.length - 1]?.month)}
+                      </th>
+                    ))}
+                    <th className="text-end p-3 font-medium text-muted-foreground tabular-nums">{t('total')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {historicalData.map((row, idx) => (
-                    <tr key={`h-${idx}`} className="border-t border-border bg-secondary/20">
-                      <td className="p-3 font-medium text-foreground">{row.name}</td>
-                      <td className="p-3">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-success/10 text-success">
-                          {t('actual')}
-                        </span>
-                      </td>
-                      <td className="p-3 text-end text-foreground font-medium">{formatCurrency(row.revenue, language)}</td>
-                      <td className="p-3 text-end text-foreground font-medium">{formatCurrency(row.cost, language)}</td>
-                      <td className={`p-3 text-end font-medium ${row.profit >= 0 ? 'text-success' : 'text-destructive'}`}>
-                        {formatCurrency(row.profit, language)}
-                      </td>
-                    </tr>
-                  ))}
-
-                  {historicalData.length > 0 && forecastRows.length > 0 && (
-                    <tr>
-                      <td colSpan={5} className="p-0">
-                        <div className="border-t-2 border-dashed border-primary/30" />
-                      </td>
-                    </tr>
-                  )}
-
-                  {forecastRows.map((row, idx) => (
-                    <tr key={`f-${idx}`} className="border-t border-border hover:bg-secondary/10 group">
-                      <td className="p-3 font-medium text-foreground">{row.name}</td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-1">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
-                            {t('forecast')}
-                          </span>
-                          {(row.isManualRevenue || row.isManualCost) && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-warning/10 text-warning">
-                              <Pencil className="w-2.5 h-2.5" />
-                              {t('manualAdjustment')}
-                            </span>
+                  {projection.services.map(s => (
+                    <tr key={s.serviceId} className="border-t border-border/60">
+                      <td className="p-3 font-medium text-foreground sticky start-0 bg-card z-10">{s.serviceName}</td>
+                      {s.monthly.map((m, i) => (
+                        <td
+                          key={i}
+                          className={cn(
+                            'p-3 text-end tabular-nums',
+                            m.sanityFlag ? 'text-warning' : 'text-foreground',
                           )}
-                        </div>
-                      </td>
-                      <td className="p-3 text-end">
-                        <EditableCell value={row.revenue} isManual={row.isManualRevenue} language={language}
-                          onSave={v => handleOverride(row.month, 'revenue', v)} onClear={() => clearOverride(row.month, 'revenue')} />
-                      </td>
-                      <td className="p-3 text-end">
-                        <EditableCell value={row.cost} isManual={row.isManualCost} language={language}
-                          onSave={v => handleOverride(row.month, 'cost', v)} onClear={() => clearOverride(row.month, 'cost')} />
-                      </td>
-                      <td className={`p-3 text-end font-medium ${row.profit >= 0 ? 'text-success' : 'text-destructive'}`}>
-                        {formatCurrency(row.profit, language)}
+                          title={m.sanityFlag ? t('sanitySpike') : undefined}
+                        >
+                          {formatCurrency(Math.round(m.revenue), language)}
+                        </td>
+                      ))}
+                      <td className="p-3 text-end font-semibold text-foreground tabular-nums">
+                        {formatCurrency(Math.round(s.totalRevenue), language)}
                       </td>
                     </tr>
                   ))}
+                  <tr className="border-t-2 border-border bg-muted/30">
+                    <td className="p-3 font-semibold sticky start-0 bg-muted/30 z-10">{t('totalRevenue')}</td>
+                    {projection.monthly.map((m, i) => (
+                      <td key={i} className="p-3 text-end font-semibold text-success tabular-nums">
+                        {formatCurrency(Math.round(m.revenue), language)}
+                      </td>
+                    ))}
+                    <td className="p-3 text-end font-bold text-success tabular-nums">
+                      {formatCurrency(Math.round(projection.totalRevenue), language)}
+                    </td>
+                  </tr>
+                  {projection.hasCostData && (
+                    <>
+                      <tr className="border-t border-border/60">
+                        <td className="p-3 font-semibold sticky start-0 bg-card z-10">{t('totalCost')}</td>
+                        {projection.monthly.map((m, i) => (
+                          <td key={i} className="p-3 text-end text-destructive tabular-nums">
+                            {formatCurrency(Math.round(m.cost), language)}
+                          </td>
+                        ))}
+                        <td className="p-3 text-end font-semibold text-destructive tabular-nums">
+                          {formatCurrency(Math.round(projection.totalCost), language)}
+                        </td>
+                      </tr>
+                      <tr className="border-t border-border/60 bg-muted/30">
+                        <td className="p-3 font-semibold sticky start-0 bg-muted/30 z-10">{t('forecastProfit')}</td>
+                        {projection.monthly.map((m, i) => (
+                          <td
+                            key={i}
+                            className={cn(
+                              'p-3 text-end font-semibold tabular-nums',
+                              m.profit >= 0 ? 'text-success' : 'text-destructive',
+                            )}
+                          >
+                            {formatCurrency(Math.round(m.profit), language)}
+                          </td>
+                        ))}
+                        <td
+                          className={cn(
+                            'p-3 text-end font-bold tabular-nums',
+                            projection.totalProfit >= 0 ? 'text-success' : 'text-destructive',
+                          )}
+                        >
+                          {formatCurrency(Math.round(projection.totalProfit), language)}
+                        </td>
+                      </tr>
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -640,72 +481,58 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Revenue Pipeline */}
-      {revenuePipeline.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold text-foreground mb-3">{t('revenuePipeline')}</h4>
-          <div className="bg-card rounded-xl shadow-[var(--shadow-card)] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-secondary/50">
-                    <th className="text-start p-3 font-medium text-muted-foreground">{t('product')}</th>
-                    <th className="text-start p-3 font-medium text-muted-foreground">{t('feature')}</th>
-                    <th className="text-start p-3 font-medium text-muted-foreground">{t('expectedLaunch')}</th>
-                    <th className="text-end p-3 font-medium text-muted-foreground">{t('estimatedRevenueImpact')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {revenuePipeline.map((item, idx) => (
-                    <tr key={idx} className="border-t border-border hover:bg-secondary/10">
-                      <td className="p-3 text-foreground font-medium">{item.product}</td>
-                      <td className="p-3 text-foreground">{item.feature}</td>
-                      <td className="p-3 text-muted-foreground">{item.launchDate}</td>
-                      <td className="p-3 text-end font-semibold text-success">{formatCurrency(item.estimatedRevenue, language)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+      <ForecastAssumptionsPanel
+        open={showAssumptions}
+        onOpenChange={setShowAssumptions}
+        initialSettings={settings}
+        serviceBaselines={serviceBaselines}
+        costBaseline={costBaseline}
+        onApply={applyDraft}
+      />
     </div>
   );
 };
 
-// Inline editable cell
-const EditableCell = ({
-  value, isManual, language, onSave, onClear,
+const SummaryCard = ({
+  label, value, tone, hint,
 }: {
-  value: number; isManual?: boolean; language: string; onSave: (v: number) => void; onClear: () => void;
+  label: string;
+  value: string;
+  tone: 'success' | 'destructive' | 'primary';
+  hint?: string;
 }) => {
-  const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value.toString());
-
-  if (editing) {
-    return (
-      <Input type="number" value={editValue} onChange={e => setEditValue(e.target.value)}
-        onBlur={() => { const p = parseFloat(editValue); if (!isNaN(p)) onSave(Math.round(p)); setEditing(false); }}
-        onKeyDown={e => {
-          if (e.key === 'Enter') { const p = parseFloat(editValue); if (!isNaN(p)) onSave(Math.round(p)); setEditing(false); }
-          if (e.key === 'Escape') setEditing(false);
-        }}
-        className="h-6 text-xs w-28 text-end" autoFocus />
-    );
-  }
-
+  const bg = tone === 'success' ? 'bg-success/10' : tone === 'destructive' ? 'bg-destructive/10' : 'bg-primary/10';
+  const txt = tone === 'success' ? 'text-success' : tone === 'destructive' ? 'text-destructive' : 'text-primary';
   return (
-    <span
-      className={`cursor-pointer hover:underline inline-flex items-center gap-1 font-medium ${isManual ? 'text-warning' : 'text-foreground'}`}
-      onClick={() => { setEditValue(value.toString()); setEditing(true); }}
-      onDoubleClick={() => { if (isManual) onClear(); }}
-      title={isManual ? 'Double-click to reset' : 'Click to edit'}
-    >
-      {formatCurrency(value, language)}
-      {isManual && <Pencil className="w-2.5 h-2.5 text-warning" />}
-    </span>
+    <div className={cn('rounded-xl p-4', bg)}>
+      <div className="text-[11px] text-muted-foreground mb-1">{label}</div>
+      <div className={cn('text-base font-bold tabular-nums', txt)}>{value}</div>
+      {hint && <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>}
+    </div>
   );
+};
+
+const ChartCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
+    <h4 className="text-sm font-semibold text-foreground mb-3">{title}</h4>
+    <div className="h-52">
+      <ResponsiveContainer width="100%" height="100%">
+        {children as any}
+      </ResponsiveContainer>
+    </div>
+  </div>
+);
+
+/** Build a "Mar 25" style label for the i-th forecast month, given the last historical month. */
+const monthLabel = (i: number, lastMonth?: string) => {
+  const start = lastMonth
+    ? (() => {
+        const [y, m] = lastMonth.split('-').map(Number);
+        return new Date(y, m - 1 + 1, 1);
+      })()
+    : new Date();
+  const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+  return `${MONTHS_SHORT[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
 };
 
 export default FeatureForecast;
