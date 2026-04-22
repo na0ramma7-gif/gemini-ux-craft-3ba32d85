@@ -13,6 +13,7 @@ import {
   Legend,
 } from 'recharts';
 import { format, eachMonthOfInterval } from 'date-fns';
+import AccessibleFigure from '@/components/a11y/AccessibleFigure';
 
 const PRODUCT_COLORS = [
   { stroke: 'hsl(var(--primary))', fill: 'hsl(var(--primary))' },
@@ -80,7 +81,16 @@ const ProductAreaChart = () => {
         <Package className="w-4 h-4 text-primary" />
         {t('products')} — {t('actual')}
       </h3>
-      <div className="h-64">
+      <AccessibleFigure
+        title={`${t('products')} — ${t('actual')}`}
+        summary={`${products.length} ${t('products')}, ${chartData.length} ${t('months')}`}
+        tableHeaders={[t('month'), ...products.map(p => p.code)]}
+        tableRows={chartData.map(row => [
+          String(row.name),
+          ...products.map(p => formatCurrency(Number(row[p.code] ?? 0), language)),
+        ])}
+        className="h-64"
+      >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
