@@ -149,7 +149,7 @@ const RevenuePipelineChart = ({ scenario, horizon, config }: Props) => {
   return (
     <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-6">
       <AccessibleFigure
-        title={`${t('revenue')} ${t('pipeline') ?? ''} — ${t(scenario)}`}
+        title={`${t('revenue')} — ${t(scenario)}`}
         summary={`${chartData.length} ${t('months')}, ${portfolioNames.length} ${t('portfolios')}`}
         tableHeaders={[t('month'), ...portfolioNames, t('total')]}
         tableRows={chartData.map(row => {
