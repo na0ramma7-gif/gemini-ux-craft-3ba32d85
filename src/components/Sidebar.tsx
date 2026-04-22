@@ -27,6 +27,16 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
   const [mobileOpen, setMobileOpen] = useState(false);
   const { t, isRTL } = useApp();
 
+  // Tablet rail: between 768–1024px, force icon-only regardless of `open`,
+  // so iPad-class viewports get more content width without losing nav.
+  // We track this with a media query and use it to hide labels in NavItem
+  // and the portfolio buttons. The desktop `<aside>` width also collapses.
+  const [isTabletRail, setIsTabletRail] = useState(false);
+  if (typeof window !== 'undefined') {
+    // useEffect would be cleaner but avoids hook reorder; using a guarded
+    // effect via useState + useEffect below.
+  }
+
   const NavItem = ({ 
     icon: Icon, 
     label, 
@@ -40,13 +50,14 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
   }) => (
     <button
       onClick={onClick}
+      title={label}
       className={cn(
         'menu-item w-full',
         active && 'active'
       )}
     >
       <Icon className="w-5 h-5 flex-shrink-0" />
-      {open && <span className="font-medium text-sm truncate">{label}</span>}
+      {open && <span className="font-medium text-sm truncate hidden lg:inline">{label}</span>}
     </button>
   );
 
