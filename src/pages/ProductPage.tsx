@@ -777,7 +777,43 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                 <div className="border-b pb-3 mb-4">
                   <h3 className="text-base sm:text-lg font-bold text-foreground">💵 {t('revenue')}</h3>
                 </div>
-                <div className="overflow-x-auto">
+                {/* Mobile cards */}
+                <div className="md:hidden space-y-2">
+                  {features.map(feature => {
+                    const portfolio = state.portfolios.find(p => p.id === product.portfolioId);
+                    let expected = 0, actual = 0;
+                    state.revenuePlan.filter(r => r.featureId === feature.id).forEach(r => expected += r.expected);
+                    state.revenueActual.filter(r => r.featureId === feature.id).forEach(r => actual += r.actual);
+                    const cost = expected * 0.6;
+                    const variance = actual - expected;
+                    const cmp = compareByFeatureId.get(feature.id);
+                    const revDelta = cmp ? computeDelta(actual, cmp.revenue) : null;
+                    return (
+                      <div key={feature.id} className="bg-secondary/30 rounded-xl p-3 border border-border">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-foreground text-sm truncate">{feature.name}</div>
+                            <div className="text-[11px] text-muted-foreground truncate">{product.name} · {portfolio?.name || 'N/A'}</div>
+                          </div>
+                          <StatusBadge status={feature.status} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('expected')}</div><div className="text-primary font-semibold tabular-nums">{formatCurrency(expected, language)}</div></div>
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('actual')}</div><div className="text-success font-semibold tabular-nums">{formatCurrency(actual, language)}</div></div>
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('cost')}</div><div className="text-warning font-semibold tabular-nums">{formatCurrency(cost, language)}</div></div>
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('variance')}</div><div className={cn("font-bold tabular-nums", variance >= 0 ? 'text-success' : 'text-destructive')}>{variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}</div></div>
+                        </div>
+                        {compare.active && revDelta && (
+                          <div className="mt-2"><DeltaChip delta={revDelta} format="currency" /></div>
+                        )}
+                        <div className="mt-3">
+                          <Button size="sm" className="w-full" onClick={() => setSelectedFeatureForFinancials(feature)}>{t('planFinancials')}</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full min-w-[700px]">
                     <thead className="bg-secondary">
                       <tr>
