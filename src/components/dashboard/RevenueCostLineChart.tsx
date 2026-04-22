@@ -47,7 +47,7 @@ const RevenueCostLineChart = () => {
 
     // Align by month index. Longer window defines the X axis.
     const length = compare ? Math.max(primary.length, compare.length) : primary.length;
-    const out: Array<Record<string, any>> = [];
+    const out: Array<Record<string, number | string | null>> = [];
     for (let i = 0; i < length; i++) {
       const p = primary[i];
       const c = compare?.[i];
