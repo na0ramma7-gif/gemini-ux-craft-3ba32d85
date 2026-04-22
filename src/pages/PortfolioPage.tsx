@@ -438,13 +438,13 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                         </tr>
                       </thead>
                       <tbody>
-                        {heatmapData.map((row: any) => {
+                        {heatmapData.map((row: Record<string, string | number> & { product: string }) => {
                           const rowTotal = heatmapMonths.reduce((sum, m) => sum + ((row[m] as number) || 0), 0);
                           return (
                             <tr key={row.product}>
                               <td className="px-3 py-2 text-xs font-medium text-foreground">{row.product}</td>
                               {heatmapMonths.map(m => {
-                                const val = row[m] || 0;
+                                const val = (row[m] as number) || 0;
                                 const intensity = maxHeatmapVal > 0 ? val / maxHeatmapVal : 0;
                                 return (
                                   <td key={m} className="px-1 py-1.5" title={val > 0 ? formatCurrency(val, language) : '—'}>

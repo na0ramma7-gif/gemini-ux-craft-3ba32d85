@@ -11,7 +11,8 @@ import {
   ChevronRight,
   Folder,
   Menu,
-  X
+  X,
+  type LucideIcon,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -46,7 +47,7 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
     showLabel,
     labelClassName,
   }: {
-    icon: any;
+    icon: LucideIcon;
     label: string;
     active: boolean;
     onClick: () => void;

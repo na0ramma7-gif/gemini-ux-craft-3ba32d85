@@ -385,7 +385,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   };
 
   const revenueEntries = useMemo(() => {
-    const entries: any[] = [];
+    const entries: Array<{ id: string; featureId: number; month: number; year: number; planned: number; actual: number }> = [];
     monthlyRevenue.forEach((mr, mi) => {
       if (mr.planned > 0 || mr.actual > 0) {
         entries.push({
@@ -402,7 +402,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
   }, [monthlyRevenue, selectedYear, feature.id]);
 
   const costEntries = useMemo(() => {
-    const entries: any[] = [];
+    const entries: Array<{ id: string | number; featureId: number; month: number; year: number; category: string; planned: number; actual: number }> = [];
     Object.entries(yearData).forEach(([ms, md]) => {
       const mi = parseInt(ms);
       Object.entries(md.costs).forEach(([cat, items]) => items.forEach(item => entries.push({ id: item.id, featureId: feature.id, month: mi, year: selectedYear, category: cat, planned: item.planned, actual: item.actual })));
