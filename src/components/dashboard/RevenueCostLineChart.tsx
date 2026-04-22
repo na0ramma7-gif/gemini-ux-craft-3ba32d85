@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { format, eachMonthOfInterval } from 'date-fns';
 import CompareLegend from '@/components/compare/CompareLegend';
+import AccessibleFigure from '@/components/a11y/AccessibleFigure';
 
 const RevenueCostLineChart = () => {
   const { state, dateFilter, t, language } = useApp();
@@ -123,7 +124,19 @@ const RevenueCostLineChart = () => {
         </div>
         {compareEnabled && <CompareLegend />}
       </div>
-      <div className="h-80">
+      <AccessibleFigure
+        title={t('revenueCostTrend')}
+        summary={`${chartData.length} ${t('months')}${compareEnabled ? ` · ${t('comparison')}` : ''}`}
+        tableHeaders={[t('month'), t('revenue'), t('plannedRevenue'), t('cost'), t('netProfit')]}
+        tableRows={chartData.map(r => [
+          String(r.name),
+          r.revenue != null ? formatCurrency(r.revenue, language) : '—',
+          r.planned != null ? formatCurrency(r.planned, language) : '—',
+          r.cost != null ? formatCurrency(r.cost, language) : '—',
+          r.profit != null ? formatCurrency(r.profit, language) : '—',
+        ])}
+        className="h-80"
+      >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />

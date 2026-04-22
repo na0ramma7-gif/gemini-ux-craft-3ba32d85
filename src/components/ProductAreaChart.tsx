@@ -135,7 +135,7 @@ const ProductAreaChart = () => {
             />
           </AreaChart>
         </ResponsiveContainer>
-      </div>
+      </AccessibleFigure>
     </div>
   );
 };
