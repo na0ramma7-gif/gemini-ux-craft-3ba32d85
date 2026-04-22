@@ -49,8 +49,8 @@ const PortfolioStrategicAlignment = ({ portfolioId }: Props) => {
 
   return (
     <div className="bg-secondary/30 rounded-xl p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 min-w-0">
           <Target className="w-4 h-4 text-primary" /> {t('strategicAlignment')}
         </h4>
         <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowAdd(true)}>
