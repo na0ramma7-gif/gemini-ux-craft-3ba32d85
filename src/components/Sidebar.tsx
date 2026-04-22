@@ -143,7 +143,9 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
       {/* Mobile menu button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="md:hidden fixed top-3 start-3 z-50 p-2 bg-card rounded-lg shadow-lg"
+        className="md:hidden fixed top-3 end-3 z-50 p-2.5 bg-card rounded-lg shadow-lg border border-border min-w-[44px] min-h-[44px] flex items-center justify-center"
+        aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
+        aria-expanded={mobileOpen}
       >
         {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
