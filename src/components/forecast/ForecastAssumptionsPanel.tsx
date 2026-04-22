@@ -164,7 +164,7 @@ const ForecastAssumptionsPanel = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[1280px] w-[96vw] h-[90vh] p-0 flex flex-col gap-0 overflow-hidden">
+        <DialogContent className="max-w-[1280px] w-[96vw] h-[90vh] p-0 flex flex-col gap-0 overflow-hidden sm:flex sm:max-w-[1280px] sm:w-[96vw] sm:h-[90vh] sm:max-h-[90vh] sm:p-0 sm:overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b border-border shrink-0">
             <DialogTitle className="text-lg font-semibold">{t('forecastAssumptions')}</DialogTitle>
             <DialogDescription className="text-xs">{t('forecastDirectEntryDesc')}</DialogDescription>
