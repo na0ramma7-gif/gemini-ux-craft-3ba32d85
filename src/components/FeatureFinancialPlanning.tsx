@@ -542,6 +542,59 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
           <div className="p-5 sm:p-6">
             {/* PLANNER TAB */}
             <TabsContent value="planner" className="mt-0 space-y-4">
+              {/* MOBILE CARD LIST — stacked rows so all values are
+                  readable on phones (R14 mobile bug fix). */}
+              <div className="md:hidden space-y-2">
+                {monthlySummaries.map(ms => {
+                  const isExpanded = expandedMonths.includes(ms.month);
+                  const hasData = ms.plannedRev > 0 || ms.actualRev > 0 || ms.plannedCost > 0;
+                  return (
+                    <div key={`m-${ms.month}`} className={cn('rounded-xl border border-border bg-card overflow-hidden', hasData && 'ring-1 ring-border')}>
+                      <button
+                        type="button"
+                        onClick={() => toggleMonth(ms.month)}
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-secondary/30"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+                          <span className="text-sm font-semibold text-foreground truncate">{ms.label}</span>
+                          {ms.lineCount > 0 && (
+                            <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full font-medium shrink-0">
+                              {ms.lineCount}
+                            </span>
+                          )}
+                        </div>
+                        <span className={cn('text-sm font-bold shrink-0', ms.netProfit >= 0 ? 'text-primary' : 'text-destructive')}>
+                          {hasData ? formatCurrency(ms.netProfit, language) : '—'}
+                        </span>
+                      </button>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 px-3 pb-3 text-xs">
+                        <div className="flex justify-between"><span className="text-muted-foreground">{t('plannedRevenue')}</span><span className="font-medium text-emerald-600">{ms.plannedRev > 0 ? formatCurrency(ms.plannedRev, language) : '—'}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">{t('actualRevenue')}</span><span className="font-medium text-emerald-700">{ms.actualRev > 0 ? formatCurrency(ms.actualRev, language) : '—'}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">{t('plannedCost')}</span><span className="font-medium text-destructive">{ms.plannedCost > 0 ? formatCurrency(ms.plannedCost, language) : '—'}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">{t('actualCost')}</span><span className="font-medium text-destructive/80">{ms.actualCost > 0 ? formatCurrency(ms.actualCost, language) : '—'}</span></div>
+                      </div>
+                      <div className="px-3 pb-3">
+                        <Button size="sm" variant="outline" className="w-full h-9" onClick={() => openMonthEditor(ms.month)}>
+                          <Plus className="w-3.5 h-3.5 me-1" /> {t('edit')} {ms.label}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Mobile totals card */}
+                <div className="rounded-xl border-2 border-border bg-secondary/30 p-3">
+                  <div className="text-sm font-bold text-foreground mb-2">{t('total')}</div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                    <div className="flex justify-between"><span className="text-muted-foreground">{t('plannedRevenue')}</span><span className="font-medium text-emerald-600">{formatCurrency(totals.plannedRev, language)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">{t('actualRevenue')}</span><span className="font-medium text-emerald-700">{formatCurrency(totals.actualRev, language)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">{t('plannedCost')}</span><span className="font-medium text-destructive">{formatCurrency(totals.plannedCost, language)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">{t('actualCost')}</span><span className="font-medium text-destructive/80">{formatCurrency(totals.actualCost, language)}</span></div>
+                    <div className="flex justify-between col-span-2 pt-1.5 border-t border-border"><span className="font-semibold">{t('netProfit')}</span><span className={cn('font-bold', totals.profit >= 0 ? 'text-primary' : 'text-destructive')}>{formatCurrency(totals.profit, language)}</span></div>
+                  </div>
+                </div>
+              </div>
+
               {/* DESKTOP TABLE — hidden on mobile so the 7-column grid
                   doesn't crush numeric cells (mobile bug fix R14). */}
               <div className="hidden md:block rounded-xl border border-border overflow-hidden">
@@ -849,8 +902,10 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
                     {t('noServicesYet')}
                   </div>
                 ) : (
-                  <div className="overflow-hidden rounded-lg border border-border mt-3">
-                    <table className="w-full text-sm">
+                  // R14: wrap in horizontal scroll so the table cannot
+                  // overflow the dialog body on narrow screens.
+                  <div className="rounded-lg border border-border mt-3 overflow-x-auto">
+                    <table className="w-full text-sm min-w-[420px]">
                       <thead className="bg-secondary/50">
                         <tr>
                           <th className="px-3 py-2 text-start text-xs font-semibold text-muted-foreground">{t('serviceName')}</th>
