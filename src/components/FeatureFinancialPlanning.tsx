@@ -438,7 +438,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg transition-colors"><BackIcon className="w-5 h-5" /></button>
+          <button onClick={onClose} aria-label={t('back') || 'Back'} className="p-2 hover:bg-secondary rounded-lg transition-colors"><BackIcon className="w-5 h-5" /></button>
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-foreground">{feature.name}</h2>
             <p className="text-sm text-muted-foreground">{product?.name} • {t('financialPlanning')}</p>

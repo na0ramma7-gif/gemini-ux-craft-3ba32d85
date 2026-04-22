@@ -240,16 +240,16 @@ const ProductDocumentation = ({ product }: Props) => {
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
-          <button className="p-1.5 hover:bg-secondary rounded-md transition-colors" title="View">
+          <button aria-label="View document" className="p-1.5 hover:bg-secondary rounded-md transition-colors" title="View">
             <Eye className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
-          <button className="p-1.5 hover:bg-secondary rounded-md transition-colors" title="Download">
+          <button aria-label="Download document" className="p-1.5 hover:bg-secondary rounded-md transition-colors" title="Download">
             <Download className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
-          <button onClick={() => openEditModal(doc)} className="p-1.5 hover:bg-secondary rounded-md transition-colors" title="Edit">
+          <button onClick={() => openEditModal(doc)} aria-label="Edit document" className="p-1.5 hover:bg-secondary rounded-md transition-colors" title="Edit">
             <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
-          <button onClick={() => handleDelete(doc.id)} className="p-1.5 hover:bg-destructive/10 rounded-md transition-colors" title="Delete">
+          <button onClick={() => handleDelete(doc.id)} aria-label="Delete document" className="p-1.5 hover:bg-destructive/10 rounded-md transition-colors" title="Delete">
             <Trash2 className="w-3.5 h-3.5 text-destructive" />
           </button>
         </div>

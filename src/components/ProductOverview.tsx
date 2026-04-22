@@ -146,12 +146,12 @@ const ProductOverview = ({ product }: Props) => {
               <div className="relative group">
                 <img src={product.logo} alt={product.name} className="w-16 h-16 rounded-xl object-cover border border-border" />
                 <div className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                  <button onClick={() => logoInputRef.current?.click()} className="p-1 bg-white/20 rounded-lg"><Upload className="w-3 h-3 text-white" /></button>
-                  <button onClick={() => updateProduct(product.id, { logo: undefined })} className="p-1 bg-white/20 rounded-lg"><X className="w-3 h-3 text-white" /></button>
+                  <button aria-label="Replace logo" onClick={() => logoInputRef.current?.click()} className="p-1 bg-white/20 rounded-lg"><Upload className="w-3 h-3 text-white" /></button>
+                  <button aria-label="Remove logo" onClick={() => updateProduct(product.id, { logo: undefined })} className="p-1 bg-white/20 rounded-lg"><X className="w-3 h-3 text-white" /></button>
                 </div>
               </div>
             ) : (
-              <button onClick={() => logoInputRef.current?.click()} className="w-16 h-16 rounded-xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-0.5 bg-card">
+              <button aria-label="Upload product logo" onClick={() => logoInputRef.current?.click()} className="w-16 h-16 rounded-xl border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-0.5 bg-card">
                 <Upload className="w-4 h-4 text-muted-foreground" />
                 <span className="text-[9px] text-muted-foreground">Logo</span>
               </button>
