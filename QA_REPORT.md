@@ -32,6 +32,21 @@ Outstanding: T1/T2/T3 (forecast grids inside modals — need product decision pe
 
 ---
 
+## Round 5 — Summary collapse M3/M4 (shipped)
+
+Below the lg/1100px breakpoints the right-rail summary aside in the two large modals would stack at the bottom of the scroll body, forcing tablet/phone users to scroll past the entire form to see live KPI feedback. Fixed by adding a compact, sticky summary strip at the **top** of the modal body and hiding the verbose aside below the breakpoint.
+
+| Item | File | Change |
+|---|---|---|
+| M3 | `components/FeatureFinancialPlanning.tsx` | Below 1100px: compact strip after `DialogHeader` shows Revenue · Cost · Net Profit + margin %. Full aside hidden below 1100px (was duplicating below the form). Above 1100px: unchanged. |
+| M4 | `components/forecast/ForecastAssumptionsPanel.tsx` | Below `lg` (1024px): scenario dot + name + Projected Revenue · Cost · Profit strip after the scenario tabs. Full aside hidden below `lg`. Above `lg`: unchanged. |
+
+Strip uses `flex overflow-x-auto` so on the narrowest phones the KPIs scroll horizontally rather than wrapping. Numbers are `tabular-nums` for stable alignment.
+
+Verified: TypeScript 0 errors, 25/25 tests passing.
+
+---
+
 ## 1. Issues found
 
 ### 1.1 Tables — every multi-column table on mobile

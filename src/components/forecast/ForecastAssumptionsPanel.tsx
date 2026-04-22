@@ -256,6 +256,31 @@ const ForecastAssumptionsPanel = ({
             </Select>
           </div>
 
+          {/* Compact summary strip — visible below lg where the aside would otherwise stack at the bottom. */}
+          <div className="lg:hidden shrink-0 border-b border-border bg-card px-4 py-2 flex items-center gap-2 overflow-x-auto">
+            <span className={cn('w-2 h-2 rounded-full shrink-0', TONE_CLASSES[activeScenario.tone].dot)} />
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground whitespace-nowrap">{activeScenario.name}</span>
+            <span className="text-muted-foreground/40">·</span>
+            <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('projectedRevenue')}</span>
+              <span className="text-sm font-bold text-success tabular-nums">{formatCurrency(projection.totalRevenue, language)}</span>
+            </div>
+            <span className="text-muted-foreground/40">·</span>
+            <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('projectedCost')}</span>
+              <span className="text-sm font-bold text-destructive tabular-nums">
+                {projection.hasCostData ? formatCurrency(projection.totalCost, language) : '—'}
+              </span>
+            </div>
+            <span className="text-muted-foreground/40">·</span>
+            <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('projectedProfit')}</span>
+              <span className={cn("text-sm font-bold tabular-nums", projection.totalProfit >= 0 ? "text-success" : "text-destructive")}>
+                {formatCurrency(projection.totalProfit, language)}
+              </span>
+            </div>
+          </div>
+
           {/* Body: grid + live preview */}
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_320px] overflow-hidden">
             <div className="overflow-auto p-6 space-y-4">
@@ -309,7 +334,7 @@ const ForecastAssumptionsPanel = ({
               )}
             </div>
 
-            <aside className="border-t lg:border-t-0 lg:border-s border-border bg-muted/20 overflow-auto p-5 space-y-4">
+            <aside className="hidden lg:block lg:border-s border-border bg-muted/20 overflow-auto p-5 space-y-4">
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">{t('livePreview')}</p>
                 <h4 className="text-sm font-semibold flex items-center gap-2">
