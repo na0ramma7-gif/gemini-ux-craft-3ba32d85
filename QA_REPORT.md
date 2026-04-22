@@ -257,3 +257,22 @@ First paint now ships ~22 % less JS; visiting Portfolio/Product/Resource pages f
 ### Still outstanding
 
 Same as after Round 1 — table→card conversions (T1–T9), summary-collapse pattern (M3/M4), sidebar tablet-rail mode, and the cross-browser visual matrix. All require design decisions or browser-verification budget.
+
+---
+
+## Round 3 — fixes shipped (2026-04-22)
+
+Audit ref M2 follow-up: sticky header + footer for long form dialogs.
+
+| # | Fix | Files | Audit ref |
+|---|---|---|---|
+| 9 | **Sticky `DialogHeader` & `DialogFooter`** in the base shadcn primitives. The header pins to the top, the footer pins to the bottom, both with a background and a thin border so content scrolls underneath without bleed. Applied at the primitive level so **every** form dialog (PortfolioFormDialog, ProductFormDialog, EditProductProfileDialog, ResourceFormDialog, AssignmentFormDialog, FeatureFormDialog, ReleaseFormDialog, ScenarioConfigModal, StrategicObjectiveDialog) inherits the fix without per-dialog edits. Save/Cancel are now always reachable in long forms on mobile. | `src/components/ui/dialog.tsx` | M2 |
+| 10 | **Same treatment for `AlertDialog`** — destructive confirms keep the title and the action buttons in view even if the description is long. | `src/components/ui/alert-dialog.tsx` | M2 |
+
+**Verified:** TypeScript 0 errors, 25/25 tests passing.
+
+### Implementation notes
+
+- Header/footer use `sticky top-0` / `sticky bottom-0` with negative horizontal margins to bleed over the parent's `p-6` padding, so the sticky background goes edge-to-edge and the close button still sits cleanly in the corner.
+- `FeatureFinancialPlanning.tsx` is **not** a `Dialog` component — it's a full-screen workspace rendered inline. Its header was already addressed in Round 1; no change needed here.
+- `ForecastAssumptionsPanel` and the `FeatureFinancialPlanning` financial popup (M3/M4: 1100 px summary collapse) still need the column-stack-vs-summary-pin design decision before a fix can ship.
