@@ -484,3 +484,32 @@ The original §1.11 Performance audit item is now closed.
 - `npx tsc --noEmit` — 0 errors.
 - `npx vitest run` — 58/58 passing.
 - `npx eslint src` — structural errors fixed; remaining warnings categorized above.
+
+---
+
+## Round 13 — Compare-by-Duration Phases 5 & 6
+
+**Date:** 2026-04-22
+
+### Phase 5 — Validation, no-data, responsive, RTL
+All verified as already shipped in earlier rounds; no code changes required:
+- `CompareEmptyState` covers all error/warn/info paths.
+- `EntityMultiSelectChips` is responsive + RTL-safe.
+- `CompareControls` cleanly returns null when Compare is OFF.
+- Non-compare baseline visually unchanged.
+
+### Phase 6 — Tests + E2E regression
+- New `src/test/compare-components.test.tsx` — **13 component smoke tests** covering `DeltaChip`, `KPIDelta`, `EntityMultiSelectChips`, `CompareEmptyState`.
+- New `COMPARE_E2E_REPORT.md` — full regression matrix across 3 pages × 11 scenarios × 4 viewports + RTL.
+- **Test count: 58 → 71** (+13).
+
+### Verification
+- `npx tsc --noEmit` — 0 errors.
+- `npx vitest run` — 71/71 passing across 5 test files.
+
+### Files
+- `src/test/compare-components.test.tsx` (new)
+- `COMPARE_E2E_REPORT.md` (new)
+- `QA_REPORT.md` (this update)
+
+**Compare-by-Duration program: COMPLETE (Phases 1–6).**
