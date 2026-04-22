@@ -848,7 +848,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
           className="p-0 overflow-hidden flex flex-col gap-0 w-[95vw] max-w-[1400px] h-[90vh] max-h-[900px] sm:rounded-xl sm:flex sm:h-[90vh] sm:max-h-[900px] sm:max-w-[1400px] sm:p-0 sm:overflow-hidden"
         >
           {/* Sticky header */}
-          <DialogHeader className="px-6 pt-5 pb-4 border-b border-border bg-card shrink-0 text-start">
+          <DialogHeader className="mx-0 mt-0 px-6 pt-5 pb-4 border-b border-border bg-card shrink-0 text-start static">
             <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
               <DollarSign className="w-5 h-5 text-primary" />
               {(language === 'ar' ? MONTHS_FULL_AR : MONTHS_FULL_EN)[editMonthIdx]} {selectedYear} — {t('monthlyFinancialPlanning')}
