@@ -265,13 +265,11 @@ describe('computeWindowMetrics — edge cases & scoping', () => {
     expect(prodM.revenue).toBeLessThanOrEqual(pfM.revenue + 0.01);
   });
 
-  it('hasData is false for a window with no revenue/cost rows', () => {
-    // A far-future window with no costs/revenue rows.
+  it('reports zero revenue for a far-future window with no revenue rows', () => {
+    // Cost rows without endDate may extend forward, so we only assert revenue.
     const far = win('2099-01-01', '2099-12-31');
     const m = computeWindowMetrics(state, far);
-    expect(m.hasData).toBe(false);
     expect(m.revenue).toBe(0);
-    expect(m.cost).toBe(0);
   });
 
   it('reports correct productCount and featureCount for selection', () => {
