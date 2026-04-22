@@ -177,6 +177,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   // Update document direction when language changes
   useEffect(() => {
     document.documentElement.lang = language;
+    // A11Y: dir on <html> ensures all assistive tech and CSS logical
+    // properties pick it up (not just body descendants).
+    document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
     document.body.dir = isRTL ? 'rtl' : 'ltr';
     document.body.style.fontFamily = isRTL 
       ? "'Tajawal', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
