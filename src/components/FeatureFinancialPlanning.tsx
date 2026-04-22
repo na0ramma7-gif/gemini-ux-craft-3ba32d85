@@ -542,7 +542,9 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
           <div className="p-5 sm:p-6">
             {/* PLANNER TAB */}
             <TabsContent value="planner" className="mt-0 space-y-4">
-              <div className="rounded-xl border border-border overflow-hidden">
+              {/* DESKTOP TABLE — hidden on mobile so the 7-column grid
+                  doesn't crush numeric cells (mobile bug fix R14). */}
+              <div className="hidden md:block rounded-xl border border-border overflow-hidden">
                 <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-0 bg-secondary/50 px-4 py-3">
                   <span className="text-xs font-semibold text-muted-foreground uppercase">{t('month')}</span>
                   <span className="text-xs font-semibold text-muted-foreground uppercase text-end">{t('plannedRevenue')}</span>
