@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import { addMonths, format } from 'date-fns';
 import AccessibleFigure from '@/components/a11y/AccessibleFigure';
+import type { RechartsTooltipProps, RechartsTooltipEntry } from '@/types/recharts';
 
 const PORTFOLIO_COLORS = [
   '#111827',  // Licensing — Black

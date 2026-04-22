@@ -8,6 +8,7 @@ import {
 import { format, eachMonthOfInterval } from 'date-fns';
 import CompareLegend from '@/components/compare/CompareLegend';
 import AccessibleFigure from '@/components/a11y/AccessibleFigure';
+import type { RechartsTooltipProps, RechartsTooltipEntry } from '@/types/recharts';
 
 const RevenueCostLineChart = () => {
   const { state, dateFilter, t, language } = useApp();

@@ -5,6 +5,7 @@ import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { PieChart as PieChartIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import AccessibleFigure from '@/components/a11y/AccessibleFigure';
+import type { RechartsTooltipProps } from '@/types/recharts';
 
 const PORTFOLIO_COLORS = [
   '#111827',  // Black
