@@ -936,7 +936,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="static mx-0 mb-0 px-6 py-3 shrink-0">
             <Button variant="outline" size="sm" onClick={handleCancel}>{t('cancel')}</Button>
             <Button size="sm" onClick={handleSave} disabled={!isValid}>
               {t('saveChanges')}
