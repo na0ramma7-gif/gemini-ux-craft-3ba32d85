@@ -845,7 +845,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
       {/* MONTH EDIT POPUP */}
       <Dialog open={editMonthOpen} onOpenChange={setEditMonthOpen}>
         <DialogContent
-          className="p-0 overflow-hidden flex flex-col gap-0 w-[95vw] max-w-[1400px] h-[90vh] max-h-[900px] sm:rounded-xl"
+          className="p-0 overflow-hidden flex flex-col gap-0 w-[95vw] max-w-[1400px] h-[90vh] max-h-[900px] sm:rounded-xl sm:flex sm:h-[90vh] sm:max-h-[900px] sm:max-w-[1400px] sm:p-0 sm:overflow-hidden"
         >
           {/* Sticky header */}
           <DialogHeader className="px-6 pt-5 pb-4 border-b border-border bg-card shrink-0 text-start">
