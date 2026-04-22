@@ -530,3 +530,28 @@ All verified as already shipped in earlier rounds; no code changes required:
 ### Verification
 - `npx tsc --noEmit` — 0 errors.
 - `npx vitest run` — 71/71 passing.
+
+## Round 15 — A11y deferred items
+
+| # | Item | Fix |
+|---|---|---|
+| 1 | Recharts charts had no SR-friendly fallback | Added `src/components/a11y/AccessibleFigure.tsx` — reusable wrapper that renders chart inside `<figure role="group">` with an `<div role="img" aria-label>` and an SR-only `<table>` with the underlying data. Adopt incrementally per chart (no behavior change to existing visuals). |
+| 2 | `ForecastMatrixGrid` keyboard nav lacked Page/Home/End | Extended `handleGridKey` with PageUp/PageDown (jump ±12 months), Home/End (row start/end), and Ctrl/Cmd+Home/End (grid corners). Selection cleared on jump, consistent with Arrow keys. |
+
+**Verification:** `tsc --noEmit` clean · 71/71 tests passing.
+
+**Files added/edited (Round 15):**
+- `src/components/a11y/AccessibleFigure.tsx` (new)
+- `src/components/forecast/ForecastMatrixGrid.tsx` (extended keyboard handler)
+- `QA_REPORT.md` (this entry)
+
+### Mobile sweep — feature pages audit
+
+Audited remaining feature pages flagged after Round 14:
+- **ResourcesPage** ✓ already has `md:hidden` card layout + `hidden md:block` table (Round 9)
+- **ProductDocumentation** ✓ already has mobile cards + 44px touch targets
+- **PortfolioStrategicAlignment** ✓ already responsive (uses `flex-wrap`, no fixed-width tables)
+- **ResourceProfilePage** ✓ KPI cards (`grid-cols-3`) and tabs (`overflow-x-auto`) already adapt
+- **FeatureForecast / ProductForecast** ✓ detail tables wrapped in `overflow-x-auto`; summary KPIs use `grid-cols-2 sm:grid-cols-4/5`
+
+No additional mobile fixes needed beyond Rounds 1, 4, 6, 9, 14.
