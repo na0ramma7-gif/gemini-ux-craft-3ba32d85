@@ -13,6 +13,7 @@ import {
   Legend,
 } from 'recharts';
 import { format, eachMonthOfInterval } from 'date-fns';
+import AccessibleFigure from '@/components/a11y/AccessibleFigure';
 
 const RevenueAreaChart = () => {
   const { state, dateFilter, t, language } = useApp();
@@ -66,7 +67,18 @@ const RevenueAreaChart = () => {
         <TrendingUp className="w-4 h-4 text-primary" />
         {t('revenueCostTrend')}
       </h3>
-      <div className="h-64">
+      <AccessibleFigure
+        title={t('revenueCostTrend')}
+        summary={`${chartData.length} ${t('months')}`}
+        tableHeaders={[t('month'), t('targetYear'), t('totalRevenue'), t('actual')]}
+        tableRows={chartData.map(r => [
+          r.name,
+          formatCurrency(r.target, language),
+          formatCurrency(r.planned, language),
+          formatCurrency(r.actual, language),
+        ])}
+        className="h-64"
+      >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
@@ -132,7 +144,7 @@ const RevenueAreaChart = () => {
             />
           </AreaChart>
         </ResponsiveContainer>
-      </div>
+      </AccessibleFigure>
     </div>
   );
 };
