@@ -513,3 +513,20 @@ All verified as already shipped in earlier rounds; no code changes required:
 - `QA_REPORT.md` (this update)
 
 **Compare-by-Duration program: COMPLETE (Phases 1–6).**
+
+---
+
+## Round 14 — Mobile bug fixes (Financial Planning)
+
+**Date:** 2026-04-22 · **Reported via screenshots** (IMG_8218, IMG_8219)
+
+### Bugs fixed
+1. **Planner monthly grid was unreadable on mobile** — `grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1fr_auto]` (7 columns) never collapsed, squeezing currency values to the point that they all rendered as `—` on iPhone. **Fix:** added a stacked card list (`md:hidden`) with one row per month showing all 5 metrics in a 2-col grid + month-level Edit CTA + a totals card. Desktop table preserved with `hidden md:block`.
+2. **Step 1 services table clipped in the Month Editor dialog** — the inline `<table>` had `min-w-[180px]` inputs that pushed it past the dialog edge, hiding rate values (`SAR 2…`, `SAR 200…`). **Fix:** wrapped the table in `overflow-x-auto` and set `min-w-[420px]` on the table so users can scroll horizontally to reach all columns.
+
+### Files
+- `src/components/FeatureFinancialPlanning.tsx`
+
+### Verification
+- `npx tsc --noEmit` — 0 errors.
+- `npx vitest run` — 71/71 passing.
