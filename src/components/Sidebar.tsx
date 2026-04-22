@@ -31,27 +31,39 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
   // giving iPad-class viewports more content width without losing nav.
   // Implemented purely with Tailwind: labels are `hidden lg:inline`,
   // and the desktop aside uses `md:w-16 lg:w-{open?64:20}` widths.
-  const NavItem = ({ 
-    icon: Icon, 
-    label, 
-    active, 
-    onClick 
-  }: { 
-    icon: any; 
-    label: string; 
-    active: boolean; 
+  /**
+   * NavItem
+   * - `showLabel` controls whether the text label renders.
+   *   - Mobile drawer: always show.
+   *   - Desktop aside: show only when `open` AND viewport ≥ lg (≥1024px).
+   *     Between md and lg the aside is forced to icon-only ("tablet rail").
+   */
+  const NavItem = ({
+    icon: Icon,
+    label,
+    active,
+    onClick,
+    showLabel,
+    labelClassName,
+  }: {
+    icon: any;
+    label: string;
+    active: boolean;
     onClick: () => void;
+    showLabel: boolean;
+    labelClassName?: string;
   }) => (
     <button
       onClick={onClick}
       title={label}
-      className={cn(
-        'menu-item w-full',
-        active && 'active'
-      )}
+      className={cn('menu-item w-full', active && 'active')}
     >
       <Icon className="w-5 h-5 flex-shrink-0" />
-      {open && <span className="font-medium text-sm truncate hidden lg:inline">{label}</span>}
+      {showLabel && (
+        <span className={cn('font-medium text-sm truncate', labelClassName)}>
+          {label}
+        </span>
+      )}
     </button>
   );
 
