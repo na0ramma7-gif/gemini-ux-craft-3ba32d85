@@ -18,7 +18,7 @@ const PageFallback = () => (
 );
 
 const MainLayout = () => {
-  const { view, setView, selected, setSelected, sidebarOpen, setSidebarOpen, state, t } = useApp();
+  const { view, setView, selected, setSelected, sidebarOpen, setSidebarOpen, state } = useApp();
 
   const handleNavigate = (newView: any) => {
     setView(newView);
@@ -108,7 +108,7 @@ const MainLayout = () => {
     <div className="flex h-screen bg-background overflow-hidden">
       {/* A11Y: skip-to-content link for keyboard users (WCAG 2.4.1). */}
       <a href="#main-content" className="skip-link">
-        {t('skipToContent') || 'Skip to main content'}
+        Skip to main content
       </a>
       <Sidebar
         open={sidebarOpen}
@@ -122,7 +122,7 @@ const MainLayout = () => {
         id="main-content"
         role="main"
         tabIndex={-1}
-        aria-label={t('mainContent') || 'Main content'}
+        aria-label="Main content"
         className="flex-1 overflow-y-auto p-6 md:p-8 focus:outline-none"
       >
         <Suspense fallback={<PageFallback />}>{renderView()}</Suspense>
