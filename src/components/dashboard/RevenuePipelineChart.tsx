@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import { addMonths, format } from 'date-fns';
 import AccessibleFigure from '@/components/a11y/AccessibleFigure';
+import type { RechartsTooltipProps, RechartsTooltipEntry } from '@/types/recharts';
 
 const PORTFOLIO_COLORS = [
   '#111827',  // Licensing — Black
@@ -42,7 +43,7 @@ const RevenuePipelineChart = ({ scenario, horizon, config }: Props) => {
     const chartData = futureMonths.map((month, monthIdx) => {
       const monthKey = format(month, 'yyyy-MM');
       const label = format(month, 'MMM yy');
-      const row: Record<string, any> = { name: label };
+      const row: Record<string, number | string> = { name: label };
       const baseByPortfolio: Record<string, number> = {};
 
       portfolioNames.forEach(pn => { row[pn] = 0; });
@@ -97,10 +98,14 @@ const RevenuePipelineChart = ({ scenario, horizon, config }: Props) => {
     return { chartData, portfolioNames };
   }, [state, scenario, horizon, config]);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  type PipelineRow = Record<string, number | string | undefined>;
+  const CustomTooltip = ({ active, payload, label }: RechartsTooltipProps<PipelineRow>) => {
     if (!active || !payload?.length) return null;
-    const row = payload[0].payload || {};
-    const total = payload.reduce((s: number, p: any) => s + p.value, 0);
+    const row = payload[0].payload || ({} as PipelineRow);
+    const total = payload.reduce(
+      (s: number, p: RechartsTooltipEntry<PipelineRow>) => s + (typeof p.value === 'number' ? p.value : 0),
+      0,
+    );
     return (
       <div className="bg-card border border-border rounded-xl shadow-[var(--shadow-lg)] p-3.5 text-xs space-y-1.5 min-w-[240px]">
         <div className="flex items-center justify-between">
@@ -109,11 +114,11 @@ const RevenuePipelineChart = ({ scenario, horizon, config }: Props) => {
             {t(scenario)}
           </span>
         </div>
-        {payload.map((entry: any) => (
+        {payload.map((entry: RechartsTooltipEntry<PipelineRow>) => (
           <div key={entry.dataKey} className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
             <span className="text-muted-foreground">{entry.name}:</span>
-            <span className="font-semibold text-foreground">{formatCurrency(entry.value, language)}</span>
+            <span className="font-semibold text-foreground">{formatCurrency(typeof entry.value === 'number' ? entry.value : 0, language)}</span>
           </div>
         ))}
         <div className="border-t border-border pt-1.5 mt-1 space-y-1">
@@ -125,19 +130,19 @@ const RevenuePipelineChart = ({ scenario, horizon, config }: Props) => {
             <>
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('base')}</span>
-                <span>{formatCurrency(Math.round(row.__totalBase), language)}</span>
+                <span>{formatCurrency(Math.round(Number(row.__totalBase) || 0), language)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('adjusted')}</span>
-                <span>{formatCurrency(Math.round(row.__totalAdjusted), language)}</span>
+                <span>{formatCurrency(Math.round(Number(row.__totalAdjusted) || 0), language)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('appliedGrowth')}</span>
-                <span>{row.__appliedGrowthPct.toFixed(1)}%</span>
+                <span>{(Number(row.__appliedGrowthPct) || 0).toFixed(1)}%</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('appliedConversion')}</span>
-                <span>{row.__appliedConversionPct.toFixed(0)}%</span>
+                <span>{(Number(row.__appliedConversionPct) || 0).toFixed(0)}%</span>
               </div>
             </>
           )}

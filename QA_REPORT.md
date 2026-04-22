@@ -555,3 +555,20 @@ Audited remaining feature pages flagged after Round 14:
 - **FeatureForecast / ProductForecast** ✓ detail tables wrapped in `overflow-x-auto`; summary KPIs use `grid-cols-2 sm:grid-cols-4/5`
 
 No additional mobile fixes needed beyond Rounds 1, 4, 6, 9, 14.
+
+## Round 16 — Type-safety sweep (chart layer)
+
+Created `src/types/recharts.ts` with `RechartsTooltipProps<TPayload>` and `RechartsTooltipEntry<TPayload>` generics. Replaced ad-hoc `any` annotations across 6 chart files:
+
+| File | Before | After |
+|---|---|---|
+| `dashboard/RevenueCostLineChart.tsx` | 3× `any` | typed `Row` payload + entry |
+| `dashboard/PortfolioDonutChart.tsx` | 2× `any` | `RechartsTooltipProps` + narrowed value |
+| `dashboard/InvestmentReturnChart.tsx` | 1× `any` | typed `Row` |
+| `dashboard/RevenuePipelineChart.tsx` | 3× `any` | typed `PipelineRow` payload |
+| `RevenueAreaChart.tsx` | 2× `any` | `RechartsTooltipProps` + narrowed value |
+| `ProductAreaChart.tsx` | 2× `any` | typed chart-data row + entry |
+
+**Production `any` count:** ~41 → **22** (~46% reduction). Remaining usages are concentrated in `featureForecast.ts`, the two Forecast pages, and `FeatureFinancialPlanning.tsx` — to be tackled in a follow-up round.
+
+Verified: `tsc --noEmit` clean · 71/71 tests passing.

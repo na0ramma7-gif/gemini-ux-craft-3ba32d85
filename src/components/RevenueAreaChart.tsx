@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import { format, eachMonthOfInterval } from 'date-fns';
 import AccessibleFigure from '@/components/a11y/AccessibleFigure';
+import type { RechartsTooltipProps, RechartsTooltipEntry } from '@/types/recharts';
 
 const RevenueAreaChart = () => {
   const { state, dateFilter, t, language } = useApp();
@@ -43,17 +44,17 @@ const RevenueAreaChart = () => {
     });
   }, [state, dateFilter]);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: RechartsTooltipProps) => {
     if (!active || !payload?.length) return null;
     return (
       <div className="bg-card border border-border rounded-lg shadow-lg p-3 text-xs space-y-1">
         <p className="font-semibold text-foreground">{label}</p>
-        {payload.map((entry: any) => (
+        {payload.map((entry: RechartsTooltipEntry) => (
           <div key={entry.dataKey} className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
             <span className="text-muted-foreground capitalize">{entry.dataKey}:</span>
             <span className="font-semibold text-foreground">
-              {formatCurrency(entry.value, language)}
+              {formatCurrency(typeof entry.value === 'number' ? entry.value : 0, language)}
             </span>
           </div>
         ))}
