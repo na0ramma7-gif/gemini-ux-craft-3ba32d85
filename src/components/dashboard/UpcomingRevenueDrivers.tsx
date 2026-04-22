@@ -87,7 +87,46 @@ const UpcomingRevenueDrivers = ({ scenario, horizon, config, onProductClick }: U
           {t('total')}: <span className="font-bold text-success">{formatCurrency(totalProjected, language)}</span>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-3">
+        {drivers.length === 0 ? (
+          <div className="py-8 text-center text-muted-foreground text-sm">
+            No upcoming revenue drivers in this period
+          </div>
+        ) : (
+          drivers.map(d => (
+            <button
+              key={d.id}
+              onClick={() => d.productObj && onProductClick(d.productObj)}
+              className="w-full text-start min-h-[44px] border border-border rounded-lg p-3 hover:bg-muted/30 transition-colors"
+            >
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-sm text-foreground truncate">{d.product}</div>
+                  <div className="text-xs text-muted-foreground truncate">{d.feature}</div>
+                </div>
+                <div className="text-end shrink-0">
+                  <div className="font-bold text-success text-sm tabular-nums">{formatCurrency(d.projectedRevenue, language)}</div>
+                  <div className="text-[10px] text-muted-foreground">{t('projectedRevenue')}</div>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="px-2 py-0.5 rounded-md bg-muted">{d.portfolio}</span>
+                <span>{formatDate(d.startDate, language)} → {formatDate(d.endDate, language)}</span>
+              </div>
+              {d.topServiceName && (
+                <div className="text-[10px] text-muted-foreground/80 mt-1.5">
+                  {t('topService')}: <span className="font-medium text-foreground/80">{d.topServiceName}</span>
+                  {d.topServiceShare > 0 && <span className="ms-1">({d.topServiceShare.toFixed(0)}%)</span>}
+                </div>
+              )}
+            </button>
+          ))
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
