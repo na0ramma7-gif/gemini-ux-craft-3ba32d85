@@ -67,17 +67,16 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
     </button>
   );
 
-  const sidebarContent = (
+  // `compact=true` => icon-only rail (used for desktop aside between md
+  // and lg, or when user collapsed). `compact=false` => labels visible.
+  const renderSidebar = (compact: boolean) => (
     <>
       <div className="p-3 sm:p-4 border-b border-sidebar-border flex items-center justify-between">
-        {open ? (
-          <Logo size={32} showText={true} />
-        ) : (
-          <Logo size={32} showText={false} />
-        )}
-        <button 
-          onClick={onToggle} 
-          className="p-2 hover:bg-sidebar-accent rounded-lg transition-colors hidden md:flex"
+        <Logo size={32} showText={!compact} />
+        <button
+          onClick={onToggle}
+          className="p-2 hover:bg-sidebar-accent rounded-lg transition-colors hidden lg:flex"
+          aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'}
         >
           {isRTL ? (
             open ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />
@@ -96,9 +95,10 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
             onNavigate('dashboard');
             setMobileOpen(false);
           }}
+          showLabel={!compact}
         />
 
-        {open && (
+        {!compact && (
           <div className="px-3 pt-4 pb-2 text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             {t('portfolios')}
           </div>
@@ -111,13 +111,14 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
               onPortfolioClick(portfolio);
               setMobileOpen(false);
             }}
+            title={portfolio.name}
             className={cn(
               'menu-item w-full',
               view === 'portfolio' && 'active'
             )}
           >
             <Folder className="w-5 h-5 flex-shrink-0 text-primary" />
-            {open && (
+            {!compact && (
               <div className="flex-1 text-start min-w-0">
                 <div className="font-medium text-sm truncate">{portfolio.name}</div>
                 <div className="text-[10px] sm:text-xs text-muted-foreground">{portfolio.code}</div>
@@ -126,7 +127,7 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
           </button>
         ))}
 
-        {open && (
+        {!compact && (
           <div className="px-3 pt-4 pb-2 text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             {t('management')}
           </div>
@@ -140,6 +141,7 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
             onNavigate('resources');
             setMobileOpen(false);
           }}
+          showLabel={!compact}
         />
 
         <NavItem
@@ -150,6 +152,7 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
             onNavigate('settings');
             setMobileOpen(false);
           }}
+          showLabel={!compact}
         />
       </nav>
     </>
