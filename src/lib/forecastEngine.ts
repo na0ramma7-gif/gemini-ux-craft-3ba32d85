@@ -155,7 +155,7 @@ export const projectMonth = (
       ? 1 + cfg.spikeAmount / 100
       : 1;
 
-  let adjusted = Math.max(0, base) * growthMul * rampMul * adjMul * seasonMul * spikeMul;
+  const adjusted = Math.max(0, base) * growthMul * rampMul * adjMul * seasonMul * spikeMul;
 
   // Conversion + risk buffer
   const convMul = cfg.conversionRate / 100;
