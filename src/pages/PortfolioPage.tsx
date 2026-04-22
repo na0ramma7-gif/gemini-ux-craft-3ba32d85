@@ -473,7 +473,53 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                 <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Package className="w-4 h-4 text-primary" /> {t('productsOverview')}
                 </h4>
-                <div className="overflow-x-auto">
+                {/* Mobile cards */}
+                <div className="md:hidden space-y-2">
+                  {products
+                    .filter(product => productFilter.length === 0 || productFilter.includes(product.id))
+                    .map(product => {
+                      const pd = portfolioMetrics.productData.find(d => d.name === product.name);
+                      const featureCount = state.features.filter(f => f.productId === product.id).length;
+                      const activeFeatures = state.features.filter(f => f.productId === product.id && f.status === 'In Progress').length;
+                      const releaseCount = state.releases.filter(r => r.productId === product.id).length;
+                      const activeRelCount = state.releases.filter(r => r.productId === product.id && r.status === 'In Progress').length;
+                      const cmp = compareByProductId.get(product.id);
+                      const dRev = cmp ? computeDelta(pd?.revenue || 0, cmp.revenue) : null;
+                      const dCost = cmp ? computeDelta(pd?.cost || 0, cmp.cost, { lowerIsBetter: true }) : null;
+                      const dProfit = cmp ? computeDelta(pd?.profit || 0, cmp.profit) : null;
+                      return (
+                        <button key={product.id} type="button" onClick={() => onProductClick(product)}
+                          className="w-full text-start bg-card border border-border rounded-xl p-3 hover:border-primary transition-colors min-h-[44px]">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-semibold text-foreground truncate">{product.name}</div>
+                              <div className="text-[10px] text-muted-foreground">{product.code}</div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary shrink-0">
+                              {product.lifecycleStage || 'Development'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('revenue')}</div><div className="text-success font-semibold tabular-nums">{formatCurrency(pd?.revenue || 0, language)}</div></div>
+                            <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('cost')}</div><div className="text-destructive font-semibold tabular-nums">{formatCurrency(pd?.cost || 0, language)}</div></div>
+                            <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('netProfit')}</div><div className={cn("font-semibold tabular-nums", (pd?.profit || 0) >= 0 ? 'text-primary' : 'text-destructive')}>{formatCurrency(pd?.profit || 0, language)}</div></div>
+                          </div>
+                          <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                            <span>{t('features')}: <span className="font-semibold text-foreground">{activeFeatures}</span>/{featureCount}</span>
+                            <span>{t('releases')}: <span className="font-semibold text-foreground">{activeRelCount}</span>/{releaseCount}</span>
+                          </div>
+                          {compareEnabled && (dRev || dCost || dProfit) && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {dRev && <DeltaChip delta={dRev} format="currency" />}
+                              {dCost && <DeltaChip delta={dCost} format="currency" lowerIsBetter />}
+                              {dProfit && <DeltaChip delta={dProfit} format="currency" />}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full min-w-[700px]">
                     <thead>
                       <tr className="border-b border-border">
