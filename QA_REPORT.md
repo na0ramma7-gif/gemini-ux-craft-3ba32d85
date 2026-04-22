@@ -308,3 +308,23 @@ Audit ref M2 follow-up: sticky header + footer for long form dialogs.
 - Header/footer use `sticky top-0` / `sticky bottom-0` with negative horizontal margins to bleed over the parent's `p-6` padding, so the sticky background goes edge-to-edge and the close button still sits cleanly in the corner.
 - `FeatureFinancialPlanning.tsx` is **not** a `Dialog` component — it's a full-screen workspace rendered inline. Its header was already addressed in Round 1; no change needed here.
 - `ForecastAssumptionsPanel` and the `FeatureFinancialPlanning` financial popup (M3/M4: 1100 px summary collapse) still need the column-stack-vs-summary-pin design decision before a fix can ship.
+
+---
+
+## Round 6 — fixes shipped (2026-04-22)
+
+Audit ref T6/T7/T10: convert remaining Medium-severity tables to mobile cards.
+
+| # | Fix | Files | Audit ref |
+|---|---|---|---|
+| 14 | **`UpcomingRevenueDrivers` → mobile cards** — dual-render (`md:hidden` cards, `hidden md:block` table). Cards lead with product/feature, projected revenue right-aligned, portfolio chip + duration below, with optional top-service line. Tap target ≥44 px and preserves the product-click navigation. | `src/components/dashboard/UpcomingRevenueDrivers.tsx` | T7 |
+| 15 | **`ForecastByService` → mobile cards** — service name + projected total on the lead row, avg-monthly + share-of-total on the secondary row. Tail summary (`+N more services`) preserved across both layouts. | `src/components/dashboard/ForecastByService.tsx` | T6 |
+| 16 | **`ProductDocumentation` → mobile cards** — title/filename, type chip, version/date grid, tag chips, and a 4-action toolbar (View/Download/Edit/Delete) where every button is ≥44 × 44 px. Desktop table keeps its existing 800 px min-width with horizontal scroll fallback. | `src/components/ProductDocumentation.tsx` | T10 |
+
+**Verified:** TypeScript 0 errors, 25/25 tests passing.
+
+### Still outstanding
+
+- **Forecast grids T1–T3** (`ForecastMatrixGrid` and the per-service month matrix) — matrix layout is intrinsic to the data, same call as the Gantt/heatmap kept in Round 4. Needs design decision (transposed list vs. horizontal scroll vs. month-by-month accordion).
+- **Sidebar tablet-rail mode** (768–1024 px collapsed icon strip).
+- **Cross-browser visual QA pass** (browser-tool budget).

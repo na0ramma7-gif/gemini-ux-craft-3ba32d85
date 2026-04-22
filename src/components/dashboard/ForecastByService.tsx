@@ -68,7 +68,30 @@ const ForecastByService = ({ horizon, config, maxRows = 8 }: Props) => {
       {top.length === 0 ? (
         <div className="text-xs text-muted-foreground py-6 text-center">{t('noServiceData')}</div>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        {/* Mobile cards */}
+        <div className="md:hidden space-y-2">
+          {top.map(r => (
+            <div key={r.name} className="border border-border rounded-lg p-3">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="font-medium text-sm text-foreground truncate flex-1">{r.name}</div>
+                <div className="text-end shrink-0">
+                  <div className="font-semibold text-sm text-foreground tabular-nums">{formatCurrency(r.totalProjected, language)}</div>
+                  <div className="text-[10px] text-muted-foreground">{t('projected')}</div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>{t('avgMonthly')}: <span className="text-foreground tabular-nums">{formatCurrency(r.avgMonthlyRevenue, language)}</span></span>
+                <span>{(r.share * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+          ))}
+          {tail > 0 && (
+            <p className="text-[11px] text-muted-foreground mt-2">+{tail} {t('moreServices')}</p>
+          )}
+        </div>
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -95,6 +118,7 @@ const ForecastByService = ({ horizon, config, maxRows = 8 }: Props) => {
             </p>
           )}
         </div>
+        </>
       )}
     </div>
   );
