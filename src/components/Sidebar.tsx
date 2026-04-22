@@ -27,16 +27,10 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
   const [mobileOpen, setMobileOpen] = useState(false);
   const { t, isRTL } = useApp();
 
-  // Tablet rail: between 768–1024px, force icon-only regardless of `open`,
-  // so iPad-class viewports get more content width without losing nav.
-  // We track this with a media query and use it to hide labels in NavItem
-  // and the portfolio buttons. The desktop `<aside>` width also collapses.
-  const [isTabletRail, setIsTabletRail] = useState(false);
-  if (typeof window !== 'undefined') {
-    // useEffect would be cleaner but avoids hook reorder; using a guarded
-    // effect via useState + useEffect below.
-  }
-
+  // Tablet rail (768–1024px): always icon-only regardless of `open`,
+  // giving iPad-class viewports more content width without losing nav.
+  // Implemented purely with Tailwind: labels are `hidden lg:inline`,
+  // and the desktop aside uses `md:w-16 lg:w-{open?64:20}` widths.
   const NavItem = ({ 
     icon: Icon, 
     label, 
