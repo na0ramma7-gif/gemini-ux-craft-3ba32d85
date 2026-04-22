@@ -1436,7 +1436,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
             </aside>
           </div>
 
-          <DialogFooter className="px-6 py-3 border-t border-border bg-card shrink-0 gap-2">
+          <DialogFooter className="mx-0 mb-0 px-6 py-3 border-t border-border bg-card shrink-0 gap-2 static">
             <Button variant="outline" onClick={() => setEditMonthOpen(false)}>{t('cancel')}</Button>
             <Button onClick={saveMonthRevenue} className="bg-primary hover:bg-primary/90">
               <Save className="w-4 h-4 me-2" />{t('save')}
