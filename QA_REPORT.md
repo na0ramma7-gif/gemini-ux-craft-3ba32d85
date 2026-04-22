@@ -345,3 +345,30 @@ Audit ref: sidebar tablet rail mode.
 - iPad portrait (768 px) and iPad landscape (1024 px) now reclaim ~32 px of horizontal content space vs. the previous `w-56` sidebar.
 - The lg-only collapse toggle prevents the awkward intermediate "expanded labels at narrow widths" state.
 - Active-route highlighting and RTL direction both verified across all three layouts.
+
+---
+
+## Round 8 — fixes shipped (2026-04-22)
+
+Audit ref T1–T3: forecast matrix grid mobile treatment.
+
+### Decision
+
+The `ForecastMatrixGrid` (services × months direct-entry grid in `ForecastAssumptionsPanel`) is **kept as a horizontal matrix on mobile**, matching the design call already taken for the Gantt chart and resource heatmap. Reasons:
+
+1. The grid's primary value is **month-over-month comparison** within a service. A stacked card list would force the user to swap context vertically to compare adjacent months.
+2. The grid supports **range selection (Shift+click) and bulk-fill prompts** across rectangular cell ranges. These features have no meaningful card-list equivalent.
+3. The first column (service name + default rate) is already `sticky start-0`, so swiping the months never loses the row identifier.
+4. Cells encode two values (transactions + auto-derived revenue) and a hover/tap rate-override popover. Cards would either drop information or balloon vertically.
+
+### Fix shipped
+
+| # | Fix | Files |
+|---|---|---|
+| 18 | **Discoverable horizontal scroll on mobile** — added a small `md:hidden` hint line above the grid (bilingual EN/AR) telling users to swipe horizontally and noting the service column stays pinned. Container now also uses `overscroll-x-contain` (so a horizontal swipe inside the grid doesn't escape into page back-navigation gestures) and `-webkit-overflow-scrolling:touch` for momentum. Sticky first column already in place from prior work. | `src/components/forecast/ForecastMatrixGrid.tsx` |
+
+**Verified:** TypeScript 0 errors, 25/25 tests passing.
+
+### Outstanding
+
+The only deferred item now is the **cross-browser visual QA pass** (manual screenshot matrix at 360/390/768/1280 across Safari/Chrome/Firefox), which is browser-tool-budget gated rather than a code change. Everything in the original audit that could be fixed in code is now shipped.

@@ -229,12 +229,24 @@ const ForecastDirectEntryGrid = ({
 
   return (
     <div className="space-y-2">
+      {/* Mobile hint — the matrix is intentionally kept as a horizontal grid
+          (rows = services, cols = months) because a stacked card list would
+          destroy month-over-month comparison and break range-fill / keyboard
+          nav. The first column is sticky so context is preserved while
+          swiping. */}
+      <p className="md:hidden text-[11px] text-muted-foreground flex items-center gap-1.5">
+        <span aria-hidden>←</span>
+        {language === 'ar'
+          ? 'اسحب أفقياً لرؤية المزيد من الأشهر. يبقى عمود الخدمة ثابتاً.'
+          : 'Swipe horizontally to see more months. The service column stays in view.'}
+        <span aria-hidden>→</span>
+      </p>
       {/* Grid */}
       <div
         ref={containerRef}
         tabIndex={0}
         onKeyDown={handleGridKey}
-        className="rounded-xl border border-border overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="rounded-xl border border-border overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <table className="text-xs border-separate border-spacing-0">
           <thead>
