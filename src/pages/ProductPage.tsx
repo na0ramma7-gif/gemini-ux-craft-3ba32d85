@@ -485,7 +485,40 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
 
               {/* List View */}
               {viewMode === 'list' && (
-                <div className="overflow-x-auto">
+                <>
+                {/* Mobile cards */}
+                <div className="md:hidden space-y-2">
+                  {features.map(feature => {
+                    const release = releases.find(r => r.id === feature.releaseId);
+                    return (
+                      <div key={feature.id} className="bg-secondary/30 rounded-xl p-3 border border-border">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-foreground text-sm truncate">{feature.name}</div>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              <span className={cn("text-[10px] px-2 py-0.5 rounded-full", getPriorityColor(feature.priority))}>{feature.priority}</span>
+                              <StatusBadge status={feature.status} />
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button size="sm" variant="outline" className="h-9 w-9 p-0" onClick={() => setEditingFeature(feature)} aria-label={t('edit')}>
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-9 w-9 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => setDeleteConfirmId(feature.id)} aria-label={t('delete')}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                          <div><span className="text-[10px] uppercase tracking-wide">{t('release')}</span><div className="text-foreground">{release?.version || 'N/A'}</div></div>
+                          <div><span className="text-[10px] uppercase tracking-wide">{t('owner')}</span><div className="text-foreground truncate">{feature.owner}</div></div>
+                          <div className="col-span-2"><span className="text-[10px] uppercase tracking-wide">{t('period')}</span><div className="text-foreground">{formatShortDate(feature.startDate, language)} → {formatShortDate(feature.endDate, language)}</div></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full min-w-[700px]">
                     <thead className="bg-secondary">
                       <tr>
@@ -542,6 +575,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
 
               {features.length === 0 && (
@@ -631,7 +665,39 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                   </Button>
                 )}
               </div>
-              <div className="overflow-x-auto">
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-2">
+                {state.assignments.filter(a => a.productId === product.id).map(assignment => {
+                  const resource = state.resources.find(r => r.id === assignment.resourceId);
+                  const release = state.releases.find(r => r.id === assignment.releaseId);
+                  return (
+                    <div key={assignment.id} className="bg-secondary/30 rounded-xl p-3 border border-border">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-foreground text-sm truncate">{resource?.name || '—'}</div>
+                          <div className="text-xs text-muted-foreground truncate">{resource?.role || '—'}</div>
+                        </div>
+                        <div className="text-end shrink-0">
+                          <div className="font-bold text-primary text-sm tabular-nums">{assignment.utilization}%</div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        <div><span className="text-[10px] uppercase tracking-wide">{t('release')}: </span>{release ? `${release.version} - ${release.name}` : '—'}</div>
+                        <div><span className="text-[10px] uppercase tracking-wide">{t('period')}: </span>{formatDate(assignment.startDate, language)} → {formatDate(assignment.endDate, language)}</div>
+                      </div>
+                      <div className="flex gap-1 mt-2 justify-end">
+                        <Button size="sm" variant="ghost" className="h-9 w-9 p-0" onClick={() => { setEditingAssignmentId(assignment.id); setAssignResourceId(assignment.resourceId); setAssignDialogOpen(true); }} aria-label={t('edit')}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-destructive hover:text-destructive" onClick={() => deleteAssignment(assignment.id)} aria-label={t('delete')}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-[700px]">
                   <thead className="bg-secondary/50">
                     <tr>
@@ -711,7 +777,43 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                 <div className="border-b pb-3 mb-4">
                   <h3 className="text-base sm:text-lg font-bold text-foreground">💵 {t('revenue')}</h3>
                 </div>
-                <div className="overflow-x-auto">
+                {/* Mobile cards */}
+                <div className="md:hidden space-y-2">
+                  {features.map(feature => {
+                    const portfolio = state.portfolios.find(p => p.id === product.portfolioId);
+                    let expected = 0, actual = 0;
+                    state.revenuePlan.filter(r => r.featureId === feature.id).forEach(r => expected += r.expected);
+                    state.revenueActual.filter(r => r.featureId === feature.id).forEach(r => actual += r.actual);
+                    const cost = expected * 0.6;
+                    const variance = actual - expected;
+                    const cmp = compareByFeatureId.get(feature.id);
+                    const revDelta = cmp ? computeDelta(actual, cmp.revenue) : null;
+                    return (
+                      <div key={feature.id} className="bg-secondary/30 rounded-xl p-3 border border-border">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-foreground text-sm truncate">{feature.name}</div>
+                            <div className="text-[11px] text-muted-foreground truncate">{product.name} · {portfolio?.name || 'N/A'}</div>
+                          </div>
+                          <StatusBadge status={feature.status} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('expected')}</div><div className="text-primary font-semibold tabular-nums">{formatCurrency(expected, language)}</div></div>
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('actual')}</div><div className="text-success font-semibold tabular-nums">{formatCurrency(actual, language)}</div></div>
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('cost')}</div><div className="text-warning font-semibold tabular-nums">{formatCurrency(cost, language)}</div></div>
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('variance')}</div><div className={cn("font-bold tabular-nums", variance >= 0 ? 'text-success' : 'text-destructive')}>{variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}</div></div>
+                        </div>
+                        {compare.active && revDelta && (
+                          <div className="mt-2"><DeltaChip delta={revDelta} format="currency" /></div>
+                        )}
+                        <div className="mt-3">
+                          <Button size="sm" className="w-full" onClick={() => setSelectedFeatureForFinancials(feature)}>{t('planFinancials')}</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full min-w-[700px]">
                     <thead className="bg-secondary">
                       <tr>

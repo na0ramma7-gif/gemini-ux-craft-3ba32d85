@@ -89,7 +89,60 @@ const ProductTable = ({ onProductClick }: Props) => {
         <Trophy className="w-5 h-5 text-primary" />
         <h3 className="text-foreground">{t('products')} — {t('targetVsAchieved')}</h3>
       </div>
-      <div className="overflow-auto">
+
+      {/* Mobile cards (< md). On md+ when compare adds an extra column the table can still scroll. */}
+      <div className="md:hidden space-y-3">
+        {visibleProducts.map((p, idx) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onProductClick?.(p)}
+            className="w-full text-start bg-muted/30 hover:bg-muted/60 transition-colors rounded-xl p-4 border border-border min-h-[44px]"
+          >
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-foreground text-sm flex items-center gap-1.5">
+                  {idx === 0 && !expanded && <span className="text-warning text-xs">🥇</span>}
+                  {idx === 1 && !expanded && <span className="text-muted-foreground text-xs">🥈</span>}
+                  {idx === 2 && !expanded && <span className="text-muted-foreground text-xs">🥉</span>}
+                  <span className="truncate">{p.name}</span>
+                </div>
+                <span className="text-[11px] px-2 py-0.5 rounded-md bg-muted text-muted-foreground inline-block mt-1">
+                  {p.portfolioName}
+                </span>
+              </div>
+              <span className={`shrink-0 inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${getBg(p.pct)} ${getColor(p.pct)}`}>
+                {p.pct}%
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('revenue')}</div>
+                <div className="text-success font-semibold tabular-nums">{formatCurrency(p.actual, language)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('cost')}</div>
+                <div className="text-destructive font-semibold tabular-nums">{formatCurrency(p.cost, language)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('netProfit')}</div>
+                <div className={`font-semibold tabular-nums ${p.profit >= 0 ? 'text-profit' : 'text-destructive'}`}>
+                  {formatCurrency(p.profit, language)}
+                </div>
+              </div>
+            </div>
+            {compareEnabled && (p.dRev || p.dCost || p.dProfit) && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {p.dRev && <DeltaChip delta={p.dRev} format="currency" />}
+                {p.dCost && <DeltaChip delta={p.dCost} format="currency" lowerIsBetter />}
+                {p.dProfit && <DeltaChip delta={p.dProfit} format="currency" />}
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="hidden md:block overflow-auto">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
