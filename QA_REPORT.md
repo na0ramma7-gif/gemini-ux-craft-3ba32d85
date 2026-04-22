@@ -412,3 +412,46 @@ The browser tool drives a Chromium-based browser. Safari- and Firefox-specific Q
 ### QA sweep complete
 
 Every audit item from §1.1 through §1.11 of the original report has either **shipped a fix** (Rounds 1–9) or is **documented as a deliberate design decision** (matrix grids kept horizontal; bilingual logo). The mobile/responsive QA backlog is now clean.
+
+---
+
+## Round 10 — Performance pass round 2 (2026-04-22)
+
+Audit ref P1 follow-up.
+
+### Strategy
+
+Round 2's `React.lazy` route splitting kept the **shared dependency graph in the main entry**. That meant Recharts (~434 KB raw / 114 KB gz), all Radix primitives, date-fns, and lucide-react were all eagerly downloaded before the user saw anything. Round 10 forces these into separate, cacheable vendor chunks via Vite's `manualChunks`.
+
+### Fix shipped
+
+| # | Fix | Files |
+|---|---|---|
+| 19 | **Vendor chunk splitting** — added `build.rollupOptions.output.manualChunks` for `recharts`, `react`/`react-dom`, `date-fns` + `react-day-picker`, the most-used Radix primitives, and `lucide-react`. The main `index.js` now contains only application code. Vendor chunks are cached separately, so deploys that change only app code don't bust the heavy dependencies. | `vite.config.ts` |
+
+### Bundle measurements (gzipped)
+
+| Chunk | Round 2 (lazy routes) | Round 10 | Δ |
+|---|---|---|---|
+| **`index.js` (main)** | **324 KB** | **115 KB** | **−209 KB (−65 %)** |
+| `vendor-react` | (in main) | 45 KB | new |
+| `vendor-charts` (recharts) | (in main) | 114 KB | new — cached after first visit |
+| `vendor-radix` | (in main) | 33 KB | new — cached |
+| `vendor-dates` | (in main) | 16 KB | new — cached |
+| `vendor-icons` | (in main) | 6 KB | new — cached |
+| `ProductPage` (lazy) | 54 KB | 46 KB | −8 KB |
+| `PortfolioPage` (lazy) | 10 KB | 10 KB | — |
+
+**Net effect on first paint**: the browser still has to fetch the vendor chunks once, but they download in parallel with `index.js` (HTTP/2) and **all subsequent app deploys only invalidate the 115 KB app chunk** instead of the 324 KB monolith. Rebuild ships in ~15 s (no regression).
+
+### Considered but not shipped
+
+- **`React.memo` on `ForecastMatrixGrid` cells** — Profiled the call site: the cell's props (`focusCell`, `selection`, `editing`, `ratePopoverFor`) all change on every interaction, so memo would never short-circuit. The actual cost is dominated by Tailwind class concatenation, not React reconciliation. Skipped to avoid dead-code refactoring.
+- **`useHierarchicalMetrics` memoization** — Already memoized via `useMemo([state, dateFilter])`. The hook recomputes only when state mutates, which is the desired behaviour.
+- **Recharts code-split per chart** — Tried mentally; would require turning every `<RevenueAreaChart />` into a `React.lazy` boundary. Adds Suspense plumbing on every chart and a flicker on render. The vendor-chunk split achieves the same caching benefit without the UX cost.
+
+**Verified:** TypeScript 0 errors, 25/25 tests passing, build succeeds in 15 s.
+
+### Outstanding (truly nothing left from QA)
+
+The original §1.11 Performance audit item is now closed.
