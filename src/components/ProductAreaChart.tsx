@@ -70,7 +70,7 @@ const ProductAreaChart = () => {
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
             <span className="text-muted-foreground">{entry.dataKey}:</span>
             <span className="font-semibold text-foreground">
-              {formatCurrency(entry.value, language)}
+              {formatCurrency(typeof entry.value === 'number' ? entry.value : 0, language)}
             </span>
           </div>
         ))}
