@@ -455,3 +455,32 @@ Round 2's `React.lazy` route splitting kept the **shared dependency graph in the
 ### Outstanding (truly nothing left from QA)
 
 The original §1.11 Performance audit item is now closed.
+
+---
+
+## Round 12 — Code-quality / test-coverage sweep
+
+**Date:** 2026-04-22
+
+### Test coverage
+- New `src/test/compare.test.ts` — **33 unit tests** covering the entire `src/lib/compare.ts` surface:
+  - `computeDelta`: positive, negative, flat, zero, comparisonZero, lowerIsBetter flip, negative comparison handling
+  - `validateCompareWindows`: missing windows, endBeforeStart, zeroLength, invalidDate, identical, overlap, adjacent-disjoint
+  - `classifyDataState`: all 5 states (`ok`, `no-current`, `no-comparison`, `no-both`, `partial`)
+  - `resolveProductIds` / `resolveFeatureIds`: precedence (explicit > portfolio > all)
+  - `computeWindowMetrics`: null window, inverted window, profit/margin invariants, portfolio-sum = dept-wide, product ⊆ portfolio scoping, productCount/featureCount accuracy
+- **Test count: 25 → 58** (+33), all green.
+
+### Lint fixes
+- `src/components/ui/textarea.tsx` — replaced empty interface with type alias.
+- `src/components/ui/command.tsx` — replaced empty interface with type alias.
+- `src/lib/forecastEngine.ts` — `let adjusted` → `const adjusted` (never reassigned).
+- `src/components/ErrorBoundary.tsx`, `src/components/PortfolioFormDialog.tsx` — removed two unused `eslint-disable` directives.
+
+### Deferred (intentional)
+- ~85 remaining `@typescript-eslint/no-explicit-any` warnings, predominantly in Recharts tooltip/formatter callbacks (`payload`, `props`) and form-library handlers. These types are intentionally permissive in upstream libraries; tightening them would require deep refactors and risk regressions. Tracked for a future, focused typing pass.
+
+### Verification
+- `npx tsc --noEmit` — 0 errors.
+- `npx vitest run` — 58/58 passing.
+- `npx eslint src` — structural errors fixed; remaining warnings categorized above.
