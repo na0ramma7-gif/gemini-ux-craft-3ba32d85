@@ -35,7 +35,11 @@ const AccessibleFigure = ({
 }: AccessibleFigureProps) => {
   return (
     <figure className={className} role="group" aria-label={title}>
-      <div role="img" aria-label={summary ? `${title}. ${summary}` : title}>
+      <div
+        role="img"
+        aria-label={summary ? `${title}. ${summary}` : title}
+        className="w-full h-full"
+      >
         {children}
       </div>
 
