@@ -236,8 +236,8 @@ const ForecastDirectEntryGrid = ({
           swiping. */}
       <p className="md:hidden text-[11px] text-muted-foreground flex items-center gap-1.5">
         <span aria-hidden>←</span>
-        {t('swipeToSeeMoreMonths') !== 'swipeToSeeMoreMonths'
-          ? t('swipeToSeeMoreMonths')
+        {language === 'ar'
+          ? 'اسحب أفقياً لرؤية المزيد من الأشهر. يبقى عمود الخدمة ثابتاً.'
           : 'Swipe horizontally to see more months. The service column stays in view.'}
         <span aria-hidden>→</span>
       </p>
