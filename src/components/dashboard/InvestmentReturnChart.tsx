@@ -3,6 +3,7 @@ import { useApp } from '@/context/AppContext';
 import { formatCurrency } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis } from 'recharts';
+import AccessibleFigure from '@/components/a11y/AccessibleFigure';
 
 const InvestmentReturnChart = () => {
   const { state, t, language, dateFilter } = useApp();
@@ -37,7 +38,18 @@ const InvestmentReturnChart = () => {
     <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-5">
       <h3 className="text-foreground mb-1">{t('cost')} vs {t('revenue')}</h3>
       <p className="text-xs text-muted-foreground mb-4">Bubble size = profit</p>
-      <div className="h-64">
+      <AccessibleFigure
+        title={`${t('cost')} vs ${t('revenue')}`}
+        summary={`${data.length} ${t('products')}`}
+        tableHeaders={[t('name'), t('cost'), t('revenue'), t('netProfit')]}
+        tableRows={data.map(d => [
+          d.name,
+          formatCurrency(d.cost, language),
+          formatCurrency(d.revenue, language),
+          formatCurrency(d.revenue - d.cost, language),
+        ])}
+        className="h-64"
+      >
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -66,7 +78,7 @@ const InvestmentReturnChart = () => {
             <Scatter data={data} fill="hsl(var(--primary))" fillOpacity={0.7} />
           </ScatterChart>
         </ResponsiveContainer>
-      </div>
+      </AccessibleFigure>
     </div>
   );
 };
