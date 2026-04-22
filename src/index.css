@@ -193,9 +193,48 @@
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground) / 0.4);
   }
+
+  /* A11Y: visible focus ring for keyboard users on every interactive
+     element. Pointer interactions remain ring-free thanks to
+     `:focus-visible`. Uses --ring token so it adapts to dark/light. */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* A11Y: respect users who request reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer utilities {
+  /* A11Y: visually hidden but available to assistive tech. */
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Skip-to-content link — appears only when focused. */
+  .skip-link {
+    @apply sr-only-focusable fixed top-2 left-2 z-[100] px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium shadow-lg;
+  }
+
   /* Card variants */
   .card-elevated {
     @apply bg-card rounded-xl shadow-[var(--shadow-card)] transition-all duration-200;
