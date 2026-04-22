@@ -108,14 +108,13 @@ const ResourceFormDialog = ({ open, onOpenChange, resource }: ResourceFormDialog
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md sm:max-h-[90vh] sm:h-auto p-0 gap-0 flex flex-col overflow-hidden sm:flex sm:p-0 sm:overflow-hidden">
-        <DialogHeader className="static mx-0 mt-0 px-6 pt-6 pb-3 shrink-0">
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
           <DialogTitle>{isEdit ? t('editResource') : t('addNewResource')}</DialogTitle>
           <DialogDescription>{isEdit ? t('editResourceDesc') : t('addTeamMember')}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0 overflow-hidden" noValidate>
-            <div className="space-y-4 px-6 py-4 overflow-y-auto flex-1 min-h-0">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2" noValidate>
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="employeeId" render={({ field }) => (
                 <FormItem>
@@ -216,8 +215,7 @@ const ResourceFormDialog = ({ open, onOpenChange, resource }: ResourceFormDialog
               </FormItem>
             )} />
 
-            </div>
-            <DialogFooter className="static mx-0 mb-0 px-6 py-3 shrink-0">
+            <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {isEdit ? t('save') : t('addResource')}
