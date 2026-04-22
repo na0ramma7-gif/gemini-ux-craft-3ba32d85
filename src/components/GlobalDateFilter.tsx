@@ -46,9 +46,11 @@ const GlobalDateFilter = () => {
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-      {/* Primary period */}
-      <div className="flex items-center gap-1.5 bg-secondary/60 rounded-lg px-2 py-1">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 max-w-full">
+      {/* Primary period — wraps internally on very small screens so the
+          end date doesn't get clipped against the page edge or the fixed
+          mobile menu button (QA Round 9). */}
+      <div className="flex flex-wrap items-center gap-1.5 bg-secondary/60 rounded-lg px-2 py-1 min-w-0">
         <span className="text-xs font-medium text-muted-foreground hidden sm:inline">{t('primaryPeriod')}:</span>
         <DatePickerField
           label={t('startDate')}
@@ -75,7 +77,7 @@ const GlobalDateFilter = () => {
 
       {/* Comparison period */}
       {dateFilter.compareEnabled && (
-        <div className="flex items-center gap-1.5 bg-accent/5 rounded-lg px-2 py-1 border border-accent/20">
+        <div className="flex flex-wrap items-center gap-1.5 bg-accent/5 rounded-lg px-2 py-1 border border-accent/20 min-w-0">
           <ArrowLeftRight className="w-3.5 h-3.5 text-accent" />
           <DatePickerField
             label={t('startDate')}

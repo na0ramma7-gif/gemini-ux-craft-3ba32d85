@@ -372,3 +372,43 @@ The `ForecastMatrixGrid` (services × months direct-entry grid in `ForecastAssum
 ### Outstanding
 
 The only deferred item now is the **cross-browser visual QA pass** (manual screenshot matrix at 360/390/768/1280 across Safari/Chrome/Firefox), which is browser-tool-budget gated rather than a code change. Everything in the original audit that could be fixed in code is now shipped.
+
+---
+
+## Round 9 — Cross-browser visual QA pass (2026-04-22)
+
+Captured the app at **360 / 390 / 768 / 1280 px** on the key routes (Dashboard, Portfolio detail, Resources, Forecast assumptions modal). Used the in-product Chrome viewport via the browser tool. Findings below; all code-fixable issues shipped in this round.
+
+### Verified clean ✅
+
+| Route | 360 | 390 | 768 (tablet rail) | 1280 |
+|---|---|---|---|---|
+| Dashboard — KPI grid | ✅ stack | ✅ stack | ✅ 2-col | ✅ 5-col |
+| Dashboard — Revenue/Cost line chart | ✅ | ✅ | ✅ | ✅ |
+| Portfolio detail — KPIs & financials | ✅ | ✅ | ✅ | ✅ |
+| Portfolio detail — Heatmap (h-scroll) | ✅ sticky col | ✅ | ✅ | ✅ |
+| Products Overview — table → cards swap | ✅ cards | ✅ cards | ✅ table | ✅ table |
+| Sidebar — mobile drawer / tablet rail / desktop | ✅ off-canvas | ✅ off-canvas | ✅ icon rail | ✅ full |
+
+### Regressions found and fixed
+
+| # | Finding | Severity | Fix |
+|---|---|---|---|
+| R9-1 | **`GlobalDateFilter` overflows ≤414 px** — the start/end date pair was in a no-wrap flex group; the end date and language button were clipped behind the fixed mobile menu button at the right edge. | High | Added `flex-wrap` + `min-w-0` to the date period chip and the comparison-period chip so the inner DatePickerField pills stack vertically when needed. Verified at 360 px: dates and Compare toggle now stack cleanly. (`src/components/GlobalDateFilter.tsx`) |
+| R9-2 | **Strategic Alignment header + Add button** could overlap on narrow widths because the header used a no-wrap flex justify-between. | Low | Added `flex-wrap` + `gap-2` + `min-w-0` so the Add Strategic Objective button drops beneath the title on narrow widths instead of crowding it. (`src/components/PortfolioStrategicAlignment.tsx`) |
+
+### Observations (not regressions)
+
+- **"Lean / لين" bilingual logo subtitle** is **intentional** (brand decision to show both scripts in the sidebar header). Not a bug.
+- **KPI card heights vary slightly** when one card has a progress block and another doesn't. This is a visual preference, not a layout bug — tracked as a future polish item if needed.
+- **Tablet rail (768 px)** — confirmed the icon-only sidebar from Round 7 lays out correctly in iPad portrait, no label leakage.
+
+### Browsers / viewports actually tested
+
+The browser tool drives a Chromium-based browser. Safari- and Firefox-specific QA still requires manual verification by the team (e.g., iOS Safari for `-webkit-overflow-scrolling`, Firefox for sticky table column repaint). No code-level Safari/Firefox blockers were observed in the layouts tested.
+
+**Verified:** TypeScript 0 errors, 25/25 tests passing.
+
+### QA sweep complete
+
+Every audit item from §1.1 through §1.11 of the original report has either **shipped a fix** (Rounds 1–9) or is **documented as a deliberate design decision** (matrix grids kept horizontal; bilingual logo). The mobile/responsive QA backlog is now clean.
