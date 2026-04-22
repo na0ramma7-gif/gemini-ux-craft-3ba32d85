@@ -28,14 +28,15 @@ const PortfolioDonutChart = () => {
 
   const total = data.reduce((s, d) => s + d.value, 0);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: RechartsTooltipProps) => {
     if (!active || !payload?.length) return null;
     const d = payload[0];
-    const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : '0';
+    const v = typeof d.value === 'number' ? d.value : 0;
+    const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0';
     return (
       <div className="bg-card border border-border rounded-xl shadow-[var(--shadow-lg)] p-3.5 text-xs space-y-1">
         <p className="font-semibold text-foreground text-sm">{d.name}</p>
-        <p className="text-muted-foreground">{formatCurrency(d.value, language)} ({pct}%)</p>
+        <p className="text-muted-foreground">{formatCurrency(v, language)} ({pct}%)</p>
       </div>
     );
   };
@@ -91,8 +92,9 @@ const PortfolioDonutChart = () => {
               iconType="circle"
               iconSize={10}
               wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-              formatter={(value: string, entry: any) => {
-                const pct = total > 0 ? ((entry.payload.value / total) * 100).toFixed(0) : '0';
+              formatter={(value: string, entry) => {
+                const pv = (entry.payload as { value?: number })?.value ?? 0;
+                const pct = total > 0 ? ((pv / total) * 100).toFixed(0) : '0';
                 return <span className="text-muted-foreground">{value} ({pct}%)</span>;
               }}
             />

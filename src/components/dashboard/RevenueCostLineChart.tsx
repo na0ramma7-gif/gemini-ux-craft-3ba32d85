@@ -67,9 +67,14 @@ const RevenueCostLineChart = () => {
 
   const compareEnabled = dateFilter.compareEnabled;
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  type Row = {
+    cmpLabel?: string | null;
+    revenue?: number | null;
+    planned?: number | null;
+  };
+  const CustomTooltip = ({ active, payload, label }: RechartsTooltipProps<Row>) => {
     if (!active || !payload?.length) return null;
-    const row = payload[0]?.payload ?? {};
+    const row = payload[0]?.payload ?? ({} as Row);
     const cmpLabel = row.cmpLabel;
     const actual = typeof row.revenue === 'number' ? row.revenue : null;
     const planned = typeof row.planned === 'number' ? row.planned : null;
@@ -79,12 +84,12 @@ const RevenueCostLineChart = () => {
       <div className="bg-card border border-border rounded-xl shadow-[var(--shadow-lg)] p-3.5 text-xs space-y-1.5">
         <p className="font-semibold text-foreground text-sm">{label}</p>
         {payload
-          .filter((entry: any) => entry.value !== null && entry.value !== undefined)
-          .map((entry: any) => (
+          .filter((entry: RechartsTooltipEntry<Row>) => entry.value !== null && entry.value !== undefined)
+          .map((entry: RechartsTooltipEntry<Row>) => (
           <div key={entry.dataKey} className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
             <span className="text-muted-foreground">{entry.name}:</span>
-            <span className="font-semibold text-foreground">{formatCurrency(entry.value, language)}</span>
+            <span className="font-semibold text-foreground">{formatCurrency(typeof entry.value === 'number' ? entry.value : 0, language)}</span>
           </div>
         ))}
         {(diff != null || achievement != null) && (
@@ -131,10 +136,10 @@ const RevenueCostLineChart = () => {
         tableHeaders={[t('month'), t('revenue'), t('plannedRevenue'), t('cost'), t('netProfit')]}
         tableRows={chartData.map(r => [
           String(r.name),
-          r.revenue != null ? formatCurrency(r.revenue, language) : '—',
-          r.planned != null ? formatCurrency(r.planned, language) : '—',
-          r.cost != null ? formatCurrency(r.cost, language) : '—',
-          r.profit != null ? formatCurrency(r.profit, language) : '—',
+          typeof r.revenue === 'number' ? formatCurrency(r.revenue, language) : '—',
+          typeof r.planned === 'number' ? formatCurrency(r.planned, language) : '—',
+          typeof r.cost === 'number' ? formatCurrency(r.cost, language) : '—',
+          typeof r.profit === 'number' ? formatCurrency(r.profit, language) : '—',
         ])}
         className="h-80"
       >
