@@ -130,19 +130,19 @@ const RevenuePipelineChart = ({ scenario, horizon, config }: Props) => {
             <>
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('base')}</span>
-                <span>{formatCurrency(Math.round(row.__totalBase), language)}</span>
+                <span>{formatCurrency(Math.round(Number(row.__totalBase) || 0), language)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('adjusted')}</span>
-                <span>{formatCurrency(Math.round(row.__totalAdjusted), language)}</span>
+                <span>{formatCurrency(Math.round(Number(row.__totalAdjusted) || 0), language)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('appliedGrowth')}</span>
-                <span>{row.__appliedGrowthPct.toFixed(1)}%</span>
+                <span>{(Number(row.__appliedGrowthPct) || 0).toFixed(1)}%</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>{t('appliedConversion')}</span>
-                <span>{row.__appliedConversionPct.toFixed(0)}%</span>
+                <span>{(Number(row.__appliedConversionPct) || 0).toFixed(0)}%</span>
               </div>
             </>
           )}
