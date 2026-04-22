@@ -210,9 +210,17 @@ type ScenarioWithLegacy = ForecastScenario & { __legacy?: LegacyStash };
 
 // ── Persistence ──────────────────────────────────────────────
 
-const sanitizeScenario = (raw: Record<string, unknown> & { data?: Record<string, Record<string, { transactions?: unknown; rate?: unknown }>> }): ForecastScenario => {
+const sanitizeScenario = (input: unknown): ForecastScenario => {
+  const raw = (input ?? {}) as {
+    id?: unknown;
+    name?: unknown;
+    tone?: unknown;
+    costGrowthRate?: unknown;
+    builtIn?: unknown;
+    data?: Record<string, Record<string, { transactions?: unknown; rate?: unknown }>>;
+  };
   const data: ScenarioData = {};
-  if (raw?.data && typeof raw.data === 'object') {
+  if (raw.data && typeof raw.data === 'object') {
     for (const sIdStr of Object.keys(raw.data)) {
       const sId = Number(sIdStr);
       if (!Number.isFinite(sId)) continue;
@@ -258,7 +266,8 @@ const sanitizeScenario = (raw: Record<string, unknown> & { data?: Record<string,
  * scenario shells (id, name, tone, builtIn, costGrowthRate) so user-defined
  * scenarios survive.
  */
-const migrateLegacyScenario = (raw: Record<string, unknown>): ScenarioWithLegacy => {
+const migrateLegacyScenario = (input: unknown): ScenarioWithLegacy => {
+  const raw = (input ?? {}) as Record<string, unknown>;
   const tone = (['neutral', 'success', 'warning', 'primary', 'accent'] as const).includes(raw.tone as ForecastScenario['tone'])
     ? (raw.tone as ForecastScenario['tone'])
     : 'neutral';
