@@ -106,6 +106,10 @@ const MainLayout = () => {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
+      {/* A11Y: skip-to-content link for keyboard users (WCAG 2.4.1). */}
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <Sidebar
         open={sidebarOpen}
         view={view}
@@ -114,7 +118,13 @@ const MainLayout = () => {
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         onPortfolioClick={handlePortfolioClick}
       />
-      <main className="flex-1 overflow-y-auto p-6 md:p-8">
+      <main
+        id="main-content"
+        role="main"
+        tabIndex={-1}
+        aria-label="Main content"
+        className="flex-1 overflow-y-auto p-6 md:p-8 focus:outline-none"
+      >
         <Suspense fallback={<PageFallback />}>{renderView()}</Suspense>
       </main>
     </div>

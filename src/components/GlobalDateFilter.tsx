@@ -24,6 +24,7 @@ const GlobalDateFilter = () => {
         <Button
           variant="outline"
           size="sm"
+          aria-label={`${label}: ${date ? format(date, 'dd MMM yyyy') : ''}`}
           className={cn(
             "h-8 text-xs font-normal gap-1.5 border-border bg-card",
             !date && "text-muted-foreground"
@@ -98,6 +99,7 @@ const GlobalDateFilter = () => {
         variant="outline"
         size="sm"
         onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
+        aria-label={language === 'en' ? 'Switch to Arabic' : 'Switch to English'}
         className="h-8 gap-1.5 text-xs"
       >
         <Globe className="w-3.5 h-3.5" />
