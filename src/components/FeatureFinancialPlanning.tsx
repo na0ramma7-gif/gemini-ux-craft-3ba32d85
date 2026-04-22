@@ -845,10 +845,10 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
       {/* MONTH EDIT POPUP */}
       <Dialog open={editMonthOpen} onOpenChange={setEditMonthOpen}>
         <DialogContent
-          className="p-0 overflow-hidden flex flex-col gap-0 w-[95vw] max-w-[1400px] h-[90vh] max-h-[900px] sm:rounded-xl"
+          className="p-0 overflow-hidden flex flex-col gap-0 w-[95vw] max-w-[1400px] h-[90vh] max-h-[900px] sm:rounded-xl sm:flex sm:h-[90vh] sm:max-h-[900px] sm:max-w-[1400px] sm:p-0 sm:overflow-hidden"
         >
           {/* Sticky header */}
-          <DialogHeader className="px-6 pt-5 pb-4 border-b border-border bg-card shrink-0 text-start">
+          <DialogHeader className="mx-0 mt-0 px-6 pt-5 pb-4 border-b border-border bg-card shrink-0 text-start static">
             <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
               <DollarSign className="w-5 h-5 text-primary" />
               {(language === 'ar' ? MONTHS_FULL_AR : MONTHS_FULL_EN)[editMonthIdx]} {selectedYear} — {t('monthlyFinancialPlanning')}
@@ -1436,7 +1436,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
             </aside>
           </div>
 
-          <DialogFooter className="px-6 py-3 border-t border-border bg-card shrink-0 gap-2">
+          <DialogFooter className="mx-0 mb-0 px-6 py-3 border-t border-border bg-card shrink-0 gap-2 static">
             <Button variant="outline" onClick={() => setEditMonthOpen(false)}>{t('cancel')}</Button>
             <Button onClick={saveMonthRevenue} className="bg-primary hover:bg-primary/90">
               <Save className="w-4 h-4 me-2" />{t('save')}
