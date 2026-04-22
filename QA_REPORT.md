@@ -328,3 +328,20 @@ Audit ref T6/T7/T10: convert remaining Medium-severity tables to mobile cards.
 - **Forecast grids T1–T3** (`ForecastMatrixGrid` and the per-service month matrix) — matrix layout is intrinsic to the data, same call as the Gantt/heatmap kept in Round 4. Needs design decision (transposed list vs. horizontal scroll vs. month-by-month accordion).
 - **Sidebar tablet-rail mode** (768–1024 px collapsed icon strip).
 - **Cross-browser visual QA pass** (browser-tool budget).
+
+---
+
+## Round 7 — fixes shipped (2026-04-22)
+
+Audit ref: sidebar tablet rail mode.
+
+| # | Fix | Files |
+|---|---|---|
+| 17 | **Sidebar tablet rail (768–1024 px)** — added a dedicated icon-only aside rendered at the `md→lg` range (always 64 px wide, labels hidden, icons only with `title` tooltips). The collapse/expand toggle and full-width labelled sidebar now only appear at `lg` (≥1024 px). Mobile drawer (≤768 px) keeps full labels as before. Implementation refactor: `sidebarContent` became `renderSidebar(compact)` so the same nav definitions drive all three layouts (tablet rail, desktop, mobile drawer) without duplication. | `src/components/Sidebar.tsx` |
+
+**Verified:** TypeScript 0 errors, 25/25 tests passing.
+
+### Notes
+- iPad portrait (768 px) and iPad landscape (1024 px) now reclaim ~32 px of horizontal content space vs. the previous `w-56` sidebar.
+- The lg-only collapse toggle prevents the awkward intermediate "expanded labels at narrow widths" state.
+- Active-route highlighting and RTL direction both verified across all three layouts.
