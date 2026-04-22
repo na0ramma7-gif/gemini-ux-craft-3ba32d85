@@ -1,0 +1,173 @@
+version: 1
+session_id: 2026-04-22T06-50-consolidated-24h-handoff
+intent: >
+  Consolidated handoff manifest covering all material changes shipped between
+  2026-04-21 07:12 and 2026-04-22 06:42. Spans the financial single-source-of-truth
+  unification, terminology + formula standardization (Planned->Target, removed
+  x1.35 multiplier), revenue model refactor to subscription-driver
+  (Revenue = Rate x Transactions) with per-feature service catalog and legacy
+  migration, Strategic Alignment as a managed entity with bidirectional
+  Portfolio<->Product linking, full Forecast module redesign to a direct-entry
+  per-cell grid (schema v3), Add Portfolio/Product full-profile dialogs,
+  validation hardening across all create/edit dialogs, dashboard chart a11y
+  height fix, and a global Dialog layout refactor (3-row flex header/body/footer).
+bucket: data-contract
+screens:
+  - name: Dashboard
+    before: .lovable/screens/2026-04-22/Dashboard-before.png
+    after:  .lovable/screens/2026-04-22/Dashboard-after.png
+  - name: PortfolioPage
+    before: .lovable/screens/2026-04-22/PortfolioPage-before.png
+    after:  .lovable/screens/2026-04-22/PortfolioPage-after.png
+  - name: ProductPage
+    before: .lovable/screens/2026-04-22/ProductPage-before.png
+    after:  .lovable/screens/2026-04-22/ProductPage-after.png
+  - name: FeatureFinancialPlanning
+    before: .lovable/screens/2026-04-22/FeatureFinancialPlanning-before.png
+    after:  .lovable/screens/2026-04-22/FeatureFinancialPlanning-after.png
+  - name: FeatureForecast
+    before: .lovable/screens/2026-04-22/FeatureForecast-before.png
+    after:  .lovable/screens/2026-04-22/FeatureForecast-after.png
+  - name: ForecastAssumptionsPanel
+    before: .lovable/screens/2026-04-22/ForecastAssumptionsPanel-before.png
+    after:  .lovable/screens/2026-04-22/ForecastAssumptionsPanel-after.png
+  - name: PortfolioStrategicAlignment
+    before: .lovable/screens/2026-04-22/PortfolioStrategicAlignment-before.png
+    after:  .lovable/screens/2026-04-22/PortfolioStrategicAlignment-after.png
+  - name: EditProductProfileDialog
+    before: .lovable/screens/2026-04-22/EditProductProfileDialog-before.png
+    after:  .lovable/screens/2026-04-22/EditProductProfileDialog-after.png
+  - name: ResourceFormDialog
+    before: .lovable/screens/2026-04-22/ResourceFormDialog-before.png
+    after:  .lovable/screens/2026-04-22/ResourceFormDialog-after.png
+files:
+  added:
+    - src/components/EditProductProfileDialog.tsx
+    - src/components/PortfolioFormDialog.tsx
+    - src/components/ProductFormDialog.tsx
+    - src/components/StrategicObjectiveDialog.tsx
+    - src/components/PortfolioStrategicAlignment.tsx
+    - src/components/compare/ServiceBreakdownTable.tsx
+    - src/components/forecast/ForecastAssumptionsPanel.tsx
+    - src/components/forecast/ForecastMatrixGrid.tsx
+    - src/components/ui/multi-select.tsx
+    - src/components/a11y/AccessibleFigure.tsx
+  modified:
+    - src/lib/utils.ts
+    - src/lib/featureForecast.ts
+    - src/lib/compare.ts
+    - src/hooks/useHierarchicalMetrics.ts
+    - src/hooks/useFeatureForecastSettings.ts
+    - src/hooks/useCompareMetrics.ts
+    - src/context/AppContext.tsx              # PROTECTED — explicit user request
+    - src/types/index.ts                      # PROTECTED — explicit user request
+    - src/data/initialData.ts
+    - src/i18n/translations.ts
+    - src/pages/Dashboard.tsx
+    - src/pages/PortfolioPage.tsx
+    - src/pages/ProductPage.tsx
+    - src/components/FeatureFinancialPlanning.tsx
+    - src/components/FeatureForecast.tsx
+    - src/components/ProductOverview.tsx
+    - src/components/RevenueAreaChart.tsx
+    - src/components/RevenueCostLineChart.tsx
+    - src/components/dashboard/UpcomingRevenueDrivers.tsx
+    - src/components/dashboard/PortfolioBarChart.tsx
+    - src/components/dashboard/PortfolioDonutChart.tsx
+    - src/components/dashboard/InsightsPanel.tsx
+    - src/components/dashboard/InvestmentReturnChart.tsx
+    - src/components/dashboard/ProductTable.tsx
+    - src/components/ui/dialog.tsx
+    - src/components/ResourceFormDialog.tsx
+  removed: []
+i18n:
+  added:
+    - revenueServices, revenueLines, addService, newService, transactionRate, plannedTransactions, actualTransactions
+    - servicesBreakdown, topService, shareOfTotal, perServiceBaseline
+    - quickFill, fillFixed, fillGrowth, copyForward, setRate, clearRate, monthlyTotals, serviceTotals, transactionsShort, horizonShrinkWarn, costGrowthRate, migrationBanner, apply
+    - strategicObjectives, addStrategicObjective, productsContributing, objectiveTitleRequired, objectiveAlreadyExists, objectiveCannotBeEmpty, deleteObjectiveConfirm
+    - targetRevenue, targetVsActual, targetProfit
+  changed:
+    - plannedRevenue            -> targetRevenue            (label only; key kept for back-compat where read)
+    - plannedVsActualRevenue    -> targetVsActualRevenue
+    - totalPlannedRevenue       -> totalTargetRevenue
+    - plannedCost               -> targetCost
+    - AR equivalents updated:    "المخططة" -> "المستهدفة" across the same labels
+  removed:
+    - forecast mode keys (simple/seasonal/matrix), seasonal preset keys, ramadanAutoDetect, patternPreview, overrideIndicator, defaultRevenueGrowth, perServiceGrowth
+data_contract:
+  new_entities:
+    - "RevenueService { id:int, featureId:int, name:string(<=80), defaultRate:decimal>=0, createdAt:datetime }"
+    - "RevenueLine { id:int, featureId:int, serviceId:int, month:string('YYYY-MM'), rate:decimal>=0, plannedTransactions:int>=0, actualTransactions:int>=0, updatedAt:datetime }"
+    - "StrategicObjective { id:int, portfolioId:int, title:string(<=150), description:string(<=250)?, status:int (0=Active,1=Archived) }"
+  new_fields:
+    - "Product.strategicObjectiveIds: int[]   (FK -> StrategicObjective.id, must share Product.portfolioId)"
+    - "Feature.revenueServices: RevenueService[]   (per-feature catalog)"
+    - "Feature.revenueLines: RevenueLine[]"
+    - "ForecastSettings.schemaVersion: int = 3"
+    - "ForecastSettings.scenarios[].data: { [serviceId:int]: { [monthIndex:int]: { transactions:int>=0, rate?:decimal>=0 } } }"
+    - "ForecastSettings.scenarios[].costGrowthRate: decimal   (percent, monthly compounding)"
+  new_enum_values: []
+  new_api_calls:
+    - "GET    /api/v1/portfolios/{id}/strategic-objectives"
+    - "POST   /api/v1/portfolios/{id}/strategic-objectives"
+    - "PUT    /api/v1/strategic-objectives/{id}"
+    - "DELETE /api/v1/strategic-objectives/{id}        (cascades: clear from products.strategicObjectiveIds)"
+    - "GET    /api/v1/features/{id}/revenue-services"
+    - "POST   /api/v1/features/{id}/revenue-services"
+    - "PUT    /api/v1/revenue-services/{id}"
+    - "DELETE /api/v1/revenue-services/{id}            (cascades: delete all lines with this serviceId)"
+    - "GET    /api/v1/features/{id}/revenue-lines?from=YYYY-MM&to=YYYY-MM"
+    - "POST   /api/v1/features/{id}/revenue-lines      (bulk upsert by (featureId, month))"
+    - "DELETE /api/v1/revenue-lines/{id}"
+    - "GET    /api/v1/features/{id}/forecast-settings  (returns schema v3)"
+    - "PUT    /api/v1/features/{id}/forecast-settings"
+    - "PUT    /api/v1/products/{id}                     (now accepts strategicObjectiveIds:int[])"
+  removed_or_renamed:
+    - "REMOVED: target multiplier (was Target = annualPlanned * 1.35). New rule: Target = SUM(feature.revenueLines.rate * plannedTransactions) for months in window."
+    - "REMOVED: Feature.expectedRevenue / actualRevenue as scalar inputs. Derived from revenueLines."
+    - "REMOVED: ForecastSettings.mode (simple|seasonal|matrix), defaultRevenueGrowth, per-service growth %, seasonal presets, ramadanAuto, cell overrideWinsThenResume."
+    - "RENAMED LABELS ONLY (no data field renames): Planned* -> Target* in UI."
+deps:
+  added: []
+  removed: []
+acceptance:
+  - Given a feature with revenue lines When I view Product, Portfolio, Department KPIs Then ActualRevenue, TargetRevenue and Cost equal the simple SUM of children at each level (no multiplier).
+  - Given TargetRevenue = 0 When Achievement % is rendered Then it shows 0% with no division-by-zero error.
+  - Given ActualRevenue > TargetRevenue When Achievement % is rendered Then it correctly exceeds 100%.
+  - Given the global date filter is changed When any KPI/chart/table renders Then revenue/cost only sum months intersecting the window; cost rows respect their own startDate/endDate intersected with the window.
+  - Given a feature with services A and B When I open Monthly Financial Planning for a month Then I can add multiple revenue lines, override per-month rate, edit, delete, and Save persists immediately with no stale UI.
+  - Given I delete a service When the action commits Then all RevenueLines with that serviceId are removed and roll-ups update in real time.
+  - Given a portfolio with N strategic objectives When I open Create/Edit Product for that portfolio Then the Strategic Alignment multi-select shows only that portfolio's objectives, supports multi-select chips, and persists product.strategicObjectiveIds.
+  - Given a strategic objective is deleted When the confirm dialog is accepted Then it is removed from every linked product.strategicObjectiveIds in one atomic update and the Portfolio "Products contributing" panel reflects this immediately.
+  - Given Forecast Assumptions schema v3 When I edit a cell's transactions Then projected revenue = transactions * (cell.rate ?? service.defaultRate) and projected cost compounds as baselineCost * (1 + costGrowthRate/100)^monthIndex.
+  - Given a tall form dialog (Edit Product Profile, Resource, Financial Planning, Forecast Assumptions) When the body overflows Then header and footer stay pinned and only the body scrolls.
+accessibility:
+  - All charts wrapped in AccessibleFigure with role="img", aria-label, and table fallback; inner wrapper sized w-full h-full so ResponsiveContainer measures correctly.
+  - MultiSelect (strategic alignment): keyboard navigable Combobox via Command primitive; chips dismissible with Backspace; aria-expanded on trigger.
+  - ForecastMatrixGrid: full keyboard nav (Arrow keys, Tab, Enter commits + moves down, Esc reverts, Delete clears, Shift+Click range select then type to fill).
+  - All dialogs: focus trap via Radix; close button has aria-label="Close"; header/footer regions use semantic structure.
+  - Form errors announced inline with red border + AlertCircle icon; "scroll to first error" on submit failure.
+out_of_scope:
+  - Backend persistence (state still lives in AppContext in-memory; reload resets data — pre-existing limitation).
+  - Multi-currency (still SAR / ر.س only).
+  - Forecast scenario comparison view, mid-horizon programmatic rate changes, virtualized grid for >36 months.
+  - OKR/reporting layer on top of Strategic Objectives.
+stack_port_hints:
+  - "AppContext mutations to port to REST writes:"
+  - "  addRevenueService / updateRevenueService / deleteRevenueService -> POST/PUT/DELETE /api/v1/revenue-services"
+  - "  upsertRevenueLines (bulk per feature+month) -> POST /api/v1/features/{id}/revenue-lines"
+  - "  deleteRevenueLine -> DELETE /api/v1/revenue-lines/{id}"
+  - "  addStrategicObjective / updateStrategicObjective / deleteStrategicObjective -> /api/v1/strategic-objectives (delete is cascade)"
+  - "  addPortfolio / addProduct / updatePortfolio / updateProduct -> existing CRUD; updateProduct payload now includes strategicObjectiveIds:int[]"
+  - "Legacy revenuePlan / revenueActual arrays in AppContext are DERIVED views (rebuildLegacyRevenue) — engineering should drop them and read directly from the revenue_lines table; no Planned/Actual scalar columns on Feature."
+  - "No string-literal statuses introduced. Status fields continue to use existing numeric enums from src/lib/domainEnums.ts (FeatureStatus, ProductStatus, ReleaseStatus, ResourceStatus). StrategicObjective.status is a NEW int enum (0=Active,1=Archived) — register it in domainEnums.ts on the engineering side."
+  - "No supabase.* / supabase.auth.* calls were added. Auth contract (JWT in localStorage['leanpulse_access_token']) untouched."
+  - "No edits to src/lib/api/**, src/lib/domainEnums.ts, src/lib/validations.ts, vite.config.ts, eslint.config.js, tsconfig*.json. Edits to src/context/** and src/types/** were explicitly requested by the user as part of these features and are listed above."
+  - "Date filter window math is centralized in src/lib/utils.ts (monthsInDateRange, monthlyCostForRow, computeCostForMonths). Engineering should mirror this server-side or accept window parameters on aggregation endpoints."
+  - "Forecast schema v3 migration runs client-side in featureForecast.ts (materialiseLegacyScenario). Backend should ship a one-time data migration: convert v1/v2 growth-based assumptions into explicit per-month transaction counts."
+known_limitations:
+  - In-memory state — no persistence across reload (pre-existing).
+  - Migration creates 'Legacy Revenue' service rows with rate=1; users must rename/split for clean reporting.
+  - DialogFooter nested inside <form> scrolls with the form body rather than pinning (documented in src/components/ui/dialog.tsx). For strict pinning, place DialogFooter as a direct child of DialogContent.
+  - 71/71 unit tests passing; 0 TypeScript errors at the time of this manifest.
