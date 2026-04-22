@@ -47,12 +47,14 @@ const LIFECYCLE_COLORS: Record<string, string> = {
   Sunset: 'hsl(38 92% 50%)',
 };
 
-const ChartTooltip = ({ active, payload, label }: any) => {
+import type { RechartsTooltipProps } from '@/types/recharts';
+
+const ChartTooltip = ({ active, payload, label }: RechartsTooltipProps) => {
   if (!active || !payload) return null;
   return (
     <div className="bg-card border border-border rounded-lg p-2.5 shadow-lg text-xs">
       <p className="font-medium text-foreground mb-1">{label}</p>
-      {payload.map((entry: any, i: number) => (
+      {payload.map((entry, i) => (
         <p key={i} style={{ color: entry.color }} className="flex justify-between gap-4">
           <span>{entry.name}:</span>
           <span className="font-semibold">{typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}</span>

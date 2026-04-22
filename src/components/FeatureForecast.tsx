@@ -42,6 +42,7 @@ import {
 } from '@/lib/featureForecast';
 import { useFeatureForecastSettings } from '@/hooks/useFeatureForecastSettings';
 import ForecastAssumptionsPanel from '@/components/forecast/ForecastAssumptionsPanel';
+import type { RechartsTooltipProps } from '@/types/recharts';
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -220,17 +221,17 @@ const FeatureForecast = ({ feature, revenueEntries, costEntries }: FeatureForeca
 
   const tone = TONE_CLASSES[activeScenario.tone];
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: RechartsTooltipProps) => {
     if (!active || !payload?.length) return null;
     return (
       <div className="bg-card border border-border rounded-lg shadow-lg p-3 text-xs space-y-1 max-w-xs">
         <p className="font-semibold text-foreground">{label}</p>
-        {payload.filter((e: any) => e.value != null).map((entry: any) => (
-          <div key={entry.dataKey} className="flex items-center gap-2">
+        {payload.filter(e => e.value != null).map((entry, i) => (
+          <div key={`${entry.dataKey ?? entry.name ?? i}`} className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
             <span className="text-muted-foreground">{entry.name}:</span>
             <span className="font-semibold text-foreground tabular-nums">
-              {formatCurrency(entry.value, language)}
+              {formatCurrency(typeof entry.value === 'number' ? entry.value : Number(entry.value) || 0, language)}
             </span>
           </div>
         ))}

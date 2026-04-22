@@ -417,16 +417,16 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
     return <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />;
   };
 
-  const ChartTooltipEl = ({ active, payload, label }: any) => {
+  const ChartTooltipEl = ({ active, payload, label }: import('@/types/recharts').RechartsTooltipProps) => {
     if (!active || !payload?.length) return null;
     return (
       <div className="bg-card border border-border rounded-xl shadow-lg p-3 text-xs space-y-1.5">
         <p className="font-semibold text-foreground text-sm">{label}</p>
-        {payload.map((entry: any) => (
-          <div key={entry.dataKey} className="flex items-center gap-2">
+        {payload.map((entry, i) => (
+          <div key={`${entry.dataKey ?? entry.name ?? i}`} className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
             <span className="text-muted-foreground">{entry.name}:</span>
-            <span className="font-semibold text-foreground">{formatCurrency(entry.value, language)}</span>
+            <span className="font-semibold text-foreground">{formatCurrency(typeof entry.value === 'number' ? entry.value : Number(entry.value) || 0, language)}</span>
           </div>
         ))}
       </div>
