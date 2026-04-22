@@ -803,6 +803,30 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
             </DialogDescription>
           </DialogHeader>
 
+          {/* Compact sticky summary strip — visible below 1100px (where the aside would otherwise stack at the bottom).
+              Keeps live KPI numbers in reach without scrolling past the entire form. */}
+          <div className="min-[1100px]:hidden shrink-0 border-b border-border bg-card px-4 py-2 flex items-center gap-2 overflow-x-auto">
+            <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('revenue')}</span>
+              <span className="text-sm font-bold text-emerald-600 tabular-nums">{formatCurrency(editMonthSummary.editActualRev, language)}</span>
+            </div>
+            <span className="text-muted-foreground/40">·</span>
+            <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('cost')}</span>
+              <span className="text-sm font-bold text-destructive tabular-nums">{formatCurrency(editMonthSummary.totalCost, language)}</span>
+            </div>
+            <span className="text-muted-foreground/40">·</span>
+            <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('netProfit')}</span>
+              <span className={cn("text-sm font-bold tabular-nums", editMonthSummary.profit >= 0 ? "text-primary" : "text-destructive")}>
+                {formatCurrency(editMonthSummary.profit, language)}
+              </span>
+              <span className={cn("text-[11px] font-semibold tabular-nums ms-0.5", editMonthSummary.margin >= 0 ? "text-primary" : "text-destructive")}>
+                ({editMonthSummary.margin.toFixed(1)}%)
+              </span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 min-[1100px]:grid-cols-[minmax(720px,1fr)_340px] gap-6 px-6 py-5 flex-1 min-h-0 overflow-y-auto bg-[hsl(var(--muted)/0.3)]">
             <div className="space-y-5 min-w-0">
               {/* STEP 1 — Services / Subscriptions (catalog) */}
@@ -1217,7 +1241,7 @@ const FeatureFinancialPlanning = ({ feature, onClose }: FeatureFinancialPlanning
             </div>
 
             {/* Right: Live Summary + Insights (sticky on desktop) */}
-            <aside className="space-y-3 min-[1100px]:sticky min-[1100px]:top-0 self-start">
+            <aside className="hidden min-[1100px]:block space-y-3 min-[1100px]:sticky min-[1100px]:top-0 self-start">
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">{t('financialSummary')}</h4>
 
               {/* Revenue card with variance */}
