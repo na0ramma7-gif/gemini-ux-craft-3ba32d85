@@ -144,7 +144,7 @@ const RevenueAreaChart = () => {
             />
           </AreaChart>
         </ResponsiveContainer>
-      </div>
+      </AccessibleFigure>
     </div>
   );
 };
