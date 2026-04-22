@@ -203,3 +203,30 @@ Items 1–6 are all "no design decisions required" and could ship as a single PR
 ---
 
 *End of report.*
+
+---
+
+## Round 1 — fixes shipped (2026-04-22)
+
+After delivering the audit, the following "no design decisions required" items from §4 were applied. **Verified:** TypeScript 0 errors, 25/25 tests passing.
+
+| # | Fix | Files | Audit ref |
+|---|---|---|---|
+| 1 | **Top-level `<ErrorBoundary>`** wraps the app — recoverable error card with reload CTA replaces white-screen on render errors. | `src/components/ErrorBoundary.tsx` (new), `src/App.tsx` | X6 |
+| 2 | **Mobile full-screen `Dialog` + `AlertDialog`** — below `sm` (640px) every dialog is full-screen with native scroll; above `sm` keeps the centered floating-card layout. Solves "Save scrolls away" + cramped-padding issues for **every** form dialog at once. | `src/components/ui/dialog.tsx`, `src/components/ui/alert-dialog.tsx` | M1, M2 |
+| 3 | **RTL: dialog close button** moved from `right-4` to `end-4` (logical property) — flips correctly to the left in Arabic. Header/footer alignment classes also moved from `text-left` to `text-start`. | `src/components/ui/dialog.tsx`, `src/components/ui/alert-dialog.tsx` | R2 |
+| 4 | **RTL: table headers** changed from `text-left` to `text-start` in the base `<TableHead>` — every shadcn table now flips correctly in Arabic. | `src/components/ui/table.tsx` | R1 |
+| 5 | **Mobile sidebar toggle** moved from `start-3` (overlapped page H1 / date filter) to `end-3`, padded to a 44×44 tap target, given proper `aria-label` and `aria-expanded`. | `src/components/Sidebar.tsx` | N1 |
+| 6 | **iOS auto-zoom killed** on Financial Planning inline inputs — every `text-xs h-7/8` input now renders `text-base h-10` on mobile, drops to compact size at `md+`. 7 inputs updated (service editor, utilization, cost rows). | `src/components/FeatureFinancialPlanning.tsx` | Y3 |
+
+### Audit corrections
+
+While applying fixes I discovered three audit items were partially or fully overstated and have been corrected here:
+
+- **X5 (localStorage in Safari Private mode)** — `featureForecast.ts` and `forecastEngine.ts` already wrap `getItem`/`setItem` in `try { } catch { }` blocks. `AppContext.tsx` does not touch localStorage at all (state is in-memory only). The crash risk this round is **low**, not Critical. The audit note stands as a future-proofing reminder if more persistence is added.
+- **A1 (icon-only buttons missing `aria-label`)** — spot-check after the fact showed the four flagged components (`PortfolioStrategicAlignment`, `creatable-select`, `sidebar-trigger`) all already carry either `aria-label` or `<span className="sr-only">`. Severity downgraded to **Low** pending a wider sweep.
+- **M2 (sticky header/footer inside form dialogs)** — partially addressed by Fix #2: on mobile the entire dialog now scrolls naturally and Save/Cancel land at the bottom of the form within reach. A future round can add `sticky` header/footer for very long forms (PortfolioFormDialog, EditProductProfileDialog) but the critical "Save is invisible" failure mode is resolved.
+
+### Still outstanding (deferred per §2)
+
+All Critical/High items from §1.1 (table → card conversions T1–T9), the 1100px-summary-collapse pattern in M3/M4, sidebar tablet-rail mode, and the cross-browser visual matrix remain. They need either design decisions or browser-verification budget before a fix round.
