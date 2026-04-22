@@ -41,3 +41,15 @@
 - `src/components/GlobalDateFilter.tsx`
 - `src/context/AppContext.tsx`
 - `A11Y_REPORT.md` (new)
+
+## Round 15 — Chart accessibility (deferred from Round 11)
+
+| # | Chart | Treatment |
+|---|---|---|
+| 1 | `RevenueCostLineChart` (Dashboard hero) | Wrapped with `AccessibleFigure` — provides `role="img"` summary + SR-only data table with month, revenue, planned, cost, profit. |
+| 2 | `RevenueAreaChart` | Wrapped — SR table with month, target, planned, actual. |
+| 3 | `ProductAreaChart` | Wrapped — SR table with month + per-product columns. |
+
+`AccessibleFigure` (`src/components/a11y/AccessibleFigure.tsx`) is a generic wrapper that any remaining chart can adopt with ~10 lines of glue code. Visible UI is unchanged.
+
+Verified: 0 TS errors, 71/71 tests passing.
