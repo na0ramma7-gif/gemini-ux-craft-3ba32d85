@@ -149,6 +149,32 @@ const ForecastDirectEntryGrid = ({
     else if (e.key === 'ArrowLeft') { e.preventDefault(); setFocusCell({ rowIdx, colIdx: Math.max(0, colIdx - 1) }); setSelection(new Set()); }
     else if (e.key === 'ArrowDown') { e.preventDefault(); setFocusCell({ rowIdx: Math.min(projectedServices.length - 1, rowIdx + 1), colIdx }); setSelection(new Set()); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setFocusCell({ rowIdx: Math.max(0, rowIdx - 1), colIdx }); setSelection(new Set()); }
+    else if (e.key === 'Home') {
+      e.preventDefault();
+      setFocusCell({ rowIdx, colIdx: e.ctrlKey || e.metaKey ? 0 : 0 });
+      // Ctrl/Cmd+Home = first cell of grid
+      if (e.ctrlKey || e.metaKey) setFocusCell({ rowIdx: 0, colIdx: 0 });
+      setSelection(new Set());
+    }
+    else if (e.key === 'End') {
+      e.preventDefault();
+      const lastCol = horizon - 1;
+      const lastRow = projectedServices.length - 1;
+      setFocusCell({ rowIdx: e.ctrlKey || e.metaKey ? lastRow : rowIdx, colIdx: lastCol });
+      setSelection(new Set());
+    }
+    else if (e.key === 'PageDown') {
+      e.preventDefault();
+      // Jump 12 months forward (one year), clamp to last column
+      setFocusCell({ rowIdx, colIdx: Math.min(horizon - 1, colIdx + 12) });
+      setSelection(new Set());
+    }
+    else if (e.key === 'PageUp') {
+      e.preventDefault();
+      // Jump 12 months back, clamp to first column
+      setFocusCell({ rowIdx, colIdx: Math.max(0, colIdx - 12) });
+      setSelection(new Set());
+    }
     else if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); startEdit(rowIdx, colIdx); }
     else if (e.key === 'Tab') {
       e.preventDefault();
