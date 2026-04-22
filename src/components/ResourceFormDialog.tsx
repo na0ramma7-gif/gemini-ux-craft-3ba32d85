@@ -216,7 +216,8 @@ const ResourceFormDialog = ({ open, onOpenChange, resource }: ResourceFormDialog
               </FormItem>
             )} />
 
-            <DialogFooter>
+            </div>
+            <DialogFooter className="static mx-0 mb-0 px-6 py-3 shrink-0">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {isEdit ? t('save') : t('addResource')}
