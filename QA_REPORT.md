@@ -15,6 +15,23 @@
 
 ---
 
+## Round 4 — Tables → cards on mobile (shipped)
+
+Converted High-severity tables to a vertical card layout below the `md` (768px) breakpoint. Tables remain unchanged on tablet/desktop. Implementation pattern: dual render — `md:hidden` card stack + `hidden md:block` original table — so desktop behavior is bit-for-bit unchanged.
+
+| Item | File | Card behavior |
+|---|---|---|
+| T4 | `pages/ResourcesPage.tsx` | Card per resource: name + role headline, status badge top-right, employeeId/location/category meta row, utilization % colored by threshold (over-allocated → destructive). Tap target ≥44px. |
+| T5 | `dashboard/ProductTable.tsx` | Card per product: medal + name, portfolio chip, achievement % chip pinned top-right (lead with the conclusion), 3-up grid of revenue/cost/profit, compare deltas wrap below. |
+| T8 | `pages/PortfolioPage.tsx` | 3 tables converted: products overview, resources/assignments, financials revenue. Heatmap left as-is (matrix loses meaning as cards; horizontal scroll is the right call). |
+| T9 | `pages/ProductPage.tsx` | 3 tables converted: features list view, resources/assignments, financials revenue. Gantt left as-is per audit (needs a separate vertical-timeline design). |
+
+Verified: TypeScript 0 errors, full test suite green.
+
+Outstanding: T1/T2/T3 (forecast grids inside modals — need product decision per audit §2.1), T6/T7 (Medium severity, dashboard forecast tables), T10 (Medium, documentation table).
+
+---
+
 ## 1. Issues found
 
 ### 1.1 Tables — every multi-column table on mobile
