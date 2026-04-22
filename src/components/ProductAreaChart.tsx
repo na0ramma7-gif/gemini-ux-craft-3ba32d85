@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import { format, eachMonthOfInterval } from 'date-fns';
 import AccessibleFigure from '@/components/a11y/AccessibleFigure';
+import type { RechartsTooltipProps, RechartsTooltipEntry } from '@/types/recharts';
 
 const PRODUCT_COLORS = [
   { stroke: 'hsl(var(--primary))', fill: 'hsl(var(--primary))' },
@@ -35,10 +36,10 @@ const ProductAreaChart = () => {
 
     const products = state.products.map(p => p);
 
-    const chartData = months.map(month => {
+    const chartData: Array<Record<string, number | string>> = months.map(month => {
       const monthKey = format(month, 'yyyy-MM');
       const label = format(month, 'MMM');
-      const entry: Record<string, any> = { name: label };
+      const entry: Record<string, number | string> = { name: label };
 
       products.forEach(product => {
         const features = state.features.filter(f => f.productId === product.id);
@@ -57,12 +58,14 @@ const ProductAreaChart = () => {
     return { chartData, products };
   }, [state, dateFilter]);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: RechartsTooltipProps) => {
     if (!active || !payload?.length) return null;
     return (
       <div className="bg-card border border-border rounded-lg shadow-lg p-3 text-xs space-y-1">
         <p className="font-semibold text-foreground">{label}</p>
-        {payload.filter((e: any) => e.value > 0).map((entry: any) => (
+        {payload
+          .filter((e: RechartsTooltipEntry) => typeof e.value === 'number' && e.value > 0)
+          .map((entry: RechartsTooltipEntry) => (
           <div key={entry.dataKey} className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
             <span className="text-muted-foreground">{entry.dataKey}:</span>

@@ -4,6 +4,7 @@ import { formatCurrency } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis } from 'recharts';
 import AccessibleFigure from '@/components/a11y/AccessibleFigure';
+import type { RechartsTooltipProps } from '@/types/recharts';
 
 const InvestmentReturnChart = () => {
   const { state, t, language, dateFilter } = useApp();
@@ -21,7 +22,8 @@ const InvestmentReturnChart = () => {
     );
   }, [dept]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  type Row = { name: string; cost: number; revenue: number };
+  const CustomTooltip = ({ active, payload }: RechartsTooltipProps<Row>) => {
     if (!active || !payload?.length) return null;
     const d = payload[0].payload;
     return (
