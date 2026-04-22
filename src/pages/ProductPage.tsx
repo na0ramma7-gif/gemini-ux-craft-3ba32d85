@@ -485,7 +485,40 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
 
               {/* List View */}
               {viewMode === 'list' && (
-                <div className="overflow-x-auto">
+                <>
+                {/* Mobile cards */}
+                <div className="md:hidden space-y-2">
+                  {features.map(feature => {
+                    const release = releases.find(r => r.id === feature.releaseId);
+                    return (
+                      <div key={feature.id} className="bg-secondary/30 rounded-xl p-3 border border-border">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-foreground text-sm truncate">{feature.name}</div>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              <span className={cn("text-[10px] px-2 py-0.5 rounded-full", getPriorityColor(feature.priority))}>{feature.priority}</span>
+                              <StatusBadge status={feature.status} />
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button size="sm" variant="outline" className="h-9 w-9 p-0" onClick={() => setEditingFeature(feature)} aria-label={t('edit')}>
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-9 w-9 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => setDeleteConfirmId(feature.id)} aria-label={t('delete')}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                          <div><span className="text-[10px] uppercase tracking-wide">{t('release')}</span><div className="text-foreground">{release?.version || 'N/A'}</div></div>
+                          <div><span className="text-[10px] uppercase tracking-wide">{t('owner')}</span><div className="text-foreground truncate">{feature.owner}</div></div>
+                          <div className="col-span-2"><span className="text-[10px] uppercase tracking-wide">{t('period')}</span><div className="text-foreground">{formatShortDate(feature.startDate, language)} → {formatShortDate(feature.endDate, language)}</div></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full min-w-[700px]">
                     <thead className="bg-secondary">
                       <tr>
@@ -542,6 +575,7 @@ const ProductPage = ({ product, onBack }: ProductPageProps) => {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
 
               {features.length === 0 && (
