@@ -1,97 +1,73 @@
 
 
-# Consolidated Engineering Handoff — Last 24h Changes
+# Business TODO List — Yesterday's Changes to Port to Your New Stack
 
-This is a **read-only summary** consolidating all material changes from **2026-04-21 07:12 → 2026-04-22 06:42** into a single handoff manifest for the GitLab engineering repo. No code is modified by this plan; once you approve, I'll switch to default mode and write the manifest file plus capture before/after screenshots.
+I'll produce **one plain-English Markdown document** (`/mnt/documents/engineering-todo-2026-04-22.md`) written for your engineers, organized as a checklist of business changes from 2026-04-21 → 2026-04-22. No code in your project will be touched.
 
-## What changed in the last day (chronological)
+## Document structure
 
-1. **Financial calculations unified (Single Source of Truth)** — 04-21 07:19
-2. **"Add Portfolio" / "Add Product" full-profile dialogs** — 04-21 07:28
-3. **Validation pass on all form dialogs** (zod + react-hook-form, error toasts) — 04-21 ~10:00
-4. **Edit Product Profile dialog** rebuilt with strict validation/limits — 04-21 11:17
-5. **Strategic Alignment as managed entity** with bidirectional Portfolio↔Product linking — 04-21 11:26
-6. **Terminology + formula standardization** ("Planned" → "Target", removed × 1.35 multiplier, Net Profit = Actual − Cost everywhere) — 04-21 12:59
-7. **Revenue model refactor** to subscription-driver model: `Revenue = Rate × Transactions`, per-feature service catalog, legacy migration — 04-21 19:40
-8. **Phase 2 service breakdowns** in Compare/Forecast/Drivers — 04-21 19:49
-9. **Forecast module total redesign (Schema v3)** — direct-entry per-cell grid replacing Simple/Seasonal/Matrix modes — 04-21 22:05
-10. **Forecast page cleanup** — removed Cost Forecast, Profit Projection, Per-service baseline; enlarged Revenue chart — 04-21 22:13
-11. **PortfolioFormDialog** silent-validation fix (`onInvalid` toast) — 04-21 22:17
-12. **a11y chart fix** — `AccessibleFigure` inner wrapper height — 04-22 06:18
-13. **Dialog layout fixes** — Monthly Financial Planning, Forecast Assumptions, Edit Product Profile, Edit Resource — 04-22 06:21–06:38
-14. **Global dialog refactor** in `src/components/ui/dialog.tsx` to 3-row flex (header / scrollable body / footer) — 04-22 06:42
+### Part 1 — The 6 business decisions that changed yesterday
 
----
+For each: one paragraph in plain language, then a "What your stack must do" checklist.
 
-## Formulas locked in (canonical, all levels)
+1. **Revenue is now Rate × Transactions, not a typed-in number**
+   - Old: users typed Planned Revenue and Actual Revenue per feature per month.
+   - New: users define *services* (subscriptions/products) per feature with a default rate, then enter *transactions* per month. Revenue is computed.
+   - Stack TODO: new tables `revenue_services`, `revenue_lines`; drop `revenue_plans` / `revenue_actuals` after migration; migration rule = one synthetic "Legacy Revenue" service per feature, rate=1, plannedTx=oldExpected, actualTx=oldActual.
 
-**Hierarchy** Feature → Product → Portfolio → Department. Feature is single source of truth; all higher levels are pure summation.
+2. **The 1.35× target multiplier is gone**
+   - Old: Target = Planned × 1.35.
+   - New: Target = sum of feature target revenue, no multiplier. Pure roll-up Feature → Product → Portfolio → Department.
+   - Stack TODO: remove the multiplier from any aggregation; Achievement % = round(actual/target×100), returns 0 when target=0, may exceed 100.
 
-```text
-Per Feature, per month:
-  RevenueLine.planned = rate × plannedTransactions
-  RevenueLine.actual  = rate × actualTransactions
-  Feature.TargetRevenue(window) = Σ RevenueLine.planned for months ∈ window
-  Feature.ActualRevenue(window) = Σ RevenueLine.actual  for months ∈ window
-  Feature.Cost(window)          = Σ monthlyCostForRow(c) for months ∈ window
-                                  (cost row's startDate/endDate intersected with window)
+3. **"Planned" renamed to "Target" everywhere in the UI**
+   - Labels only — no DB column renames required. Update display strings + new EN/AR keys (~30 keys, listed in Appendix A).
 
-Roll-up (Product/Portfolio/Department):
-  TargetRevenue = Σ children.TargetRevenue
-  ActualRevenue = Σ children.ActualRevenue
-  Cost          = Σ children.Cost
+4. **Strategic Objectives became a real entity**
+   - Old: free-text on Product.
+   - New: managed list per Portfolio. Products link M:N to objectives in their own portfolio.
+   - Stack TODO: new table `strategic_objectives`; join `product_strategic_objectives`; cascade delete clears product links; new CRUD endpoints.
 
-Derived (every level):
-  NetProfit       = ActualRevenue − Cost
-  Margin          = NetProfit / ActualRevenue          (0 if ActualRevenue = 0)
-  Achievement %   = round(ActualRevenue / TargetRevenue × 100)
-                    → 0 if TargetRevenue = 0
-                    → may exceed 100 (valid)
+5. **Forecast module rebuilt — Schema v3 (direct entry grid)**
+   - Old: Simple/Seasonal/Matrix modes with growth %, seasonal presets, Ramadan auto, override flags.
+   - New: a grid where the user types transactions per service per month, optional per-cell rate override, plus a single `costGrowthRate` for compounding cost.
+   - Stack TODO: store as JSON column or split table `(scenario_id, service_id, month_index, transactions, rate?)`; remove old mode/growth/seasonal columns; one-time migration replays old assumptions into explicit per-month numbers.
 
-Forecast (Schema v3, per scenario):
-  data[serviceId][monthIndex] = { transactions, rate? }
-  Projected revenue per cell  = transactions × (rate ?? service.defaultRate)
-  Projected cost per month    = baselineCost × (1 + costGrowthRate/100) ^ monthIndex
-```
+6. **Form & dialog hardening (no schema impact, UX contract)**
+   - All create/edit dialogs now use zod validation with inline errors and toasts on invalid submit.
+   - All tall dialogs have pinned header/footer with a scrollable middle (3-row flex). Mirror this pattern when porting components.
 
-The `× 1.35` target multiplier was **removed**. Annual-fixed target logic was also removed in favor of pure summation per spec #226.
+### Part 2 — Flat checklist (copy-paste into Jira/Linear)
 
----
+- [ ] Create `revenue_services` table + EF entity + REST CRUD
+- [ ] Create `revenue_lines` table + EF entity + REST CRUD (bulk upsert by feature+month)
+- [ ] Migrate legacy `revenue_plans` / `revenue_actuals` → `revenue_lines` via "Legacy Revenue" service (rate=1)
+- [ ] Drop `Feature.expectedRevenue` / `actualRevenue` after migration verified
+- [ ] Remove the ×1.35 target multiplier from any aggregation query / report
+- [ ] Update Achievement % formula (target=0 ⇒ 0; uncapped above 100)
+- [ ] Create `strategic_objectives` + `product_strategic_objectives` join + CRUD; cascade-delete clears links
+- [ ] Add `Product.strategicObjectiveIds` to update payload (validate same portfolio)
+- [ ] Replace Forecast schema with v3 (per-cell grid); remove mode/growth/seasonal/Ramadan/override columns
+- [ ] Implement migration that replays v1/v2 forecast assumptions into explicit per-month transactions
+- [ ] Update all UI labels Planned→Target; ship ~30 new EN+AR translation keys (Appendix A)
+- [ ] Apply zod-equivalent validation rules to all create/edit endpoints (Appendix B)
+- [ ] Confirm cost model: monthly cost rows preferred; CAPEX falls back to total/amortization; date-window intersection per row
 
-## Manifest deliverable (will be written on approval)
+### Part 3 — Appendix
 
-A single `.lovable/change-manifest.yaml` covering the full 24-hour window with `bucket: data-contract` (most invasive bucket wins), listing:
+- **A** — Translation keys delta (added / changed / removed), EN + AR
+- **B** — Validation rules per field (min/max/required), extracted from the dialogs
+- **C** — New REST endpoint list with one-line purpose each
+- **D** — Cross-reference: business item → Lovable file path (so engineers can read the source if they want)
 
-- **New entities**: `RevenueService`, `RevenueLine`, `StrategicObjective`
-- **New fields**: `Product.strategicObjectiveIds: int[]`, `Feature.revenueServices`, `Feature.revenueLines`, `ForecastSettings.schemaVersion=3`, `ForecastSettings.scenarios[].data[serviceId][monthIndex]={transactions, rate?}`, `ForecastSettings.scenarios[].costGrowthRate`
-- **Removed/renamed**: "Planned Revenue" → "Target Revenue" everywhere; removed `× 1.35`; removed forecast Simple/Seasonal/Matrix modes, growth rates, seasonal presets, Ramadan auto-detect, override indicators
-- **New API calls (engineering must add)**:
-  - `GET/POST/PUT/DELETE /api/v1/strategic-objectives?portfolioId={int}`
-  - `GET/POST/PUT/DELETE /api/v1/features/{id}/revenue-services`
-  - `GET/POST/PUT/DELETE /api/v1/features/{id}/revenue-lines?month={YYYY-MM}`
-  - `GET/PUT /api/v1/features/{id}/forecast-settings` (schema v3)
-- **New enum values**: none (existing `FeatureStatus`, `ReleaseStatus`, etc. unchanged)
-- **Acceptance criteria**: 8 testable bullets covering roll-up parity, terminology, edge cases (zero target, null values, actual > target), real-time recalculation, date-filter propagation, and dialog layout
-- **stack_port_hints**: all in-memory `AppContext` mutations to be ported to REST writes; legacy `revenuePlan`/`revenueActual` arrays are derived views — engineering should drop them and read directly from `revenue_lines` table
-- **known_limitations**: state is in-memory (no persistence across reload); legacy migration creates "Legacy Revenue" service rows that users must rename
+## What this doc deliberately leaves out
 
-## Files affected (full list)
+- No YAML manifest (you already have it).
+- No JSON examples or .http files.
+- No screenshots embedded (already in `.lovable/screens/2026-04-22/`).
+- No code snippets longer than 3 lines.
 
-**Created** (10): `EditProductProfileDialog.tsx`, `PortfolioFormDialog.tsx`, `ProductFormDialog.tsx`, `StrategicObjectiveDialog.tsx`, `PortfolioStrategicAlignment.tsx`, `compare/ServiceBreakdownTable.tsx`, `forecast/ForecastAssumptionsPanel.tsx`, `forecast/ForecastMatrixGrid.tsx`, `ui/multi-select.tsx`, `a11y/AccessibleFigure.tsx`
+## Output
 
-**Modified** (~25): `lib/utils.ts`, `lib/featureForecast.ts`, `lib/compare.ts`, `hooks/useHierarchicalMetrics.ts`, `hooks/useFeatureForecastSettings.ts`, `hooks/useCompareMetrics.ts`, `context/AppContext.tsx`, `types/index.ts`, `data/initialData.ts`, `i18n/translations.ts`, `pages/Dashboard.tsx`, `pages/PortfolioPage.tsx`, `pages/ProductPage.tsx`, `components/FeatureFinancialPlanning.tsx`, `FeatureForecast.tsx`, `ProductOverview.tsx`, `RevenueAreaChart.tsx`, `RevenueCostLineChart.tsx`, `dashboard/UpcomingRevenueDrivers.tsx`, plus dashboard chart wrappers and `ui/dialog.tsx` global refactor
-
-**Protected files touched (flagged for engineering review)**:
-- `src/context/AppContext.tsx` — added revenue service/line + strategic objective CRUD actions; legacy `revenuePlan`/`revenueActual` now derived
-- `src/types/index.ts` — new entity interfaces
-- `src/i18n/translations.ts` — ~30 new keys EN+AR
-
-## What I'll do once you approve
-
-1. Create `/dev-server/.lovable/change-manifest.yaml` with the full v1 schema filled in
-2. Capture before/after screenshots of affected screens to `/dev-server/.lovable/screens/2026-04-22/`:
-   - Dashboard, PortfolioPage, ProductPage, FeatureFinancialPlanning, FeatureForecast, ForecastAssumptionsPanel, EditProductProfileDialog, ResourceFormDialog, PortfolioStrategicAlignment
-3. Echo the same YAML in chat inside a ` ```yaml ` block
-
-No source code changes — this is documentation/handoff artifact only.
+Single downloadable file: `/mnt/documents/engineering-todo-2026-04-22.md`, ~6–8 pages of plain Markdown.
 
