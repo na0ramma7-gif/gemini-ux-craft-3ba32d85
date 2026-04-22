@@ -1,11 +1,21 @@
+import { lazy, Suspense } from 'react';
 import { useApp } from '@/context/AppContext';
 import Sidebar from '@/components/Sidebar';
 import Dashboard from '@/pages/Dashboard';
-import PortfolioPage from '@/pages/PortfolioPage';
-import ProductPage from '@/pages/ProductPage';
-import ResourcesPage from '@/pages/ResourcesPage';
-import ResourceProfilePage from '@/pages/ResourceProfilePage';
 import { Portfolio, Product, Resource } from '@/types';
+
+// Route-level code splitting — heavy pages load on demand to keep
+// initial mobile bundle small (QA Round 2, audit ref P1).
+const PortfolioPage = lazy(() => import('@/pages/PortfolioPage'));
+const ProductPage = lazy(() => import('@/pages/ProductPage'));
+const ResourcesPage = lazy(() => import('@/pages/ResourcesPage'));
+const ResourceProfilePage = lazy(() => import('@/pages/ResourceProfilePage'));
+
+const PageFallback = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" aria-label="Loading" />
+  </div>
+);
 
 const MainLayout = () => {
   const { view, setView, selected, setSelected, sidebarOpen, setSidebarOpen, state } = useApp();
@@ -104,7 +114,9 @@ const MainLayout = () => {
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         onPortfolioClick={handlePortfolioClick}
       />
-      <main className="flex-1 overflow-y-auto p-6 md:p-8">{renderView()}</main>
+      <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <Suspense fallback={<PageFallback />}>{renderView()}</Suspense>
+      </main>
     </div>
   );
 };
