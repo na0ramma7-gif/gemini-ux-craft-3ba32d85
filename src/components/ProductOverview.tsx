@@ -178,11 +178,11 @@ const ProductOverview = ({ product }: Props) => {
 
         {/* Ownership row — compact */}
         <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-border/50">
-          {[
+          {([
             { label: t('owner'), name: product.owner },
             product.technicalOwner && { label: t('technicalOwner'), name: product.technicalOwner },
             product.deliveryManager && { label: t('deliveryManager'), name: product.deliveryManager },
-          ].filter(Boolean).map((item: any) => (
+          ].filter(Boolean) as Array<{ label: string; name: string }>).map((item) => (
             <div key={item.label} className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
                 <User className="w-3.5 h-3.5 text-primary" />

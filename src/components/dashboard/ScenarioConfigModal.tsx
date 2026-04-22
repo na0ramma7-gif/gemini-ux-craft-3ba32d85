@@ -297,7 +297,7 @@ const ScenarioConfigModal = ({
                   {/* Growth mode tucked away */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-foreground">{t('growthMode')}</Label>
-                    <Select value={cfg.growthMode} onValueChange={(v: any) => update({ growthMode: v })}>
+                    <Select value={cfg.growthMode} onValueChange={(v) => update({ growthMode: v as 'compound' | 'linear' })}>
                       <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="compound">{t('compound')}</SelectItem>

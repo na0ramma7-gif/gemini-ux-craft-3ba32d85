@@ -198,9 +198,19 @@ export const scenarioHasDataBeyond = (scenario: ForecastScenario, horizon: numbe
   return false;
 };
 
+/** Transient stash carried by migrated v1/v2 scenarios until baselines are available. */
+interface LegacyStash {
+  mode?: string;
+  services?: Array<{ serviceId?: number; growthRate?: number }>;
+  defaultGrowthRate?: number;
+  cellOverrides?: Array<{ serviceId?: number; monthIndex?: number; tx?: number }>;
+  pattern?: unknown;
+}
+type ScenarioWithLegacy = ForecastScenario & { __legacy?: LegacyStash };
+
 // ── Persistence ──────────────────────────────────────────────
 
-const sanitizeScenario = (raw: any): ForecastScenario => {
+const sanitizeScenario = (raw: Record<string, unknown> & { data?: Record<string, Record<string, { transactions?: unknown; rate?: unknown }>> }): ForecastScenario => {
   const data: ScenarioData = {};
   if (raw?.data && typeof raw.data === 'object') {
     for (const sIdStr of Object.keys(raw.data)) {
@@ -227,9 +237,9 @@ const sanitizeScenario = (raw: any): ForecastScenario => {
   return {
     id: String(raw.id),
     name: String(raw.name ?? 'Untitled'),
-    tone: ['neutral', 'success', 'warning', 'primary', 'accent'].includes(raw.tone) ? raw.tone : 'neutral',
+    tone: (['neutral', 'success', 'warning', 'primary', 'accent'] as const).includes(raw.tone as ForecastScenario['tone']) ? (raw.tone as ForecastScenario['tone']) : 'neutral',
     data,
-    costGrowthRate: Number.isFinite(raw.costGrowthRate) ? raw.costGrowthRate : 2,
+    costGrowthRate: Number.isFinite(raw.costGrowthRate as number) ? (raw.costGrowthRate as number) : 2,
     builtIn: !!raw.builtIn,
   };
 };
@@ -248,24 +258,27 @@ const sanitizeScenario = (raw: any): ForecastScenario => {
  * scenario shells (id, name, tone, builtIn, costGrowthRate) so user-defined
  * scenarios survive.
  */
-const migrateLegacyScenario = (raw: any): ForecastScenario => ({
-  id: String(raw.id),
-  name: String(raw.name ?? 'Untitled'),
-  tone: ['neutral', 'success', 'warning', 'primary', 'accent'].includes(raw.tone) ? raw.tone : 'neutral',
-  data: {},
-  costGrowthRate: Number.isFinite(raw.costGrowthRate) ? raw.costGrowthRate : 2,
-  builtIn: !!raw.builtIn,
-  // We stash legacy assumptions on a side property the loader will read once
-  // baselines are available. Cleared after the first hydration pass.
-  // @ts-expect-error transient
-  __legacy: {
-    mode: raw?.mode ?? 'simple',
-    services: Array.isArray(raw?.services) ? raw.services : [],
-    defaultGrowthRate: Number.isFinite(raw?.defaultGrowthRate) ? raw.defaultGrowthRate : 5,
-    cellOverrides: Array.isArray(raw?.cellOverrides) ? raw.cellOverrides : [],
-    pattern: raw?.pattern,
-  },
-});
+const migrateLegacyScenario = (raw: Record<string, unknown>): ScenarioWithLegacy => {
+  const tone = (['neutral', 'success', 'warning', 'primary', 'accent'] as const).includes(raw.tone as ForecastScenario['tone'])
+    ? (raw.tone as ForecastScenario['tone'])
+    : 'neutral';
+  return {
+    id: String(raw.id),
+    name: String(raw.name ?? 'Untitled'),
+    tone,
+    data: {},
+    costGrowthRate: Number.isFinite(raw.costGrowthRate as number) ? (raw.costGrowthRate as number) : 2,
+    builtIn: !!raw.builtIn,
+    // Stash legacy assumptions for the loader to replay once baselines exist.
+    __legacy: {
+      mode: typeof raw.mode === 'string' ? raw.mode : 'simple',
+      services: Array.isArray(raw.services) ? (raw.services as LegacyStash['services']) : [],
+      defaultGrowthRate: Number.isFinite(raw.defaultGrowthRate as number) ? (raw.defaultGrowthRate as number) : 5,
+      cellOverrides: Array.isArray(raw.cellOverrides) ? (raw.cellOverrides as LegacyStash['cellOverrides']) : [],
+      pattern: raw.pattern,
+    },
+  };
+};
 
 export const loadFeatureForecastSettings = (featureId: number): FeatureForecastSettings => {
   if (typeof window === 'undefined') return buildDefaultSettings();
@@ -357,24 +370,21 @@ export const materialiseLegacyScenario = (
   horizon: number,
   forecastStartDate: Date,
 ): ForecastScenario => {
-  // @ts-expect-error transient legacy stash from migrateLegacyScenario
-  const legacy = scenario.__legacy as
-    | { mode?: string; services?: any[]; defaultGrowthRate?: number; cellOverrides?: any[] }
-    | undefined;
+  const legacy = (scenario as ScenarioWithLegacy).__legacy;
   if (!legacy) return scenario;
   const services = Array.isArray(legacy.services) ? legacy.services : [];
   const defaultGrowth = Number.isFinite(legacy.defaultGrowthRate) ? legacy.defaultGrowthRate! : 5;
   const overrides = Array.isArray(legacy.cellOverrides) ? legacy.cellOverrides : [];
   const overrideMap = new Map<string, number>();
-  overrides.forEach((o: any) => {
+  overrides.forEach((o) => {
     if (Number.isFinite(o?.serviceId) && Number.isFinite(o?.monthIndex) && Number.isFinite(o?.tx)) {
-      overrideMap.set(`${o.serviceId}:${o.monthIndex}`, o.tx);
+      overrideMap.set(`${o!.serviceId}:${o!.monthIndex}`, o!.tx as number);
     }
   });
   const data: ScenarioData = {};
   for (const b of baselines) {
-    const sa = services.find((s: any) => Number(s?.serviceId) === b.serviceId);
-    const growth = Number.isFinite(sa?.growthRate) ? sa.growthRate : defaultGrowth;
+    const sa = services.find((s) => Number(s?.serviceId) === b.serviceId);
+    const growth = Number.isFinite(sa?.growthRate) ? (sa!.growthRate as number) : defaultGrowth;
     const g = growth / 100;
     let cur = Math.max(0, b.baseTx);
     const row: Record<number, CellEntry> = {};

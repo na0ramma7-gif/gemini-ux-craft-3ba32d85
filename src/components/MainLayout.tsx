@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react';
 import { useApp } from '@/context/AppContext';
 import Sidebar from '@/components/Sidebar';
 import Dashboard from '@/pages/Dashboard';
-import { Portfolio, Product, Resource } from '@/types';
+import { Portfolio, Product, Resource, ViewType } from '@/types';
 
 // Route-level code splitting — heavy pages load on demand to keep
 // initial mobile bundle small (QA Round 2, audit ref P1).
@@ -20,7 +20,7 @@ const PageFallback = () => (
 const MainLayout = () => {
   const { view, setView, selected, setSelected, sidebarOpen, setSidebarOpen, state } = useApp();
 
-  const handleNavigate = (newView: any) => {
+  const handleNavigate = (newView: ViewType) => {
     setView(newView);
     if (newView === 'dashboard') {
       setSelected(prev => ({ ...prev, portfolio: null, product: null, resource: null }));
