@@ -104,14 +104,20 @@ const DialogContent = React.forwardRef<
         {...props}
       >
         {header}
-        {footerNested ? (
-          // Consumer owns its own footer placement (e.g. inside a form). Just give
-          // the body region flex sizing — the form must internally use flex-col
-          // for sticky footer, OR provide its own scroll wrapper.
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{bodyParts}</div>
-        ) : (
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">{bodyParts}</div>
-        )}
+        {/* Body wrapper: always scrollable. Footer (if nested in a form) scrolls
+            with the form content — that's still better than being clipped. For
+            sticky footer behaviour, place <DialogFooter/> as a direct child of
+            <DialogContent/>, not inside a <form>. */}
+        <div className={cn(
+          "flex-1 min-h-0 overflow-y-auto",
+          // Add default padding only when consumer hasn't set one via a wrapping
+          // form. We always pad — forms typically use `space-y-4 py-2` which is
+          // independent of horizontal padding.
+          "px-6 py-4",
+          footerNested && "flex flex-col",
+        )}>
+          {bodyParts}
+        </div>
         {footer}
         <DialogPrimitive.Close
           aria-label="Close"
