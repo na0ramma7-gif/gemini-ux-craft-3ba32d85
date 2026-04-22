@@ -229,7 +229,7 @@ const RevenueCostLineChart = () => {
             />
           </LineChart>
         </ResponsiveContainer>
-      </div>
+      </AccessibleFigure>
     </div>
   );
 };
