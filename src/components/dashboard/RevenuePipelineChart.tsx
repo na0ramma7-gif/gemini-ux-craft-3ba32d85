@@ -7,6 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { addMonths, format } from 'date-fns';
+import AccessibleFigure from '@/components/a11y/AccessibleFigure';
 
 const PORTFOLIO_COLORS = [
   '#111827',  // Licensing — Black
@@ -147,7 +148,20 @@ const RevenuePipelineChart = ({ scenario, horizon, config }: Props) => {
 
   return (
     <div className="bg-card rounded-xl shadow-[var(--shadow-card)] p-6">
-      <div className="h-80">
+      <AccessibleFigure
+        title={`${t('revenue')} ${t('pipeline') ?? ''} — ${t(scenario)}`}
+        summary={`${chartData.length} ${t('months')}, ${portfolioNames.length} ${t('portfolios')}`}
+        tableHeaders={[t('month'), ...portfolioNames, t('total')]}
+        tableRows={chartData.map(row => {
+          const total = portfolioNames.reduce((s, n) => s + (Number(row[n]) || 0), 0);
+          return [
+            String(row.name),
+            ...portfolioNames.map(n => formatCurrency(Number(row[n]) || 0, language)),
+            formatCurrency(total, language),
+          ];
+        })}
+        className="h-80"
+      >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />

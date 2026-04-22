@@ -4,6 +4,7 @@ import { formatCurrency } from '@/lib/utils';
 import { useHierarchicalMetrics } from '@/hooks/useHierarchicalMetrics';
 import { PieChart as PieChartIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import AccessibleFigure from '@/components/a11y/AccessibleFigure';
 
 const PORTFOLIO_COLORS = [
   '#111827',  // Black
@@ -44,7 +45,17 @@ const PortfolioDonutChart = () => {
         <PieChartIcon className="w-5 h-5 text-primary" />
         <h3 className="text-foreground">{t('portfolioDistribution')}</h3>
       </div>
-      <div className="h-72">
+      <AccessibleFigure
+        title={t('portfolioDistribution')}
+        summary={`${data.length} ${t('portfolios')}, ${formatCurrency(total, language)} ${t('total').toLowerCase()}`}
+        tableHeaders={[t('name'), t('revenue'), '%']}
+        tableRows={data.map(d => [
+          d.name,
+          formatCurrency(d.value, language),
+          total > 0 ? `${((d.value / total) * 100).toFixed(1)}%` : '0%',
+        ])}
+        className="h-72"
+      >
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
