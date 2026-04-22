@@ -372,7 +372,52 @@ const ProductDocumentation = ({ product }: Props) => {
 
       {/* Documents Table */}
       {filteredDocs.length > 0 ? (
-        <div className="overflow-x-auto border border-border rounded-lg">
+        <>
+        {/* Mobile cards */}
+        <div className="md:hidden space-y-3">
+          {filteredDocs.map(doc => (
+            <div key={doc.id} className="border border-border rounded-lg p-3">
+              <div className="flex items-start gap-2 mb-2">
+                <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-foreground truncate">{doc.title}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{doc.name}</div>
+                </div>
+                <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0", TYPE_COLORS[doc.type] || TYPE_COLORS.Other)}>
+                  {doc.type}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground mb-2">
+                <div><span className="text-foreground/70">v</span> {doc.version || '—'}</div>
+                <div className="text-end">{formatDate(doc.uploadedAt, language)}</div>
+                <div className="col-span-2 truncate">{doc.uploadedBy}</div>
+              </div>
+              {doc.tags && doc.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {doc.tags.map(tag => (
+                    <span key={tag} className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", TAG_COLORS[tag])}>{tag}</span>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-1 pt-2 border-t border-border">
+                <button aria-label="View document" className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-secondary rounded-md transition-colors">
+                  <Eye className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button aria-label="Download document" className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-secondary rounded-md transition-colors">
+                  <Download className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button onClick={() => openEditModal(doc)} aria-label="Edit document" className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-secondary rounded-md transition-colors">
+                  <Pencil className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button onClick={() => handleDelete(doc.id)} aria-label="Delete document" className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-destructive/10 rounded-md transition-colors ms-auto">
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto border border-border rounded-lg">
           <table className="w-full min-w-[800px]">
             <thead className="bg-secondary/50">
               <tr>
@@ -390,6 +435,7 @@ const ProductDocumentation = ({ product }: Props) => {
             </tbody>
           </table>
         </div>
+        </>
       ) : (
         <div className="text-center py-12 border border-dashed border-border rounded-lg">
           <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
