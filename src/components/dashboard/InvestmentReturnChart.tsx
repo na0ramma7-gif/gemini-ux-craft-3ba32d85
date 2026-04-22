@@ -78,7 +78,7 @@ const InvestmentReturnChart = () => {
             <Scatter data={data} fill="hsl(var(--primary))" fillOpacity={0.7} />
           </ScatterChart>
         </ResponsiveContainer>
-      </div>
+      </AccessibleFigure>
     </div>
   );
 };

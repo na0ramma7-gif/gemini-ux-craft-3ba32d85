@@ -97,7 +97,7 @@ const PortfolioDonutChart = () => {
             />
           </PieChart>
         </ResponsiveContainer>
-      </div>
+      </AccessibleFigure>
     </div>
   );
 };

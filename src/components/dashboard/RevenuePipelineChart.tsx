@@ -192,7 +192,7 @@ const RevenuePipelineChart = ({ scenario, horizon, config }: Props) => {
             <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </AccessibleFigure>
     </div>
   );
 };
