@@ -230,3 +230,30 @@ While applying fixes I discovered three audit items were partially or fully over
 ### Still outstanding (deferred per §2)
 
 All Critical/High items from §1.1 (table → card conversions T1–T9), the 1100px-summary-collapse pattern in M3/M4, sidebar tablet-rail mode, and the cross-browser visual matrix remain. They need either design decisions or browser-verification budget before a fix round.
+
+---
+
+## Round 2 — fixes shipped (2026-04-22)
+
+Continuation of §4 items 6–8. **Verified:** TypeScript 0 errors, 25/25 tests passing, production build succeeds.
+
+| # | Fix | Files | Audit ref |
+|---|---|---|---|
+| 7 | **Icon-only buttons labelled** — added `aria-label` to View/Download/Edit/Delete document buttons, product-logo Replace/Remove/Upload buttons, and the Financial Planning back button. Existing labelled buttons (`PortfolioStrategicAlignment`, `creatable-select`, `sidebar`) verified untouched. | `src/components/ProductDocumentation.tsx`, `src/components/ProductOverview.tsx`, `src/components/FeatureFinancialPlanning.tsx` | A1 |
+| 8 | **Route-level lazy loading** — `PortfolioPage`, `ProductPage`, `ResourcesPage`, `ResourceProfilePage` now load via `React.lazy` + `<Suspense>` with a spinner fallback. Dashboard remains eager (initial view). | `src/components/MainLayout.tsx` | P1 |
+
+### Bundle impact (P1)
+
+| Chunk | Before | After |
+|---|---|---|
+| Main `index.js` | 1.42 MB | **1.11 MB** (gzip 323 KB) |
+| `ProductPage` | (in main) | 232 KB lazy |
+| `PortfolioPage` | (in main) | 42 KB lazy |
+| `ResourceProfilePage` | (in main) | 17 KB lazy |
+| `ResourcesPage` | (in main) | 5 KB lazy |
+
+First paint now ships ~22 % less JS; visiting Portfolio/Product/Resource pages fetches their chunk on demand.
+
+### Still outstanding
+
+Same as after Round 1 — table→card conversions (T1–T9), summary-collapse pattern (M3/M4), sidebar tablet-rail mode, and the cross-browser visual matrix. All require design decisions or browser-verification budget.
