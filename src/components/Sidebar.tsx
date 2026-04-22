@@ -178,24 +178,33 @@ const Sidebar = ({ open, view, portfolios, onNavigate, onToggle, onPortfolioClic
         />
       )}
 
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — tablet rail (md→lg) is always icon-only */}
       <aside
         className={cn(
-          'hidden md:flex flex-col bg-sidebar border-e border-sidebar-border transition-all duration-300 overflow-hidden',
-          open ? 'w-56 lg:w-64' : 'w-16 lg:w-20'
+          'hidden md:flex lg:hidden flex-col bg-sidebar border-e border-sidebar-border overflow-hidden w-16'
         )}
       >
-        {sidebarContent}
+        {renderSidebar(true)}
       </aside>
 
-      {/* Mobile sidebar */}
+      {/* Desktop sidebar — lg+ respects user `open` toggle */}
+      <aside
+        className={cn(
+          'hidden lg:flex flex-col bg-sidebar border-e border-sidebar-border transition-all duration-300 overflow-hidden',
+          open ? 'w-64' : 'w-20'
+        )}
+      >
+        {renderSidebar(!open)}
+      </aside>
+
+      {/* Mobile sidebar — full labels in drawer */}
       <aside
         className={cn(
           'md:hidden fixed start-0 top-0 h-full z-40 flex flex-col bg-sidebar border-e border-sidebar-border transition-transform duration-300 w-56 sm:w-64',
           mobileOpen ? 'translate-x-0' : isRTL ? 'translate-x-full' : '-translate-x-full'
         )}
       >
-        {sidebarContent}
+        {renderSidebar(false)}
       </aside>
     </>
   );
