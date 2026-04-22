@@ -57,12 +57,27 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col space-y-1.5 text-center sm:text-start", className)} {...props} />
+  <div
+    className={cn(
+      // Sticky header keeps the title visible while the body scrolls in long forms.
+      // bg + negative margins + padding extend the bg edge-to-edge over the parent's p-6.
+      "sticky top-0 z-10 -mx-6 -mt-6 px-6 pt-6 pb-3 bg-background flex flex-col space-y-1.5 text-center sm:text-start border-b border-border/50",
+      className,
+    )}
+    {...props}
+  />
 );
 DialogHeader.displayName = "DialogHeader";
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2 sm:gap-0", className)} {...props} />
+  <div
+    className={cn(
+      // Sticky footer keeps Save/Cancel reachable on tall forms (mobile especially).
+      "sticky bottom-0 z-10 -mx-6 -mb-6 px-6 py-3 bg-background border-t border-border/50 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2 sm:gap-0",
+      className,
+    )}
+    {...props}
+  />
 );
 DialogFooter.displayName = "DialogFooter";
 
