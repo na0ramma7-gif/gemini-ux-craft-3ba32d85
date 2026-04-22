@@ -637,7 +637,37 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                   </Button>
                 )}
               </div>
-              <div className="overflow-x-auto">
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-2">
+                {state.assignments.filter(a => products.some(p => p.id === a.productId)).map(assignment => {
+                  const resource = state.resources.find(r => r.id === assignment.resourceId);
+                  const prod = products.find(p => p.id === assignment.productId);
+                  return (
+                    <div key={assignment.id} className="bg-secondary/30 rounded-xl p-3 border border-border">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-foreground text-sm truncate">{resource?.name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{resource?.role}</div>
+                        </div>
+                        <div className="font-bold text-primary text-sm tabular-nums shrink-0">{assignment.utilization}%</div>
+                      </div>
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        <div><span className="text-[10px] uppercase tracking-wide">{t('product')}: </span>{prod?.name}</div>
+                        <div><span className="text-[10px] uppercase tracking-wide">{t('period')}: </span>{formatDate(assignment.startDate, language)} → {formatDate(assignment.endDate, language)}</div>
+                      </div>
+                      <div className="flex gap-1 mt-2 justify-end">
+                        <Button size="sm" variant="ghost" className="h-9 w-9 p-0" onClick={() => { setEditingAssignmentId(assignment.id); setAssignResourceId(assignment.resourceId); setAssignDialogOpen(true); }} aria-label={t('edit')}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-destructive hover:text-destructive" onClick={() => deleteAssignment(assignment.id)} aria-label={t('delete')}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-[700px]">
                   <thead className="bg-secondary/50">
                     <tr>
@@ -710,7 +740,36 @@ const PortfolioPage = ({ portfolio, onBack, onProductClick }: PortfolioPageProps
                 <div className="border-b pb-3 mb-4">
                   <h3 className="text-base font-bold text-foreground">💵 {t('revenue')}</h3>
                 </div>
-                <div className="overflow-x-auto">
+                {/* Mobile cards */}
+                <div className="md:hidden space-y-2">
+                  {products.map(prod => {
+                    const prodMetric = portMetrics?.productMetrics.find(p => p.productId === prod.id);
+                    const expected = prodMetric?.planned ?? 0;
+                    const actual = prodMetric?.revenue ?? 0;
+                    const cost = prodMetric?.cost ?? 0;
+                    const variance = actual - expected;
+                    return (
+                      <div key={prod.id} className="bg-secondary/30 rounded-xl p-3 border border-border">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-foreground text-sm truncate">{prod.name}</div>
+                          </div>
+                          <StatusBadge status={prod.status} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('expected')}</div><div className="text-revenue font-semibold tabular-nums">{formatCurrency(expected, language)}</div></div>
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('actual')}</div><div className="text-foreground font-semibold tabular-nums">{formatCurrency(actual, language)}</div></div>
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('cost')}</div><div className="text-cost font-semibold tabular-nums">{formatCurrency(cost, language)}</div></div>
+                          <div><div className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('variance')}</div><div className={cn("font-bold tabular-nums", variance >= 0 ? 'text-revenue' : 'text-cost')}>{variance >= 0 ? '+' : ''}{formatCurrency(variance, language)}</div></div>
+                        </div>
+                        <div className="mt-3">
+                          <Button size="sm" className="w-full" onClick={() => onProductClick(prod)}>{t('planFinancials')}</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full min-w-[800px]">
                     <thead className="bg-secondary">
                       <tr>
