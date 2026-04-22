@@ -30,6 +30,19 @@ import {
   AlertTriangle,
   Pencil,
 } from 'lucide-react';
+import type { RechartsTooltipProps } from '@/types/recharts';
+
+interface ChartPoint {
+  name: string;
+  month: string;
+  actualRevenue?: number;
+  actualCost?: number;
+  actualProfit?: number;
+  forecastRevenue?: number;
+  forecastCost?: number;
+  forecastProfit?: number;
+  isHistorical?: boolean;
+}
 
 interface ProductForecastProps {
   product: Product;
@@ -136,7 +149,7 @@ const ProductForecast = ({ product }: ProductForecastProps) => {
 
   // Combined data for charts
   const chartData = useMemo(() => {
-    const historical: any[] = historicalData.map(d => ({
+    const historical: ChartPoint[] = historicalData.map(d => ({
       ...d,
       actualRevenue: d.revenue,
       actualCost: d.cost,
@@ -149,7 +162,7 @@ const ProductForecast = ({ product }: ProductForecastProps) => {
     // Bridge: last historical point appears in both series for continuity
     const bridge = historicalData[historicalData.length - 1];
 
-    const forecast: any[] = forecastRows.map((d, idx) => ({
+    const forecast: ChartPoint[] = forecastRows.map((d, idx) => ({
       name: d.name,
       month: d.month,
       actualRevenue: idx === 0 && bridge ? bridge.revenue : undefined,
@@ -218,17 +231,17 @@ const ProductForecast = ({ product }: ProductForecastProps) => {
     });
   }, []);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: RechartsTooltipProps<ChartPoint>) => {
     if (!active || !payload?.length) return null;
     return (
       <div className="bg-card border border-border rounded-lg shadow-lg p-3 text-xs space-y-1 max-w-xs">
         <p className="font-semibold text-foreground">{label}</p>
-        {payload.filter((e: any) => e.value != null).map((entry: any) => (
-          <div key={entry.dataKey} className="flex items-center gap-2">
+        {payload.filter(e => e.value != null).map((entry, i) => (
+          <div key={`${entry.dataKey ?? entry.name ?? i}`} className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ background: entry.color }} />
             <span className="text-muted-foreground">{entry.name}:</span>
             <span className="font-semibold text-foreground">
-              {formatCurrency(entry.value, language)}
+              {formatCurrency(typeof entry.value === 'number' ? entry.value : Number(entry.value) || 0, language)}
             </span>
           </div>
         ))}
