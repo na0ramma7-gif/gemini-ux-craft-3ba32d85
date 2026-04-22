@@ -414,13 +414,13 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) handleCancel(); else onOpenChange(o); }}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-2xl sm:max-h-[85vh] sm:h-auto p-0 gap-0 flex flex-col overflow-hidden sm:flex sm:p-0 sm:overflow-hidden">
+          <DialogHeader className="static mx-0 mt-0 px-6 pt-6 pb-3 shrink-0">
             <DialogTitle>{t('editProductProfile')}</DialogTitle>
             <DialogDescription>Update product details. Required fields are marked with *.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 px-6 py-4 overflow-y-auto flex-1 min-h-0">
             {/* Name (full width) */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
@@ -936,7 +936,7 @@ const EditProductProfileDialog = ({ open, onOpenChange, product }: Props) => {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="static mx-0 mb-0 px-6 py-3 shrink-0">
             <Button variant="outline" size="sm" onClick={handleCancel}>{t('cancel')}</Button>
             <Button size="sm" onClick={handleSave} disabled={!isValid}>
               {t('saveChanges')}
